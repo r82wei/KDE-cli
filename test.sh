@@ -71,7 +71,7 @@ source scripts/utils/project.sh
 #     # 修改預設環境
 #     set_default_env
 # fi
-# GIT_REPO_URL="https://github.com/r82wei/k8s-deploy-env.git"
+# GIT_REPO_URL="https://github.com/docker.anyong.com.tw/quick-start/k8s-deploy-env.git"
 # echo $(git_repo_name ${GIT_REPO_URL})
 
 containers=$(get_env_containers ubuntu kind)
