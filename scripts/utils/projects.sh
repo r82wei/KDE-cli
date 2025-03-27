@@ -33,8 +33,12 @@ fetch_projects() {
             echo "專案 ${PROJECT_NAME} 使用本地專案"
             continue
         fi
-
-        download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${PROJECTS_REPO_PATH}/${PROJECT_NAME}/$(git_repo_name ${GIT_REPO_URL})
+        
+        # 詢問使用者是否要下載 git repo
+        read -p "是否要下載 ${PROJECT_NAME} 的 git repo？(y/n): " DOWNLOAD_GIT_REPO 
+        if [[ ${DOWNLOAD_GIT_REPO} == "y" ]]; then
+            download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${PROJECTS_REPO_PATH}/${PROJECT_NAME}/$(git_repo_name ${GIT_REPO_URL})
+        fi
     done
 }
 
