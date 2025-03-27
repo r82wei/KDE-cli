@@ -12,6 +12,7 @@ show_help() {
     echo "  create          建立專案"
     echo "  link            連結專案"
     echo "  fetch           透過 git url 抓取專案"
+    echo "  pull            透過 project.env 內的 git repo 設定重新抓取專案"
     echo "  deploy          部署專案"
     echo "  undeploy        卸載專案"
     echo "  redeploy        重新部署專案"
@@ -63,6 +64,30 @@ case "${COMMAND}" in
             exit 1
         fi
         fetch_project ${PROJECT_NAME} ${PROJECT_GIT_REPO_URL} ${PROJECT_GIT_REPO_BRANCH}
+        ;;
+    pull)
+        projects=($(kde project list))
+        PS3="請選擇一個 project（輸入編號）："
+        select PROJECT_NAME in "${projects[@]}" "退出"
+        do
+            case $PROJECT_NAME in
+                "退出")
+                    echo "退出"
+                    exit 0
+                    ;;
+                "")
+                    echo "無效選擇，請重新輸入。"
+                    ;;
+                *)
+                    echo "你選擇了: $PROJECT_NAME"
+                    break
+                    ;;
+            esac
+        done
+        exit_if_project_env_not_exist ${PROJECT_NAME}
+        PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+        source ${PROJECT_PATH}/project.env
+        download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${PROJECT_PATH}/$(git_repo_name ${GIT_REPO_URL})
         ;;
     deploy)
         exit_if_env_not_running ${CUR_ENV}

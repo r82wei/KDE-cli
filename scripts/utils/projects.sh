@@ -50,7 +50,7 @@ download_projects_git_repo() {
     if [[ -d ${REPO_PATH} ]]; then
         read -p "${REPO_PATH} 專案集合已存在，是否要刪除？(y/n): " DELETE_PROJECTS
         if [[ ${DELETE_PROJECTS} == "y" ]]; then
-            rm -r ${REPO_PATH}
+            rm -rf ${REPO_PATH}
         else
             exit 1
         fi

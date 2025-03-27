@@ -109,6 +109,7 @@
   - [x] ls (列出 namespaces 資料夾底下的資料夾)
   - [x] create (將 project 資料夾建立到 namespaces 資料夾底下，並且在 k8s 中建立 namespace)
   - [x] fetch (透過 git url 抓取專案)
+  - [x] pull (透過 project.env 內的 git repo 設定重新抓取專案)
   - [x] link (建立專案資料夾的 softlink 到 namespace 資料夾底下)
   - [x] deploy (部署專案)
   - [x] undeploy (解除部署專案)
