@@ -104,7 +104,7 @@
 - [x] k9s (啟動 k9s Dashboard)
 - [x] expose (將 Pod/Service 暴露到外網)
 - [x] exec (進入有部署相關工具的環境，並且掛載當前環境的 namespace 資料夾)
-- [ ] reset (重置環境，刪除所有資料)
+- [x] reset (重置環境，刪除所有資料)
 - [x] project (相當於 namespace)
   - [x] ls (列出 namespaces 資料夾底下的資料夾)
   - [x] create (將 project 資料夾建立到 namespaces 資料夾底下，並且在 k8s 中建立 namespace)

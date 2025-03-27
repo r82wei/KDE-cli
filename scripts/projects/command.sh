@@ -34,6 +34,7 @@ case "${COMMAND}" in
             show_fetch_help
             exit 1
         fi
+        exit_if_env_not_exist ${CUR_ENV}
         fetch_projects ${PROJECTS_GIT_REPO_URL} ${PROJECTS_GIT_REPO_BRANCH}
         ;;
     link)
