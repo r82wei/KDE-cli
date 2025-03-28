@@ -34,7 +34,8 @@ show_help() {
     echo ""
     echo "command:"
     echo "  list, ls                            列出 k8s 環境"
-    echo "  start, create <env_name> [--k3d]    啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 啟動 k3d)"
+    echo "  start <env_name> [--k3d]            建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 --k3d 啟動 k3d)"
+    echo "  create <env_name> [--k3d]           建立/啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 建立 k3d)"
     echo "  stop [env_name]                     停止 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)"
     echo "  restart                             重啟 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)"
     echo "  status                              顯示 k8s 環境狀態"
@@ -55,10 +56,14 @@ case "$1" in
     ls|list)
         ls ${ENVIROMENTS_PATH}
         ;;
-    start|create)
+    start)
         shift  # 移除 "start" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh
         source ${KDE_SCRIPTS_PATH}/k9s/start.sh
+        ;;
+    create)
+        shift  # 移除 "create" 指令
+        source ${KDE_SCRIPTS_PATH}/start/command.sh
         ;;
     stop)
         shift  # 移除 "stop" 指令

@@ -45,6 +45,14 @@ exit_if_project_env_not_exist() {
         exit 1
     fi
 }
+
+load_project_env() {
+    PROJECT_NAME=$1
+    if [[ $(is_project_env_exist ${PROJECT_NAME}) == "true" ]]; then
+        source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    fi
+}
+
 # 建立專案資料夾、namespace
 create_project() {
     PROJECT_NAME=$1
@@ -76,8 +84,25 @@ fetch_project() {
     PROJECT_GIT_REPO_BRANCH=$3
     PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     download_git_repo ${PROJECT_NAME} ${PROJECT_GIT_REPO_URL} ${PROJECT_GIT_REPO_BRANCH} ${PROJECT_REPO_PATH}
-    exit_if_project_env_not_exist ${PROJECT_NAME}
-    source ${PROJECT_REPO_PATH}/project.env
+    pull_project ${PROJECT_NAME}
+}
+
+pull_project() {
+    PROJECT_NAME=$1
+    if [[ $(is_project_env_exist ${PROJECT_NAME}) == "false" ]]; then
+        echo "專案 ${PROJECT_NAME} 設定檔(project.env) 不存在"
+        return 1
+    fi
+
+    load_project_env ${PROJECT_NAME}
+
+    # 如果 GIT_REPO_URL 是 ./ 開頭，則繼續迴圈
+    if [[ ${GIT_REPO_URL} == "./"* ]]; then
+        echo "專案 ${PROJECT_NAME} 使用本地專案"
+        return 0
+    fi
+    
+    PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${PROJECT_REPO_PATH}/$(git_repo_name ${GIT_REPO_URL})
 }
 
@@ -115,7 +140,7 @@ download_git_repo() {
         if [[ ${DELETE_PROJECT} == "y" ]]; then
             rm -rf ${REPO_PATH}
         else
-            exit 1
+            return 1
         fi
     fi
 

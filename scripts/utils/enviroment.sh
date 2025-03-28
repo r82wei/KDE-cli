@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# 檢查 $1 的環境在 enviroments 底下是否存在，存在則回傳 true，不存在則回傳 false
+# 檢查 $1 的環境在 enviroments 底下是否存在，而且 enviroments 底下有 ENV_NAME 資料夾，而且存在 .env 檔案，存在則回傳 true，不存在則回傳 false
 is_env_exist() {
-    if [[ -n $1 && -d ${ENVIROMENTS_PATH}/${1} ]]; then
+    ENV_NAME=$1
+    if [[ -n ${ENV_NAME} && -d ${ENVIROMENTS_PATH}/${ENV_NAME} && -n "$(ls -A ${ENVIROMENTS_PATH}/${ENV_NAME})" && -f ${ENVIROMENTS_PATH}/${ENV_NAME}/.env ]]; then
         echo "true"
     else
         echo "false"
@@ -61,9 +62,10 @@ get_env_type() {
 }
 
 load_enviroment_env() {
-    if [[ -d ${ENVIROMENTS_PATH} && -d ${ENVIROMENTS_PATH}/${1:-${CUR_ENV}} ]]; then
-        source ${ENVIROMENTS_PATH}/${1:-${CUR_ENV}}/.env
-        export KUBECONFIG=${ENVIROMENTS_PATH}/${1:-${CUR_ENV}}/${KUBE_CONFIG_DIR}/config
+    ENV_PATH=${ENVIROMENTS_PATH}/${1:-${CUR_ENV}}
+    if [[ $(is_env_exist ${1:-${CUR_ENV}}) == "true" && -f ${ENV_PATH}/.env ]]; then
+        source ${ENV_PATH}/.env
+        export KUBECONFIG=${ENV_PATH}/${KUBE_CONFIG_DIR}/config
     fi
 }
 
@@ -135,7 +137,7 @@ init_env() {
     export ENV_TYPE=$2
     export ENV_PATH=${ENVIROMENTS_PATH}/${ENV_NAME}
     export ENV_FILE_PATH=${ENV_PATH}/.env
-    if [[ -d ${ENV_PATH} ]]; then
+    if [[ $(is_env_exist ${ENV_NAME}) == "true" ]]; then
         echo "環境 ${ENV_NAME} 相關設定已存在 (${ENV_PATH})"
     else
         echo "環境 ${ENV_NAME} 尚未存在，開始初始化環境..."

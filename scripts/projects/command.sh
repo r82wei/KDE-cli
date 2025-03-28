@@ -10,6 +10,7 @@ show_help() {
     echo ""
     echo "option:"
     echo "  fetch           透過 git url 抓取專案集合"
+    echo "  pull            使用專案集合底下的專案 project.env 設定，透過 git url 抓取專案"
     echo "  link            連結專案集合"
 }
 
@@ -40,6 +41,15 @@ case "${COMMAND}" in
             source ${KDE_SCRIPTS_PATH}/start/command.sh ${CUR_ENV}
         fi
         fetch_projects ${PROJECTS_GIT_REPO_URL} ${PROJECTS_GIT_REPO_BRANCH}
+        ;;
+    pull)
+        OPTIONS=$2
+        if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
+            echo "環境 ${CUR_ENV} 不存在，請先建立環境"
+            read -p "請輸入環境名稱: " CUR_ENV
+            source ${KDE_SCRIPTS_PATH}/start/command.sh ${CUR_ENV}
+        fi
+        pull_projects
         ;;
     link)
         create_projects_link

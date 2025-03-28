@@ -28,24 +28,16 @@ fetch_projects() {
     PROJECTS_GIT_REPO_BRANCH=$2
     PROJECTS_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}
     download_projects_git_repo ${PROJECTS_GIT_REPO_URL} ${PROJECTS_GIT_REPO_BRANCH} ${PROJECTS_REPO_PATH}
+    pull_projects
+}
+
+pull_projects() {
+    PROJECTS_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}
     for PROJECT_NAME in $(ls -d ${PROJECTS_REPO_PATH}/*/ 2>/dev/null | xargs -n 1 basename); do
-        if [[ $(is_project_env_exist ${PROJECT_NAME}) == "false" ]]; then
-            echo "專案 ${PROJECT_NAME} 設定檔(project.env) 不存在"
-            continue
-        fi
-
-        source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-
-        # 如果 GIT_REPO_URL 是 ./ 開頭，則繼續迴圈
-        if [[ ${GIT_REPO_URL} == "./"* ]]; then
-            echo "專案 ${PROJECT_NAME} 使用本地專案"
-            continue
-        fi
-        
         # 詢問使用者是否要下載 git repo
         read -p "是否要下載 ${PROJECT_NAME} 的 git repo？(y/n): " DOWNLOAD_GIT_REPO 
         if [[ ${DOWNLOAD_GIT_REPO} == "y" ]]; then
-            download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${PROJECTS_REPO_PATH}/${PROJECT_NAME}/$(git_repo_name ${GIT_REPO_URL})
+            pull_project ${PROJECT_NAME}
         fi
     done
 }

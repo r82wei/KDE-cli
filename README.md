@@ -37,7 +37,8 @@
 
   command:
     list, ls                            列出 k8s 環境
-    start, create <env_name> [--k3d]    啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 啟動 k3d)
+    start <env_name> [--k3d]            建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 --k3d 啟動 k3d)
+    create <env_name> [--k3d]           建立/啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 建立 k3d)
     stop [env_name]                     停止 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)
     restart                             重啟 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)
     status                              顯示 k8s 環境狀態
@@ -48,7 +49,8 @@
     expose                              將 service/pod port forward 到本地指定的 port
     exec                                進入有部署相關工具的環境，並且掛載當前環境的 namespace 資料夾
     reset                               重置 kde 環境，清除全部 environments 和 projects 資料夾
-    project, proj                       project 管理 (可以使用 kde project -h 查看詳細說明)
+    project, proj, namespace, ns        project 管理 (可以使用 kde project -h 查看詳細說明)
+    projects, projs                     projects(namespaces) 專案集合管理 (可以使用 kde projects -h 查看詳細說明)
   ```
 
 - 執行 `kde start` 啟動 / 新增 K8S
@@ -93,7 +95,7 @@
 #### Core Features
 
 - [x] ls (列出 k8s 環境)
-- [x] start (啟動 k8s 環境)
+- [x] start/create (啟動 k8s 環境)
   - [x] kind (使用 kind 啟動 K8S)
   - [x] k3d (使用 k3d 啟動 K8S)
 - [x] stop (停止 k8s 環境)
