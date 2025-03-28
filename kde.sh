@@ -58,6 +58,7 @@ case "$1" in
     start|create)
         shift  # 移除 "start" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh
+        source ${KDE_SCRIPTS_PATH}/k9s/start.sh
         ;;
     stop)
         shift  # 移除 "stop" 指令

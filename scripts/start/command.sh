@@ -38,5 +38,3 @@ case "${ENV_TYPE}" in
         source ${KDE_SCRIPTS_PATH}/start/kind/init.sh
         ;;
 esac
-
-source ${KDE_SCRIPTS_PATH}/k9s/start.sh

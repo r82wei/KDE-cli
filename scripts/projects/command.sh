@@ -34,7 +34,11 @@ case "${COMMAND}" in
             show_fetch_help
             exit 1
         fi
-        exit_if_env_not_exist ${CUR_ENV}
+        if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
+            echo "環境 ${CUR_ENV} 不存在，請先建立環境"
+            read -p "請輸入環境名稱: " CUR_ENV
+            source ${KDE_SCRIPTS_PATH}/start/command.sh ${CUR_ENV}
+        fi
         fetch_projects ${PROJECTS_GIT_REPO_URL} ${PROJECTS_GIT_REPO_BRANCH}
         ;;
     link)
