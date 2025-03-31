@@ -162,7 +162,12 @@ init_env() {
             mkdir -p ${ENV_PATH}/pki
             openssl genrsa -out ${ENV_PATH}/pki/ca.key 2048
             openssl req -x509 -new -nodes -key ${ENV_PATH}/pki/ca.key -sha256 -days 3650 -out ${ENV_PATH}/pki/ca.crt \
-                -subj "/C=TW/ST=Taipei/L=Taipei/O=KDE/OU=KDE/CN=${K8S_CONTAINER_NAME}"
+                -subj "/C=TW/ST=Taipei/L=Taipei/O=KDE/OU=KDE/CN=${K8S_CONTAINER_NAME}" \
+                -extensions v3_ca \
+                -config <(cat /etc/ssl/openssl.cnf <(printf "\n[v3_ca]\n\
+                    basicConstraints=CA:TRUE\n\
+                    subjectKeyIdentifier=hash\n\
+                    authorityKeyIdentifier=keyid:always,issuer:always\n"))
         fi
 
         # 設定 DOCKER_NETWORK
@@ -268,6 +273,11 @@ exec_script_in_container_with_project() {
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
+}
+
+# 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
+exec_k8s_node() {
+    docker exec -it ${K8S_CONTAINER_NAME} bash
 }
 
 create_namespace() {

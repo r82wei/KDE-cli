@@ -44,7 +44,7 @@ show_help() {
     echo "  use [env_name]                      切換當前使用中的 k8s 環境名稱"
     echo "  k9s [-p port]                       進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port"
     echo "  expose                              將 service/pod port forward 到本地指定的 port"
-    echo "  exec                                進入有部署相關工具的環境，並且掛載當前環境的 namespace 資料夾"
+    echo "  exec                                進入 k8s node container 環境"
     echo "  reset                               重置 kde 環境，清除全部 environments 和 projects 資料夾"
     echo "  project, proj, namespace, ns        project 管理 (可以使用 kde project -h 查看詳細說明)"
     echo "  projects, projs                     projects(namespaces) 專案集合管理 (可以使用 kde projects -h 查看詳細說明)"

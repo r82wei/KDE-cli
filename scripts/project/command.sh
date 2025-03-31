@@ -7,7 +7,7 @@ show_help() {
     echo "usage:"
     echo "  kde [project|proj|namespace|ns] <command> <project_name> [option]  專案相關指令"
     echo ""
-    echo "option:"
+    echo "command:"
     echo "  list, ls        列出專案"
     echo "  create          建立專案"
     echo "  link            連結專案"

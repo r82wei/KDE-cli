@@ -8,7 +8,7 @@ show_help() {
     echo "usage:"
     echo "  kde projects <command> 專案集合相關指令"
     echo ""
-    echo "option:"
+    echo "command:"
     echo "  fetch           透過 git url 抓取專案集合"
     echo "  pull            使用專案集合底下的專案 project.env 設定，透過 git url 抓取專案"
     echo "  link            連結專案集合"
