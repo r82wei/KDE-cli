@@ -54,6 +54,11 @@ case "${COMMAND}" in
     link)
         create_projects_link
         ;;
+    exec)
+        exit_if_env_not_exist ${CUR_ENV}
+        load_enviroment_env ${CUR_ENV}
+        exec_bash_in_deploy_env_with_projects
+        ;;
     *)
         echo "不支援的指令: $1"
         show_help

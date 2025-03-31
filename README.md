@@ -125,6 +125,7 @@
 - [ ] namespaces (project 的集合)
   - [ ] fetch (透過 git url 抓取 project 集合)
   - [ ] link (建立 project 集合資料夾的 softlink 成為 namespaces 資料夾)
+  - [ ] exec (進入 project 集合的 Container 環境)
 
 #### Extra Features
 
