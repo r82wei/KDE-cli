@@ -3,7 +3,7 @@
 # 定義顯示說明的函數
 show_help() {
     echo "usage:"
-    echo "  kde exec [name]       啟動連結特定 k8s 的部署環境，如果沒有輸入環境名稱，預設使用 current.env 的環境"
+    echo "  kde exec [name]       進入 k8s node container 環境，如果沒有輸入環境名稱，預設使用 current.env 的環境"
 }
 
 
