@@ -129,11 +129,12 @@
 
 #### Extra Features
 
+- [x] ngrok
 - [ ] mcp server
 - [ ] kube-metrics-server
 - [ ] Grafana/Loki/Prometheus
 - [ ] cert-manager
-- [ ] ngrok / Cloudflare Tunnel
+- [ ] Cloudflare Tunnel
 
 ## 相關套件清單
 

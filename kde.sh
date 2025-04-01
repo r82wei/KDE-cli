@@ -48,6 +48,7 @@ show_help() {
     echo "  reset                               重置 kde 環境，清除全部 environments 和 projects 資料夾"
     echo "  project, proj, namespace, ns        project 管理 (可以使用 kde project -h 查看詳細說明)"
     echo "  projects, projs                     projects(namespaces) 專案集合管理 (可以使用 kde projects -h 查看詳細說明)"
+    echo "  ngrok                               啟動 ngrok"
 }
 
 
@@ -116,6 +117,11 @@ case "$1" in
     reset)
         shift  # 移除 "reset" 指令
         source ${KDE_SCRIPTS_PATH}/reset/command.sh
+        exit 0
+        ;;
+    ngrok)
+        shift  # 移除 "ngrok" 指令
+        source ${KDE_SCRIPTS_PATH}/ngrok/command.sh
         exit 0
         ;;
     *)

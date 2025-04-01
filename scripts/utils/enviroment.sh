@@ -296,10 +296,26 @@ get_pods() {
     echo "${pods[@]}"
 }
 
+get_pod_ports() {
+    NAMESPACE=$1
+    POD=$2
+
+    ports=($(exec_script_in_deploy_env_without_tty "kubectl -n ${NAMESPACE} get pod ${POD} --no-headers -o custom-columns=":spec.containers[*].ports[*].containerPort" | tr ',' ' '"))
+    echo "${ports[@]}"
+}
+
 get_services() {
     NAMESPACE=$1
     services=($(exec_script_in_deploy_env_without_tty "kubectl -n ${NAMESPACE} get services --no-headers -o custom-columns=":metadata.name""))
     echo "${services[@]}"
+}
+
+get_service_ports() {
+    NAMESPACE=$1
+    SERVICE=$2
+
+    ports=($(exec_script_in_deploy_env_without_tty "kubectl -n ${NAMESPACE} get service ${SERVICE} --no-headers -o custom-columns=":spec.ports[*].port" | tr ',' ' '"))
+    echo "${ports[@]}"
 }
 
 is_namespace_exist() {
@@ -403,5 +419,131 @@ has_any_service() {
         echo "false"
     else
         echo "true"
+    fi
+}
+
+select_namespace() {
+    # 顯示所有 namespace
+    namespaces=($(get_namespaces))
+    PS3="請選擇一個 Namespace（輸入編號）："
+    select namespace in "${namespaces[@]}" "退出"
+    do
+        case $namespace in
+            "退出")
+                echo "退出"
+                exit 0
+                ;;
+            "")
+                echo "無效選擇，請重新輸入。"
+                ;;
+            *)
+                echo "你選擇了 Namespace: $namespace"
+                export TARGET_NAMESPACE=$namespace
+                break
+                ;;
+        esac
+    done
+}
+
+select_service() {
+    TARGET_NAMESPACE=$1
+
+    # 顯示 namespace 下所有 service
+    services=($(get_services ${TARGET_NAMESPACE}))
+
+    # 檢查是否存在
+    if [ ${#services[@]} -eq 0 ]; then
+        echo "Namespace: ${TARGET_NAMESPACE} 目前沒有任何 service 存在。"
+        exit 1
+    fi
+    
+    PS3="請選擇一個 Service（輸入編號）："
+    select service in "${services[@]}" "退出"
+    do
+        case $service in
+            "退出")
+                echo "退出"
+                exit 0
+                ;;
+            "")
+                echo "無效選擇，請重新輸入。"
+                ;;
+            *)
+                echo "你選擇了 Service: $service"
+                export TARGET_SERVICE=$service
+                break
+                ;;
+        esac
+    done
+}
+
+select_pod() {
+    TARGET_NAMESPACE=$1
+
+    # 顯示 namespace 下所有 pod
+    pods=($(get_pods ${TARGET_NAMESPACE}))
+
+    # 檢查是否存在
+    if [ ${#pods[@]} -eq 0 ]; then
+        echo "Namespace: ${TARGET_NAMESPACE} 目前沒有任何 pod 存在。"
+        exit 1
+    fi
+
+    PS3="請選擇一個 Pod（輸入編號）："
+    select pod in "${pods[@]}" "退出"
+    do
+        case $pod in
+            "退出")
+                echo "退出"
+                exit 0
+                ;;
+            "")
+                echo "無效選擇，請重新輸入。"
+                ;;
+            *)
+                echo "你選擇了 Pod: $pod"
+                export TARGET_POD=$pod
+                break
+                ;;
+        esac
+    done
+}
+
+select_port() {
+    TARGET_NAMESPACE=$1
+    TYPE=$2
+    TARGET_RESOURCE=$3
+
+    if [[ "${TYPE}" == "pod" ]]; then
+        ports=($(get_pod_ports ${TARGET_NAMESPACE} ${TARGET_RESOURCE}))
+    elif [[ "${TYPE}" == "service" ]]; then
+        ports=($(get_service_ports ${TARGET_NAMESPACE} ${TARGET_RESOURCE}))
+    else
+        echo "錯誤的 TYPE: ${TYPE}"
+        exit 1
+    fi
+
+    # 如果 ports 數量大於 1，則顯示選單
+    if (( ${#ports[@]} > 1 )); then
+        PS3="請選擇要轉發的 Port（輸入編號）："
+        select port in "${ports[@]}" "退出"
+        do
+            case $port in
+                "退出")
+                    echo "退出"
+                    exit 0
+                    ;;
+                "")
+                    echo "無效選擇，請重新輸入。"
+                    ;;
+                *)
+                    echo "你選擇了 Port: $port"
+                    export TARGET_PORT=$port
+                    break
+                    ;;
+            esac
+        done
+    else
+        export TARGET_PORT=${ports[0]}
     fi
 }
