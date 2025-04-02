@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 設定 KDE scripts 路徑
-export KDE_SCRIPTS_PATH=$(dirname "$(realpath "$0")")/scripts
+export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
 # 設定 KDE 根目錄路徑
 export KDE_PATH=$PWD
 # 設定環境目錄路徑(enviroments)
