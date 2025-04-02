@@ -50,7 +50,9 @@ case "${COMMAND}" in
         exit 0
         ;;
     create)
-        check_project_name ${PROJECT_NAME}
+        if [[ -z "${PROJECT_NAME}" ]]; then
+            read -p "請輸入專案名稱: " PROJECT_NAME
+        fi
         create_project ${PROJECT_NAME}
         ;;
     link)
