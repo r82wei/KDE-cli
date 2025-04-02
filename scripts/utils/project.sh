@@ -1,8 +1,14 @@
 #!/bin/bash
 
+list_projects() {
+    ls ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}
+}
+
 check_project_name() {
+    PROJECT_NAME=$1
+
     if [[ -z "${PROJECT_NAME}" ]]; then
-        read -p "請輸入專案名稱: " PROJECT_NAME
+        select_porject
     fi
 }
 
@@ -216,4 +222,35 @@ exec_project_deploy_container() {
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} bash
+}
+
+select_porject() {
+    TARGET_NAMESPACE=$1
+
+    projects=($(list_projects))
+
+    # 檢查是否存在
+    if [ ${#projects[@]} -eq 0 ]; then
+        echo "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} 目前沒有任何 project 存在。"
+        exit 1
+    fi
+
+    PS3="請選擇一個 Project（輸入編號）："
+    select project in "${projects[@]}" "退出"
+    do
+        case $project in
+            "退出")
+                echo "退出"
+                exit 0
+                ;;
+            "")
+                echo "無效選擇，請重新輸入。"
+                ;;
+            *)
+                echo "你選擇了 Project: $project"
+                export PROJECT_NAME=$project
+                break
+                ;;
+        esac
+    done
 }

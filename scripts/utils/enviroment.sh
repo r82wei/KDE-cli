@@ -547,3 +547,14 @@ select_port() {
         export TARGET_PORT=${ports[0]}
     fi
 }
+
+create_ingress(){
+    NAMESPACE=$1
+    INGRESS_NAME=$2
+    DOMAIN=$3
+    SERVICE=$4
+    PORT=$5
+
+    exec_script_in_deploy_env_without_tty "kubectl -n ${NAMESPACE} create ingress ${INGRESS_NAME} --rule=\"${DOMAIN}/*=${SERVICE}:${PORT}\" --class=nginx"
+}
+

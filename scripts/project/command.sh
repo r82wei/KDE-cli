@@ -18,6 +18,7 @@ show_help() {
     echo "  redeploy        重新部署專案"
     echo "  remove, rm      刪除專案"
     echo "  exec            進入專案"
+    echo "  ingress         建立 ingress"
 }
 
 show_exec_help() {
@@ -49,11 +50,11 @@ case "${COMMAND}" in
         exit 0
         ;;
     create)
-        check_project_name
+        check_project_name ${PROJECT_NAME}
         create_project ${PROJECT_NAME}
         ;;
     link)
-        check_project_name
+        check_project_name ${PROJECT_NAME}
         create_link ${PROJECT_NAME}
         ;;
     fetch)
@@ -90,26 +91,26 @@ case "${COMMAND}" in
         ;;
     deploy)
         exit_if_env_not_running ${CUR_ENV}
-        check_project_name
+        check_project_name ${PROJECT_NAME}
         deploy_project ${PROJECT_NAME}
         ;;
     undeploy)
         exit_if_env_not_running ${CUR_ENV}
-        check_project_name
+        check_project_name ${PROJECT_NAME}
         undeploy_project ${PROJECT_NAME}
         ;;
     redeploy)
         exit_if_env_not_running ${CUR_ENV}
-        check_project_name
+        check_project_name ${PROJECT_NAME}
         undeploy_project ${PROJECT_NAME}
         deploy_project ${PROJECT_NAME}
         ;;
     remove|rm)
-        check_project_name
+        check_project_name ${PROJECT_NAME}
         remove_project ${PROJECT_NAME}
         ;;
     exec)
-        check_project_name
+        check_project_name ${PROJECT_NAME}
         IMAGE_TYPE=$3
         if [[ "${IMAGE_TYPE}" == "-h" || "${IMAGE_TYPE}" == "--help" ]]; then
             show_exec_help
@@ -128,6 +129,20 @@ case "${COMMAND}" in
                 exit 1
                 ;;
         esac
+        ;;
+    ingress)
+        check_project_name ${PROJECT_NAME}
+        TARGET_NAMESPACE=${PROJECT_NAME}
+        read -p "請輸入 ingress 的 domain: " DOMAIN
+        if [[ -z "${DOMAIN}" ]]; then
+            echo "無效的 domain"
+            exit 1
+        fi
+        INGRESS_NAME=${DOMAIN//./-}-ingress
+        select_service ${TARGET_NAMESPACE}
+        select_port ${TARGET_NAMESPACE} "service" ${TARGET_SERVICE}
+        create_ingress ${TARGET_NAMESPACE} ${INGRESS_NAME} ${DOMAIN} ${TARGET_SERVICE} ${TARGET_PORT}
+        echo "Ingress 已建立：${DOMAIN} -> ${TARGET_SERVICE}:${TARGET_PORT}"
         ;;
     *)
         echo "不支援的指令: $1"
