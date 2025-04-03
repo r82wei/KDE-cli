@@ -76,7 +76,7 @@ create_project() {
         REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${PROJECT_NAME}
         mkdir -p ${REPO_PATH}
     fi
-    read -p "請輸入專案執行(建置)環境 Image (執行 build.sh 的環境): " DEVELOP_IMAGE
+    read -p "請輸入專案開發(建置)環境 Image (執行 build.sh 的環境): " DEVELOP_IMAGE
     echo "DEVELOP_IMAGE=${DEVELOP_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     read -p "請輸入專案部署環境 Image (執行 deploy.sh 的環境): " DEPLOY_IMAGE
     echo "DEPLOY_IMAGE=${DEPLOY_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env

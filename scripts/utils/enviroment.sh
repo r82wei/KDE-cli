@@ -543,8 +543,15 @@ select_port() {
         exit 1
     fi
 
-    # 如果 ports 數量大於 1，則顯示選單
-    if (( ${#ports[@]} > 1 )); then
+    if [[ ${#ports[@]} == 0 || (${#ports[@]} == 1 && "${ports[0]}" == "<none>") ]]; then
+        # 如果 ports 數量等於 0 或是顯示 "<none>"，顯示錯誤
+        echo "${TARGET_NAMESPACE}/${TARGET_RESOURCE} ${TYPE} yaml 目前沒有任何 port 存在。"
+        exit 1
+    elif [[ ${#ports[@]} == 1 ]]; then
+        # 如果 ports 數量等於 1，則直接使用 Port
+        export TARGET_PORT=${ports[0]}
+    else
+        # 如果 ports 數量大於 1，則顯示選單
         PS3="請選擇要轉發的 Port（輸入編號）："
         select port in "${ports[@]}" "退出"
         do
@@ -563,8 +570,6 @@ select_port() {
                     ;;
             esac
         done
-    else
-        export TARGET_PORT=${ports[0]}
     fi
 }
 

@@ -34,7 +34,8 @@ ngrok_http_k8s_service() {
     PORT=$4
 
     check_ngrok_token ${CUR_ENV}
-    echo "(kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 svc/${SERVICE} 80:${PORT} &) && ngrok http 80"
+    SCRIPT="(kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 svc/${SERVICE} 80:${PORT} &) && ngrok http 80"
+    echo "${SCRIPT}"
 
     # 啟動 ngrok
     docker run -it --rm \
@@ -42,7 +43,7 @@ ngrok_http_k8s_service() {
     -e NGROK_AUTHTOKEN=${NGROK_TOKEN} \
     -v ${KUBECONFIG}:/root/.kube/config \
     r82wei/ngrok-proxy:1.0.0 \
-    sh -c "(kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 svc/${SERVICE} 80:${PORT} &) && ngrok http 80"
+    sh -c "${SCRIPT}"
 }
 
 ngrok_http_k8s_pod() {
@@ -52,11 +53,14 @@ ngrok_http_k8s_pod() {
     PORT=$4
 
     check_ngrok_token ${CUR_ENV}
+    SCRIPT="(kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 pod/${POD} 80:${PORT} &) && ngrok http 80"
+    echo "${SCRIPT}"
+
     # 啟動 ngrok
     docker run -it --rm \
     --network ${DOCKER_NETWORK} \
     -e NGROK_AUTHTOKEN=${NGROK_TOKEN} \
     -v ${KUBECONFIG}:/root/.kube/config \
     r82wei/ngrok-proxy:1.0.0 \
-    sh -c "(kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 pod/${POD} 80:${PORT} &) && ngrok http 80"
+    sh -c "${SCRIPT}"
 }
