@@ -42,7 +42,7 @@ ngrok_http_k8s_service() {
     --network ${DOCKER_NETWORK} \
     -e NGROK_AUTHTOKEN=${NGROK_TOKEN} \
     -v ${KUBECONFIG}:/root/.kube/config \
-    r82wei/ngrok-proxy:1.0.0 \
+    docker.anyong.com.tw/quick-start/ngrok-proxy:1.0.0 \
     sh -c "${SCRIPT}"
 }
 
@@ -61,6 +61,6 @@ ngrok_http_k8s_pod() {
     --network ${DOCKER_NETWORK} \
     -e NGROK_AUTHTOKEN=${NGROK_TOKEN} \
     -v ${KUBECONFIG}:/root/.kube/config \
-    r82wei/ngrok-proxy:1.0.0 \
+    docker.anyong.com.tw/quick-start/ngrok-proxy:1.0.0 \
     sh -c "${SCRIPT}"
 }
