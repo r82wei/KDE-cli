@@ -475,11 +475,12 @@ select_service() {
     if [ ${#services[@]} -eq 0 ]; then
         echo "Namespace: ${TARGET_NAMESPACE} 目前沒有任何 service 存在。"
         exit 1
-    fi
-    
-    PS3="請選擇一個 Service（輸入編號）："
-    select service in "${services[@]}" "退出"
-    do
+    elif [ ${#services[@]} -eq 1 ]; then
+        export TARGET_SERVICE=${services[0]}
+    else
+        PS3="請選擇一個 Service（輸入編號）："
+        select service in "${services[@]}" "退出"
+        do
         case $service in
             "退出")
                 echo "退出"
@@ -493,8 +494,9 @@ select_service() {
                 export TARGET_SERVICE=$service
                 break
                 ;;
-        esac
-    done
+            esac
+        done
+    fi
 }
 
 select_pod() {
