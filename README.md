@@ -116,6 +116,7 @@
   - [x] deploy (部署專案)
   - [x] undeploy (解除部署專案)
   - [x] redeploy (重新部署專案)
+  - [x] tail (查看 pod 的 log，預設查看最後 100 行)
   - [x] remove (刪除專案)
   - [x] exec (進入專案的 Container 環境)
     - [x] develop (進入專案的開發 Container 環境)

@@ -505,28 +505,32 @@ select_pod() {
 
     # 檢查是否存在
     if [ ${#pods[@]} -eq 0 ]; then
+        # 如果 pods 數量等於 0 則顯示錯誤
         echo "Namespace: ${TARGET_NAMESPACE} 目前沒有任何 pod 存在。"
         exit 1
+    elif [ ${#pods[@]} -eq 1 ]; then
+        # 如果 pods 數量等於 1，則直接使用 Pod
+        export TARGET_POD=${pods[0]}
+    else
+        PS3="請選擇一個 Pod（輸入編號）："
+        select pod in "${pods[@]}" "退出"
+        do
+            case $pod in
+                "退出")
+                    echo "退出"
+                    exit 0
+                    ;;
+                "")
+                    echo "無效選擇，請重新輸入。"
+                    ;;
+                *)
+                    echo "你選擇了 Pod: $pod"
+                    export TARGET_POD=$pod
+                    break
+                    ;;
+            esac
+        done
     fi
-
-    PS3="請選擇一個 Pod（輸入編號）："
-    select pod in "${pods[@]}" "退出"
-    do
-        case $pod in
-            "退出")
-                echo "退出"
-                exit 0
-                ;;
-            "")
-                echo "無效選擇，請重新輸入。"
-                ;;
-            *)
-                echo "你選擇了 Pod: $pod"
-                export TARGET_POD=$pod
-                break
-                ;;
-        esac
-    done
 }
 
 select_port() {
@@ -583,3 +587,10 @@ create_ingress(){
     exec_script_in_deploy_env_without_tty "kubectl -n ${NAMESPACE} create ingress ${INGRESS_NAME} --rule=\"${DOMAIN}/*=${SERVICE}:${PORT}\" --class=nginx"
 }
 
+tail_pod_logs() {
+    NAMESPACE=$1
+    POD=$2
+    TAIL_COUNT=${3:-100}
+
+    exec_script_in_deploy_env "kubectl -n ${NAMESPACE} logs --tail ${TAIL_COUNT} -f ${POD}"
+}

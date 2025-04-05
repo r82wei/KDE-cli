@@ -16,6 +16,7 @@ show_help() {
     echo "  deploy          部署專案"
     echo "  undeploy        卸載專案"
     echo "  redeploy        重新部署專案"
+    echo "  tail            查看 pod 的 log，預設查看最後 100 行"
     echo "  remove, rm      刪除專案"
     echo "  exec            進入專案"
     echo "  ingress         建立 ingress"
@@ -106,6 +107,12 @@ case "${COMMAND}" in
         check_project_name ${PROJECT_NAME}
         undeploy_project ${PROJECT_NAME}
         deploy_project ${PROJECT_NAME}
+        ;;
+    tail)
+        check_project_name ${PROJECT_NAME}
+        select_pod ${PROJECT_NAME}
+        TAIL_COUNT=$3
+        tail_pod_logs ${PROJECT_NAME} ${TARGET_POD} ${TAIL_COUNT}
         ;;
     remove|rm)
         check_project_name ${PROJECT_NAME}
