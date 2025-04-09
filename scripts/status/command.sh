@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 查詢 enviroments 底下每個資料夾的 .env ，並且將查出的 K8S_CONTAINER_NAME 存成陣列
-if [[ -z "$(find ${ENVIROMENTS_PATH} -name .env)" ]]; then
+if [[ -z "$(ls ${ENVIROMENTS_PATH}/*/.env 2>/dev/null)" ]]; then
     if [[ -z "${CUR_ENV}" ]]; then
         echo "目前沒有任何環境，請先執行 kde start <env_name>"
     else
