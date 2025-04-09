@@ -30,6 +30,7 @@ is_project_env_exist() {
 
 exit_if_project_exist() {
     PROJECT_NAME=$1
+    
     if [[ $(is_project_exist ${PROJECT_NAME}) == "true" ]]; then
         echo "專案 ${1} 已存在"
         exit 1
@@ -38,6 +39,7 @@ exit_if_project_exist() {
 
 exit_if_project_not_exist() {
     PROJECT_NAME=$1
+
     if [[ $(is_project_exist ${PROJECT_NAME}) == "false" ]]; then
         echo "專案 ${1} 不存在"
         exit 1
@@ -46,6 +48,7 @@ exit_if_project_not_exist() {
 
 exit_if_project_env_not_exist() {
     PROJECT_NAME=$1
+
     if [[ $(is_project_env_exist ${PROJECT_NAME}) == "false" ]]; then
         echo "專案 ${PROJECT_NAME} 設定檔(project.env) 不存在"
         exit 1
@@ -54,6 +57,7 @@ exit_if_project_env_not_exist() {
 
 load_project_env() {
     PROJECT_NAME=$1
+
     if [[ $(is_project_env_exist ${PROJECT_NAME}) == "true" ]]; then
         source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     fi
@@ -62,6 +66,7 @@ load_project_env() {
 # 建立專案資料夾、namespace
 create_project() {
     PROJECT_NAME=$1
+
     exit_if_project_exist ${PROJECT_NAME}
     mkdir -p ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     read -p "Is this project a git repo? (y/n): " IS_GIT_REPO
@@ -89,12 +94,14 @@ fetch_project() {
     PROJECT_GIT_REPO_URL=$2
     PROJECT_GIT_REPO_BRANCH=$3
     PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+
     download_git_repo ${PROJECT_NAME} ${PROJECT_GIT_REPO_URL} ${PROJECT_GIT_REPO_BRANCH} ${PROJECT_REPO_PATH}
     pull_project ${PROJECT_NAME}
 }
 
 pull_project() {
     PROJECT_NAME=$1
+
     if [[ $(is_project_env_exist ${PROJECT_NAME}) == "false" ]]; then
         echo "專案 ${PROJECT_NAME} 設定檔(project.env) 不存在"
         return 1
@@ -115,6 +122,7 @@ pull_project() {
 init_project_deploy_script() {
     PROJECT_NAME=$1
     PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+
     touch ${PROJECT_REPO_PATH}/build.sh
     chmod +x ${PROJECT_REPO_PATH}/build.sh
     touch ${PROJECT_REPO_PATH}/pre-deploy.sh
@@ -125,11 +133,13 @@ init_project_deploy_script() {
 
 git_repo_name() {
     GIT_REPO_URL=$1
+
     echo $(basename -s .git ${GIT_REPO_URL})
 }
 
 set_git_repo() {
     PROJECT_NAME=$1
+
     exit_if_project_not_exist ${PROJECT_NAME}
     read -p "請輸入 git repo HTTPS URL: " GIT_REPO_URL
     echo "GIT_REPO_URL=${GIT_REPO_URL}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
@@ -159,6 +169,7 @@ download_git_repo() {
 # 建立資料夾軟連結
 create_link() {
     PROJECT_NAME=$1
+
     exit_if_project_not_exist ${PROJECT_NAME}
     read -p "請輸入資料夾路徑: " DIR_PATH
     if [[ ! -d ${DIR_PATH} ]]; then
@@ -172,6 +183,7 @@ create_link() {
 
 deploy_project() {
     PROJECT_NAME=$1
+
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     if [[ $(is_namespace_exist ${PROJECT_NAME}) == "false" ]]; then
@@ -194,12 +206,14 @@ deploy_project() {
 
 undeploy_project() {
     PROJECT_NAME=$1
+
     exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
     echo "專案 ${PROJECT_NAME} 已解除部署"
 }
 
 remove_project() {
     PROJECT_NAME=$1
+
     exit_if_project_not_exist ${PROJECT_NAME}
     if [[ $(is_env_running ${CUR_ENV}) == "true" ]]; then
         undeploy_project ${PROJECT_NAME}
@@ -210,18 +224,30 @@ remove_project() {
 
 exec_project_develop_container() {
     PROJECT_NAME=$1
+    PORT=$2
+
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     REPO_NAME=$(git_repo_name ${GIT_REPO_URL})
     echo "REPO_NAME: ${REPO_NAME}"
-    exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash"
+    if [[ -z "${PORT}" ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash"
+    else
+        exec_script_in_container_with_project_and_port ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash" ${PORT}
+    fi
 }
 
 exec_project_deploy_container() {
     PROJECT_NAME=$1
+    PORT=$2
+
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} bash
+    if [[ -z "${PORT}" ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} bash
+    else
+        exec_script_in_container_with_project_and_port ${PROJECT_NAME} ${DEPLOY_IMAGE} bash ${PORT}
+    fi
 }
 
 select_porject() {

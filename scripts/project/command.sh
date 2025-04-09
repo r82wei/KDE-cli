@@ -24,11 +24,13 @@ show_help() {
 
 show_exec_help() {
     echo "usage:"
-    echo "  kde [project|proj|namespace|ns] exec <project_name> [option]  進入專案相關環境 container"
+    echo "  kde [project|proj|namespace|ns] exec <project_name> [option] [port] 進入專案相關環境 container"
     echo ""
     echo "option:"
     echo "  develop, dev        進入專案 DEVELOP_IMAGE 啟動的 container (default)"
     echo "  deploy, dep         進入專案 DEPLOY_IMAGE 啟動的 container"
+    echo ""
+    echo "port:                 專案使用的 port"
 }
 
 show_fetch_help() {
@@ -121,6 +123,7 @@ case "${COMMAND}" in
     exec)
         check_project_name ${PROJECT_NAME}
         IMAGE_TYPE=$3
+        PORT=$4
         if [[ "${IMAGE_TYPE}" == "-h" || "${IMAGE_TYPE}" == "--help" ]]; then
             show_exec_help
             exit 1
@@ -128,10 +131,10 @@ case "${COMMAND}" in
         case "${IMAGE_TYPE}" in
             deploy|dep)
                 exit_if_env_not_running ${CUR_ENV}
-                exec_project_deploy_container ${PROJECT_NAME}
+                exec_project_deploy_container ${PROJECT_NAME} ${PORT}
                 ;;
             develop|dev|"")
-                exec_project_develop_container ${PROJECT_NAME}
+                exec_project_develop_container ${PROJECT_NAME} ${PORT}
                 ;;
             *)
                 show_exec_help
