@@ -90,7 +90,7 @@ set_default_env() {
         exit_if_env_not_exist $1
         export CUR_ENV=$1
         echo "CUR_ENV=${CUR_ENV}" > ${KDE_PATH}/current.env
-        echo "當前 k8s 環境已變更為: ${CUR_ENV}"
+        echo "當前 k8s 環境為: ${CUR_ENV}"
         load_enviroment_env ${CUR_ENV}
     fi
     
