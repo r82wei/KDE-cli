@@ -105,15 +105,16 @@
 - [x] current (顯示當前環境名稱)
 - [x] k9s (啟動 k9s Dashboard)
 - [x] expose (將 Pod/Service 暴露到外網)
-- [x] exec (進入有部署相關工具的環境，並且掛載當前環境的 namespace 資料夾)
+- [x] exec (進入 k8s control-plane node container)
 - [x] reset (重置環境，刪除所有資料)
 - [x] project (相當於 namespace)
   - [x] ls (列出 namespaces 資料夾底下的資料夾)
   - [x] create (將 project 資料夾建立到 namespaces 資料夾底下，並且在 k8s 中建立 namespace)
-  - [x] fetch (透過 git url 抓取專案)
-  - [x] pull (透過 project.env 內的 git repo 設定重新抓取專案)
+  - [x] fetch (輸入 git url 抓取專案)
+  - [x] pull (透過 project.env 內的設定重新抓取專案 repo)
   - [x] link (建立專案資料夾的 softlink 到 namespace 資料夾底下)
   - [x] deploy (部署專案)
+  - [ ] diff (透過 kubectl diff 比較部署 yaml 與 目前 K8S yaml 差異)
   - [x] undeploy (解除部署專案)
   - [x] redeploy (重新部署專案)
   - [x] tail (查看 pod 的 log，預設查看最後 100 行)
@@ -123,10 +124,11 @@
       - [ ] --root (需要支援使用系統管理員權限)
       - [ ] --port (需要支援 bind port)
     - [x] deploy (進入專案的部署 Container 環境)
-- [ ] namespaces (project 的集合)
-  - [ ] fetch (透過 git url 抓取 project 集合)
-  - [ ] link (建立 project 集合資料夾的 softlink 成為 namespaces 資料夾)
-  - [ ] exec (進入 project 集合的 Container 環境)
+- [ ] projects (project 的集合)
+  - [x] fetch (輸入 git url，抓取一個 project 集合)
+  - [x] pull (一次性 pull project 集合內全部 project.env 設定的 git repo)
+  - [x] link (建立 project 集合資料夾的 softlink 成為 namespaces 資料夾)
+  - [x] exec (進入預設部署環境，並且掛載 namespaces 資料夾)
 
 #### Extra Features
 
@@ -136,6 +138,7 @@
 - [ ] Grafana/Loki/Prometheus
 - [ ] cert-manager
 - [ ] Cloudflare Tunnel
+- [ ] Zeabur
 
 ## 相關套件清單
 
