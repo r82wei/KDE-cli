@@ -207,7 +207,11 @@ deploy_project() {
 undeploy_project() {
     PROJECT_NAME=$1
 
-    exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
+    if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/undeploy.sh ]]; then
+        exec_script_in_container_with_project_and_docker ${PROJECT_NAME} ${DEPLOY_IMAGE} ./undeploy.sh
+    else
+        exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
+    fi
     echo "專案 ${PROJECT_NAME} 已解除部署"
 }
 
