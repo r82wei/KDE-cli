@@ -250,7 +250,11 @@ exec_bash_in_deploy_env_with_projects() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir /projects \
+    --group-add $(getent group docker | cut -d: -f3) \
     -e KUBECONFIG=/.kube/config \
+    -e DOCKER_CONFIG=/.docker \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:/projects \
     docker.anyong.com.tw/quick-start/deploy-env:1.0.0 \
@@ -262,15 +266,19 @@ exec_script_in_container_with_project_and_port() {
     DOCKER_IMAGE=$2
     SCRIPT=$3
     PORT=$4
-    
+
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir /${PROJECT_NAME} \
+    --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
-    -p ${PORT}:${PORT} \
     -e KUBECONFIG=/.kube/config \
-    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${KUBE_CONFIG_DIR}/config:/.kube/config \
+    -e DOCKER_CONFIG=/.docker \
+    -p ${PORT}:${PORT} \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v ${HOME}/.docker:/.docker \
+    -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
@@ -286,29 +294,13 @@ exec_script_in_container_with_project() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir /${PROJECT_NAME} \
-    --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
-    -e KUBECONFIG=/.kube/config \
-    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${KUBE_CONFIG_DIR}/config:/.kube/config \
-    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:/${PROJECT_NAME} \
-    ${DOCKER_IMAGE} \
-    bash -c "${SCRIPT}"
-}
-
-# 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
-exec_script_in_container_with_project_and_docker() {
-    PROJECT_NAME=$1
-    DOCKER_IMAGE=$2
-    SCRIPT=$3
-    
-    docker run --rm -it \
-    --net ${DOCKER_NETWORK} \
-    --workdir /${PROJECT_NAME} \
+    --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${HOME}/.docker:/.docker \
-    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${KUBE_CONFIG_DIR}/config:/.kube/config \
+    -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
