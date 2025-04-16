@@ -193,7 +193,7 @@ deploy_project() {
         exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} ./build.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/pre-deploy.sh ]]; then
-        exec_script_in_container_with_project_and_docker ${PROJECT_NAME} ${DEPLOY_IMAGE} ./pre-deploy.sh
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./pre-deploy.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/deploy.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./deploy.sh
@@ -207,8 +207,10 @@ deploy_project() {
 undeploy_project() {
     PROJECT_NAME=$1
 
+    exit_if_project_not_exist ${PROJECT_NAME}
+    source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/undeploy.sh ]]; then
-        exec_script_in_container_with_project_and_docker ${PROJECT_NAME} ${DEPLOY_IMAGE} ./undeploy.sh
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./undeploy.sh
     else
         exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
     fi
