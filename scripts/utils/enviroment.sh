@@ -136,6 +136,7 @@ init_env() {
     export ENV_NAME=$(echo "$1" | tr '[:upper:]' '[:lower:]')
     export ENV_TYPE=$2
     export ENV_PATH=${ENVIROMENTS_PATH}/${ENV_NAME}
+    export VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}
     export ENV_FILE_PATH=${ENV_PATH}/.env
     if [[ $(is_env_exist ${ENV_NAME}) == "true" ]]; then
         echo "環境 ${ENV_NAME} 相關設定已存在 (${ENV_PATH})"
@@ -144,6 +145,7 @@ init_env() {
         mkdir -p ${ENV_PATH}
         echo "ENV_NAME=${ENV_NAME}" >> ${ENV_PATH}/.env
         echo "ENV_TYPE=${ENV_TYPE}" >> ${ENV_PATH}/.env
+        echo "VOLUMES_PATH=${VOLUMES_PATH}" >> ${ENV_PATH}/.env
         echo "CUR_ENV=${ENV_NAME}" > ${KDE_PATH}/current.env
         
         # 設定環境變數檔案路徑
