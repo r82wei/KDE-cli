@@ -7,7 +7,9 @@ if [[ "${RESET_ENV}" != "y" ]]; then
 fi
 
 # 停止環境
-kde stop ${CUR_ENV}
+if [[ $(is_env_running ${CUR_ENV}) == "true" ]]; then
+    kde stop ${CUR_ENV}
+fi
 
 # 重置環境
 rm -rf ${ENVIROMENTS_PATH}/${CUR_ENV}
