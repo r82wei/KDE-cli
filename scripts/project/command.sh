@@ -130,7 +130,6 @@ case "${COMMAND}" in
         fi
         case "${IMAGE_TYPE}" in
             deploy|dep)
-                exit_if_env_not_running ${CUR_ENV}
                 exec_project_deploy_container ${PROJECT_NAME} ${PORT}
                 ;;
             develop|dev|"")
