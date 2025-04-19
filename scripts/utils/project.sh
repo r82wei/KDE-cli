@@ -83,7 +83,8 @@ create_project() {
     fi
     read -p "請輸入專案開發(建置)環境 Image (執行 build.sh 的環境): " DEVELOP_IMAGE
     echo "DEVELOP_IMAGE=${DEVELOP_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    read -p "請輸入專案部署環境 Image (執行 deploy.sh 的環境): " DEPLOY_IMAGE
+    read -p "請輸入專案部署環境 Image (執行 deploy 相關 shell 的環境，預設為 r82wei/deploy-env:1.0.0): " DEPLOY_IMAGE
+    DEPLOY_IMAGE=${DEPLOY_IMAGE:-r82wei/deploy-env:1.0.0}
     echo "DEPLOY_IMAGE=${DEPLOY_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     init_project_deploy_script ${PROJECT_NAME}
     echo "專案 ${PROJECT_NAME} 已建立"
