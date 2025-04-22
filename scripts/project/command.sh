@@ -95,17 +95,14 @@ case "${COMMAND}" in
         pull_project ${PROJECT_NAME}
         ;;
     deploy)
-        exit_if_env_not_running ${CUR_ENV}
         check_project_name ${PROJECT_NAME}
         deploy_project ${PROJECT_NAME}
         ;;
     undeploy)
-        exit_if_env_not_running ${CUR_ENV}
         check_project_name ${PROJECT_NAME}
         undeploy_project ${PROJECT_NAME}
         ;;
     redeploy)
-        exit_if_env_not_running ${CUR_ENV}
         check_project_name ${PROJECT_NAME}
         undeploy_project ${PROJECT_NAME}
         deploy_project ${PROJECT_NAME}
