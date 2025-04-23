@@ -251,14 +251,14 @@ exec_bash_in_deploy_env_with_projects() {
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
-    --workdir /projects \
+    --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
     --group-add $(getent group docker | cut -d: -f3) \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
-    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:/projects \
+    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
     docker.anyong.com.tw/quick-start/deploy-env:1.0.0 \
     bash
 }
@@ -268,11 +268,11 @@ exec_script_in_container_with_project_and_port() {
     DOCKER_IMAGE=$2
     SCRIPT=$3
     PORT=$4
-
+    
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
-    --workdir /${PROJECT_NAME} \
+    --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
     -e KUBECONFIG=/.kube/config \
@@ -281,7 +281,7 @@ exec_script_in_container_with_project_and_port() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
-    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:/${PROJECT_NAME} \
+    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
 }
@@ -295,7 +295,7 @@ exec_script_in_container_with_project() {
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
-    --workdir /${PROJECT_NAME} \
+    --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
     -e KUBECONFIG=/.kube/config \
@@ -303,7 +303,7 @@ exec_script_in_container_with_project() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
-    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:/${PROJECT_NAME} \
+    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
 }
