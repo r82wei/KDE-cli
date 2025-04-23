@@ -609,3 +609,19 @@ tail_pod_logs() {
 
     exec_script_in_deploy_env "kubectl -n ${NAMESPACE} logs --tail ${TAIL_COUNT} -f ${POD}"
 }
+
+kind_load_image() {
+    IMAGE=$1
+    ENV_NAME=$2
+
+    docker run \
+    --rm \
+    -it \
+    --net $DOCKER_NETWORK \
+    -e KIND_EXPERIMENTAL_DOCKER_NETWORK=${DOCKER_NETWORK} \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
+    -v ${ENV_PATH}/kind-config.yaml:/config.yaml \
+    r82wei/kind:v0.27.0 \
+    sh -c "kind load docker-image ${IMAGE} --name ${ENV_NAME}"
+}

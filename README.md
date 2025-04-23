@@ -45,6 +45,7 @@
     remove, rm                          移除 k8s 環境
     current, cur                        顯示當前使用中的 k8s 環境名稱
     use [env_name]                      切換當前使用中的 k8s 環境名稱
+    load-image <image> [env_name]       載入 docker image 到 k8s 環境
     k9s [-p port]                       進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port
     expose                              將 service/pod port forward 到本地指定的 port
     exec                                進入 k8s node container 環境
@@ -103,6 +104,8 @@
 - [x] status (顯示 k8s 環境狀態)
 - [x] remove (移除 k8s 環境)
 - [x] current (顯示當前環境名稱)
+- [x] use (切換使用環境)
+- [x] load-image (將 docker image load 到 k8s node)
 - [x] k9s (啟動 k9s Dashboard)
 - [x] expose (將 Pod/Service 暴露到外網)
 - [x] exec (進入 k8s control-plane node container)
