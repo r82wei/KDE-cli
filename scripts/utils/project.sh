@@ -185,9 +185,6 @@ deploy_project() {
 
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    if [[ $(is_env_running ${CUR_ENV}) == "true" && $(is_namespace_exist ${PROJECT_NAME}) == "false" ]]; then
-        create_namespace ${PROJECT_NAME}
-    fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/build.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} ./build.sh
     fi
