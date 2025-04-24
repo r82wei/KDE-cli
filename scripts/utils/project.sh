@@ -126,8 +126,6 @@ init_project_deploy_script() {
 
     touch ${PROJECT_REPO_PATH}/build.sh
     chmod +x ${PROJECT_REPO_PATH}/build.sh
-    touch ${PROJECT_REPO_PATH}/pre-deploy.sh
-    chmod +x ${PROJECT_REPO_PATH}/pre-deploy.sh
     touch ${PROJECT_REPO_PATH}/deploy.sh
     chmod +x ${PROJECT_REPO_PATH}/deploy.sh
 }
