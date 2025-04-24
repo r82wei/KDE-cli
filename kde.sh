@@ -42,6 +42,7 @@ show_help() {
     echo "  remove, rm                          移除 k8s 環境"
     echo "  current, cur                        顯示當前使用中的 k8s 環境名稱"
     echo "  use [env_name]                      切換當前使用中的 k8s 環境名稱"
+    echo "  load-image <image> [env_name]       載入 docker image 到 k8s 環境"
     echo "  k9s [-p port]                       進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port"
     echo "  expose                              將 service/pod port forward 到本地指定的 port"
     echo "  exec                                進入 k8s node container 環境"
@@ -86,8 +87,12 @@ case "$1" in
         fi
         ;;
     use)
-        shift  # 移除 "status" 指令
+        shift  # 移除 "use" 指令
         set_default_env $1
+        ;;
+    load-image)
+        shift  # 移除 "load-image" 指令
+        source ${KDE_SCRIPTS_PATH}/load-image/command.sh
         ;;
     remove|rm)
         shift  # 移除 "remove" 指令
