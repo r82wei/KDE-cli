@@ -5,7 +5,7 @@ check_ngrok_token() {
     load_enviroment_env ${CUR_ENV}
     if [[ -z "${NGROK_TOKEN}" ]]; then
         read -p "請輸入 NGROK_TOKEN: " NGROK_TOKEN
-        echo "NGROK_TOKEN=${NGROK_TOKEN}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/.env
+        echo "NGROK_TOKEN=${NGROK_TOKEN}" >> ngrok.env
     fi
 }
 

@@ -18,6 +18,11 @@ if [[ -f ${KDE_PATH}/current.env ]]; then
     source ${KDE_PATH}/current.env
 fi
 
+# 設定 ngrok 的環境變數
+if [[ -f ${KDE_PATH}/ngrok.env ]]; then
+    source ${KDE_PATH}/ngrok.env
+fi
+
 if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
     echo "環境 ${CUR_ENV} 不存在"
     # 修改預設環境
@@ -66,6 +71,10 @@ case "$1" in
     create)
         shift  # 移除 "create" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh
+        ;;
+    add)
+        shift  # 移除 "add" 指令
+        source ${KDE_SCRIPTS_PATH}/add/command.sh
         ;;
     stop)
         shift  # 移除 "stop" 指令
