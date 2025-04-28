@@ -158,7 +158,7 @@ init_env() {
     export ENV_PATH=${ENVIROMENTS_PATH}/${ENV_NAME}
     export VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}
     export ENV_FILE_PATH=${ENV_PATH}/.env
-    if [[ $(is_env_exist ${ENV_NAME}) == "true" ]]; then
+    if [[ $(is_env_exist ${ENV_NAME}) == "true" && (-f ${ENV_PATH}/kind-config.yaml || -f ${ENV_PATH}/k3d-config.yaml) ]]; then
         echo "環境 ${ENV_NAME} 相關設定已存在 (${ENV_PATH})"
     else
         echo "環境 ${ENV_NAME} 尚未存在，開始初始化環境..."
