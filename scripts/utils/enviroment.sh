@@ -11,10 +11,30 @@ is_env_exist() {
 }
 
 is_env_running() {
-    RUNNING_STATUS=$(docker ps --format "{{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.ID}} " --filter name=${1})
-    if [[ -z "${RUNNING_STATUS}" ]]; then
+    if [[ "${ENV_TYPE}" == "kind" || "${ENV_TYPE}" == "k3d" ]]; then
+        if [[ $(is_k8s_node_ready) == "true" ]]; then
+            echo "true"
+        else
+            echo "false"
+        fi
+    else
+        echo "false"
+    fi
+}
+
+is_k8s_node_ready() {
+    nodes=($(exec_script_in_deploy_env_without_tty 'kubectl get nodes --no-headers -o custom-columns=":status.conditions[?(@.type==\"Ready\")].status"'))
+    # 如果 nodes 數量為 0 則回傳 false
+    if [[ ${#nodes[@]} -eq 0 ]]; then
         echo "false"
     else
+        # 如果每個 node 的 status 都為 True 則回傳 true，只要有一個 node 的 status 為 False 則回傳 false
+        for node in ${nodes}; do
+            if [[ "${node}" != "True" ]]; then
+                echo "false"
+                return
+            fi
+        done
         echo "true"
     fi
 }
@@ -138,7 +158,7 @@ init_env() {
     export ENV_PATH=${ENVIROMENTS_PATH}/${ENV_NAME}
     export VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}
     export ENV_FILE_PATH=${ENV_PATH}/.env
-    if [[ $(is_env_exist ${ENV_NAME}) == "true" ]]; then
+    if [[ $(is_env_exist ${ENV_NAME}) == "true" && (-f ${ENV_PATH}/kind-config.yaml || -f ${ENV_PATH}/k3d-config.yaml) ]]; then
         echo "環境 ${ENV_NAME} 相關設定已存在 (${ENV_PATH})"
     else
         echo "環境 ${ENV_NAME} 尚未存在，開始初始化環境..."
@@ -241,7 +261,7 @@ exec_script_in_deploy_env_without_tty() {
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
     docker.anyong.com.tw/quick-start/deploy-env:1.0.0 \
-    bash -c "$1")
+    bash -c "$1" 2>/dev/null || echo "")
 
     echo "${output}"
 }
@@ -316,6 +336,11 @@ exec_k8s_node() {
 create_namespace() {
     NAMESPACE=$1
     exec_script_in_deploy_env "kubectl create namespace ${NAMESPACE}"
+}
+
+get_nodes() {
+    nodes=($(exec_script_in_deploy_env_without_tty 'kubectl get nodes --no-headers -o custom-columns=":metadata.name"'))
+    echo "${nodes[@]}"
 }
 
 get_namespaces() {
