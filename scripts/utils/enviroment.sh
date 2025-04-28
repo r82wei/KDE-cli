@@ -18,7 +18,7 @@ is_env_running() {
             echo "false"
         fi
     else
-        echo "true"
+        echo "false"
     fi
 }
 
@@ -261,7 +261,7 @@ exec_script_in_deploy_env_without_tty() {
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
     r82wei/deploy-env:1.0.0 \
-    bash -c "$1" 2>/dev/null || echo "false")
+    bash -c "$1" 2>/dev/null || echo "")
     
     echo "${output}"
 }
@@ -338,8 +338,8 @@ create_namespace() {
     exec_script_in_deploy_env "kubectl create namespace ${NAMESPACE}"
 }
 
-get_node_status() {
-    nodes=($(exec_script_in_deploy_env_without_tty 'kubectl get nodes --no-headers -o custom-columns=":status.conditions[?(@.type==\"Ready\")].status"'))
+get_nodes() {
+    nodes=($(exec_script_in_deploy_env_without_tty 'kubectl get nodes --no-headers -o custom-columns=":metadata.name"'))
     echo "${nodes[@]}"
 }
 
