@@ -5,7 +5,7 @@
 if [[ $(is_env_running ${K8S_CONTAINER_NAME}) == "true" ]]; then
     echo "K8S named '${K8S_CONTAINER_NAME}' exists."
 else
-    if [[ ! -f "${ENV_PATH}/kind-config.yaml" || ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
+    if [[ $(is_kind_init ${ENV_NAME}) == "false" || ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
         envsubst < ${KDE_SCRIPTS_PATH}/start/kind/kind-config.yaml > ${ENV_PATH}/kind-config.yaml
     fi
 
@@ -13,7 +13,7 @@ else
     if [ -z "$( docker network ls | awk '{print $2}' | grep ^$DOCKER_NETWORK$ )" ]; then
         docker network create $DOCKER_NETWORK
     fi
-    
+
     # Install K8S
     docker run \
     --rm \

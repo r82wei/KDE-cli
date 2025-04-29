@@ -6,7 +6,7 @@ if [[ $(is_env_running ${K8S_CONTAINER_NAME}) == "true" ]]; then
     echo "K3S named '${K8S_CONTAINER_NAME}' exists."
 else
     echo "K3S named '${K8S_CONTAINER_NAME}' not exists."
-    if [[ ! -f "${ENV_PATH}/k3d-config.yaml" || ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
+    if [[ $(is_k3d_init ${ENV_NAME}) == "false" || ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
         envsubst < ${KDE_SCRIPTS_PATH}/start/k3d/k3d-config.yaml > ${ENV_PATH}/k3d-config.yaml
     fi
 

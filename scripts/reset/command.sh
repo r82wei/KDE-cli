@@ -21,7 +21,7 @@ fi
 # 列出 ${ENVIROMENTS_PATH}/${CUR_ENV} 底下的資料夾與檔案(包含隱藏檔但不包含 . 和 .. 資料夾)，使用 for 迴圈移除 namespace 以外的資料夾與檔案
 for item in $(ls -a ${ENVIROMENTS_PATH}/${CUR_ENV}); do
     if [[ "${item}" != "namespaces" && "${item}" != "." && "${item}" != ".." ]]; then
-        sudo rm -rf ${ENVIROMENTS_PATH}/${CUR_ENV}/${item}
+        rm -rf ${ENVIROMENTS_PATH}/${CUR_ENV}/${item}
         echo "移除：${ENVIROMENTS_PATH}/${CUR_ENV}/${item}"
     fi
 done
