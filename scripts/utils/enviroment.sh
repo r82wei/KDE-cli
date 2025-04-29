@@ -10,8 +10,36 @@ is_env_exist() {
     fi
 }
 
+is_env_init() {
+    ENV_NAME=$1
+    if [[ -f ${ENVIROMENTS_PATH}/${ENV_NAME}/${KUBE_CONFIG_DIR}/config ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
+is_kind_init() {
+    ENV_NAME=$1
+    if [[ -f ${ENVIROMENTS_PATH}/${ENV_NAME}/kind-config.yaml ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
+is_k3d_init() {
+    ENV_NAME=$1
+    if [[ -f ${ENVIROMENTS_PATH}/${ENV_NAME}/k3d-config.yaml ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 is_env_running() {
-    if [[ "${ENV_TYPE}" == "kind" || "${ENV_TYPE}" == "k3d" ]]; then
+    local valid_types=("kind" "k3d" "k8s")
+    if [[ " ${valid_types[@]} " =~ " ${ENV_TYPE} " ]]; then
         if [[ $(is_k8s_node_ready) == "true" ]]; then
             echo "true"
         else
@@ -83,7 +111,7 @@ get_env_type() {
 
 load_enviroment_env() {
     ENV_PATH=${ENVIROMENTS_PATH}/${1:-${CUR_ENV}}
-    if [[ $(is_env_exist ${1:-${CUR_ENV}}) == "true" && -f ${ENV_PATH}/.env ]]; then
+    if [[ $(is_env_exist ${1:-${CUR_ENV}}) == "true" ]]; then
         source ${ENV_PATH}/.env
         export KUBECONFIG=${ENV_PATH}/${KUBE_CONFIG_DIR}/config
     fi
@@ -96,7 +124,7 @@ set_default_env() {
         # 如果有環境存在 則設定 CUR_ENV 為 enviroments 底下第一個資料夾
         if [[ $(has_any_env) == "true" ]]; then
             export CUR_ENV=$(basename $(ls -d ${ENVIROMENTS_PATH}/*/ | head -n 1))
-            echo "CUR_ENV=${CUR_ENV}" > ${KDE_PATH}/current.env
+            init_current_env
             echo "當前 k8s 環境已變更為: ${CUR_ENV}"
             load_enviroment_env ${CUR_ENV}
         # 如果沒有任何環境存在，則刪除 current.env
@@ -109,7 +137,7 @@ set_default_env() {
         # 如果 $1 環境不存在，則退出
         exit_if_env_not_exist $1
         export CUR_ENV=$1
-        echo "CUR_ENV=${CUR_ENV}" > ${KDE_PATH}/current.env
+        init_current_env
         echo "當前 k8s 環境為: ${CUR_ENV}"
         load_enviroment_env ${CUR_ENV}
     fi
@@ -120,8 +148,9 @@ stop_env() {
     # 如果 enviroments 底下不存在 $1 環境，則退出
     exit_if_env_not_exist $1
     load_enviroment_env $1
-    # 如果環境正在運行，則停止
-    if [[ $(is_env_running ${K8S_CONTAINER_NAME}) == "true" ]]; then
+    if [[ "${ENV_TYPE}" == "k8s" ]]; then
+        echo "外部 k8s 環境 ${ENV_NAME} 請自行停止"
+    elif [[ $(is_env_running ${K8S_CONTAINER_NAME}) == "true" ]]; then
         echo "環境 ${ENV_NAME} 正在運行"
         ENV_TYPE=$(get_env_type ${ENV_NAME})
         containers=$(get_env_containers ${ENV_NAME}) 
@@ -151,69 +180,97 @@ remove_env() {
     exit 0
 }
 
+init_current_env() {
+    echo "CUR_ENV=${CUR_ENV}" > ${KDE_PATH}/current.env
+    echo "CUR_PATH=${KDE_PATH}" >> ${KDE_PATH}/current.env
+}
+
+init_environment_default_env() {
+    # 設定環境資料夾路徑
+    mkdir -p ${ENV_PATH}
+
+    # 設定環境變數檔案路徑
+    touch ${ENV_FILE_PATH}
+
+    # 設定環境變數
+    echo "ENV_NAME=${ENV_NAME}" > ${ENV_FILE_PATH}
+    echo "ENV_TYPE=${ENV_TYPE}" >> ${ENV_FILE_PATH}
+
+    # 設定 KUBE_CONFIG_DIR
+    mkdir -p ${ENV_PATH}/${KUBE_CONFIG_DIR}
+    export KUBECONFIG=${ENV_PATH}/${KUBE_CONFIG_DIR}/config
+    touch ${KUBECONFIG}
+
+    # 設定 VOLUME_DIR
+    touch ${ENV_PATH}/volume.env
+    echo "VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}" > ${ENV_PATH}/volume.env
+    mkdir -p ${ENV_PATH}/${VOLUMES_DIR}
+}
+
 init_env() {
     # 設定環境名稱 & 建立環境目錄
     export ENV_NAME=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+    export CUR_ENV=${ENV_NAME}
     export ENV_TYPE=$2
     export ENV_PATH=${ENVIROMENTS_PATH}/${ENV_NAME}
-    export VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}
     export ENV_FILE_PATH=${ENV_PATH}/.env
-    if [[ $(is_env_exist ${ENV_NAME}) == "true" && (-f ${ENV_PATH}/kind-config.yaml || -f ${ENV_PATH}/k3d-config.yaml) ]]; then
+
+    
+    if [[ $(is_env_exist ${ENV_NAME}) == "true" && $(is_env_init ${ENV_NAME}) == "true" ]]; then
         echo "環境 ${ENV_NAME} 相關設定已存在 (${ENV_PATH})"
     else
         echo "環境 ${ENV_NAME} 尚未存在，開始初始化環境..."
-        mkdir -p ${ENV_PATH}
-        echo "ENV_NAME=${ENV_NAME}" >> ${ENV_PATH}/.env
-        echo "ENV_TYPE=${ENV_TYPE}" >> ${ENV_PATH}/.env
-        echo "VOLUMES_PATH=${VOLUMES_PATH}" >> ${ENV_PATH}/.env
-        echo "CUR_ENV=${ENV_NAME}" > ${KDE_PATH}/current.env
         
-        # 設定環境變數檔案路徑
-        touch ${ENV_FILE_PATH}
+        init_environment_default_env
 
-        # 設定 K8S container 名稱
-        if [[ "${ENV_TYPE}" == "kind" ]]; then
-            export K8S_CONTAINER_NAME=${ENV_NAME}-control-plane
-        else
-            export K8S_CONTAINER_NAME=k3d-${ENV_NAME}-serverlb
+        if [[ "${ENV_TYPE}" == "k8s" ]]; then
+            # 設定 DOCKER_NETWORK
+            export DOCKER_NETWORK="bridge"
+            echo "DOCKER_NETWORK=${DOCKER_NETWORK}" >> ${ENV_FILE_PATH}
+
+            # 設定 KUBECONFIG 路徑
+            read -e -p "請輸入 kubeconfig 路徑: " KUBECONFIG_PATH
+            KUBECONFIG_PATH="${KUBECONFIG_PATH/#\~/$HOME}"
+            cp ${KUBECONFIG_PATH} ${ENV_PATH}/${KUBE_CONFIG_DIR}/config
+        elif [[ "${ENV_TYPE}" == "kind" || "${ENV_TYPE}" == "k3d" ]]; then
+            # 設定 K8S container 名稱
+            if [[ "${ENV_TYPE}" == "kind" ]]; then
+                export K8S_CONTAINER_NAME=${ENV_NAME}-control-plane
+            else
+                export K8S_CONTAINER_NAME=k3d-${ENV_NAME}-serverlb
+            fi
+            echo "K8S_CONTAINER_NAME=${K8S_CONTAINER_NAME}" >> ${ENV_FILE_PATH}
+
+            # 設定 DOCKER_NETWORK
+            export DOCKER_NETWORK="kde-${ENV_NAME}"
+            echo "DOCKER_NETWORK=${DOCKER_NETWORK}" >> ${ENV_FILE_PATH}
+
+            # 設定 STORAGE_CLASS
+            STORAGE_CLASS=local-path
+            echo "STORAGE_CLASS=${STORAGE_CLASS}" >> ${ENV_FILE_PATH}
+
+            # 輸入 K8S_API_SERVER_PORT
+            read -p "請輸入 K8S api server port (預設: 6443): " K8S_API_SERVER_PORT
+            export K8S_API_SERVER_PORT=${K8S_API_SERVER_PORT:-6443}
+
+            # 輸入 K8S_INGRESS_NGINX_PORT
+            read -p "請輸入 K8S ingress nginx port (預設: 80): " K8S_INGRESS_NGINX_PORT
+            export K8S_INGRESS_NGINX_PORT=${K8S_INGRESS_NGINX_PORT:-80}
+
+            # 如果 ca.key 不存在，則生成 ca.key 和 ca.crt
+            if [[ ! -f ${ENV_PATH}/pki/ca.key ]]; then
+                mkdir -p ${ENV_PATH}/pki
+                openssl genrsa -out ${ENV_PATH}/pki/ca.key 2048
+                openssl req -x509 -new -nodes -key ${ENV_PATH}/pki/ca.key -sha256 -days 3650 -out ${ENV_PATH}/pki/ca.crt \
+                    -subj "/C=TW/ST=Taipei/L=Taipei/O=KDE/OU=KDE/CN=${K8S_CONTAINER_NAME}" \
+                    -extensions v3_ca \
+                    -config <(cat /etc/ssl/openssl.cnf <(printf "\n[v3_ca]\n\
+                        basicConstraints=CA:TRUE\n\
+                        subjectKeyIdentifier=hash\n\
+                        authorityKeyIdentifier=keyid:always,issuer:always\n"))
+            fi
         fi
-        echo "K8S_CONTAINER_NAME=${K8S_CONTAINER_NAME}" >> ${ENV_FILE_PATH}
-
-        # 如果 ca.key 不存在，則生成 ca.key 和 ca.crt
-        if [[ ! -f ${ENV_PATH}/pki/ca.key ]]; then
-            mkdir -p ${ENV_PATH}/pki
-            openssl genrsa -out ${ENV_PATH}/pki/ca.key 2048
-            openssl req -x509 -new -nodes -key ${ENV_PATH}/pki/ca.key -sha256 -days 3650 -out ${ENV_PATH}/pki/ca.crt \
-                -subj "/C=TW/ST=Taipei/L=Taipei/O=KDE/OU=KDE/CN=${K8S_CONTAINER_NAME}" \
-                -extensions v3_ca \
-                -config <(cat /etc/ssl/openssl.cnf <(printf "\n[v3_ca]\n\
-                    basicConstraints=CA:TRUE\n\
-                    subjectKeyIdentifier=hash\n\
-                    authorityKeyIdentifier=keyid:always,issuer:always\n"))
-        fi
-
-        # 設定 DOCKER_NETWORK
-        export DOCKER_NETWORK="kde-${ENV_NAME}"
-        echo "DOCKER_NETWORK=${DOCKER_NETWORK}" >> ${ENV_FILE_PATH}
-
-        # 輸入 K8S_API_SERVER_PORT
-        read -p "請輸入 K8S api server port (預設: 6443): " K8S_API_SERVER_PORT
-        export K8S_API_SERVER_PORT=${K8S_API_SERVER_PORT:-6443}
-
-        # 輸入 K8S_INGRESS_NGINX_PORT
-        read -p "請輸入 K8S ingress nginx port (預設: 80): " K8S_INGRESS_NGINX_PORT
-        export K8S_INGRESS_NGINX_PORT=${K8S_INGRESS_NGINX_PORT:-80}
-
-        # 設定 STORAGE_CLASS
-        STORAGE_CLASS=local-path
-        echo "STORAGE_CLASS=${STORAGE_CLASS}" >> ${ENV_FILE_PATH}
-
-        # 設定 VOLUME_DIR
-        mkdir -p ${ENV_PATH}/${VOLUMES_DIR}
-
-        # 設定 KUBE_CONFIG_DIR
-        mkdir -p ${ENV_PATH}/${KUBE_CONFIG_DIR}
-        export KUBECONFIG=${ENV_PATH}/${KUBE_CONFIG_DIR}/config
+        
 
         echo "環境 ${ENV_NAME} 初始化完畢"
     fi
