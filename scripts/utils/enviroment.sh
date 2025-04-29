@@ -182,7 +182,6 @@ remove_env() {
 
 init_current_env() {
     echo "CUR_ENV=${CUR_ENV}" > ${KDE_PATH}/current.env
-    echo "CUR_PATH=${KDE_PATH}" >> ${KDE_PATH}/current.env
 }
 
 init_environment_default_env() {
