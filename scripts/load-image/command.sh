@@ -11,23 +11,21 @@ if [[ -z "${1}" ]]; then
     exit 1
 fi
 
+IMAGE=${1}
+ENV_NAME=${2:-${CUR_ENV}}
 
-# 根據第一個參數來選擇不同的處理流程
-case "$1" in
-    -h|--help)
-        show_help
+# 根據環境類型來選擇不同的處理流程
+case "${ENV_TYPE}" in
+    k3d)
+        k3d_load_image ${IMAGE} ${ENV_NAME}
+        ;;
+    kind)
+        kind_load_image ${IMAGE} ${ENV_NAME}
+        ;;
+    k8s)
+        echo "目前只支援 kind & k3d 環境"
         ;;
     *)
-        IMAGE=${1}
-        ENV_NAME=${2:-${CUR_ENV}}
-
-        echo "IMAGE: ${IMAGE}"
-        echo "ENV_NAME: ${ENV_NAME}"
-        exit_if_env_not_exist ${ENV_NAME}
-        if [[ "${ENV_TYPE}" == "kind" ]]; then
-            kind_load_image ${IMAGE} ${ENV_NAME}
-        else
-            echo "目前只支援 kind 環境"
-        fi
+        show_help
         ;;
 esac

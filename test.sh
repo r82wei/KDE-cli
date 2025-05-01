@@ -11,7 +11,9 @@ export KUBE_CONFIG_DIR=kubeconfig
 # 設定 VOLUMES_DIR
 export VOLUMES_DIR=namespaces
 
-source ${KDE_SCRIPTS_PATH}/utils/enviroment.sh
+# source ${KDE_SCRIPTS_PATH}/utils/enviroment.sh
+source ${KDE_SCRIPTS_PATH}/utils/environment/k8s.sh
+source ${KDE_SCRIPTS_PATH}/utils/environment/kind.sh
 
 # 設定當前環境的環境變數
 if [[ -f ${KDE_PATH}/current.env ]]; then
@@ -32,20 +34,20 @@ fi
 # 載入環境變數
 load_enviroment_env ${CUR_ENV}
 
-echo "CUR_ENV: ${CUR_ENV}"
-echo "is_env_exist: $(is_env_exist ${CUR_ENV})"
+# echo "CUR_ENV: ${CUR_ENV}"
+# echo "is_env_exist: $(is_env_exist ${CUR_ENV})"
 
-nodes=($(get_nodes))
-echo "nodes: ${nodes[@]}"
+# nodes=($(get_nodes))
+# echo "nodes: ${nodes[@]}"
 
-echo "is_k8s_node_ready: $(is_k8s_node_ready)"
-echo "is_env_running: $(is_env_running)"
+# echo "is_k8s_node_ready: $(is_k8s_node_ready)"
+# echo "is_env_running: $(is_env_running)"
 
-namespaces=($(get_namespaces))
-echo "namespaces: ${namespaces[@]}"
+# namespaces=($(get_namespaces))
+# echo "namespaces: ${namespaces[@]}"
 
-pods=($(get_pods ${namespaces[1]}))
-echo "pods: ${pods[@]}"
+# pods=($(get_pods ${namespaces[1]}))
+# echo "pods: ${pods[@]}"
 
 # # services=($(get_services ${namespaces[1]}))
 # # echo "services: ${services[@]}"
@@ -92,5 +94,5 @@ echo "pods: ${pods[@]}"
 
 # containers=$(get_env_containers ubuntu kind)
 # echo "${containers}"
-# containers=$(get_env_containers k3s k3d)
-# echo "${containers}"
+containers=$(get_kind_containers test2)
+echo "${containers}"

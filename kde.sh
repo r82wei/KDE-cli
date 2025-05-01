@@ -11,16 +11,18 @@ export KUBE_CONFIG_DIR=kubeconfig
 # 設定 VOLUMES_DIR
 export VOLUMES_DIR=namespaces
 
-source ${KDE_SCRIPTS_PATH}/utils/enviroment.sh
-
-# 設定當前環境的環境變數
-if [[ -f ${KDE_PATH}/current.env ]]; then
-    source ${KDE_PATH}/current.env
-fi
+source ${KDE_SCRIPTS_PATH}/utils/environment/k8s.sh
+source ${KDE_SCRIPTS_PATH}/utils/environment/kind.sh
+source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 
 # 設定 ngrok 的環境變數
 if [[ -f ${KDE_PATH}/ngrok.env ]]; then
     source ${KDE_PATH}/ngrok.env
+fi
+
+# 設定當前環境的環境變數
+if [[ -f ${KDE_PATH}/current.env ]]; then
+    source ${KDE_PATH}/current.env
 fi
 
 if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
@@ -32,15 +34,14 @@ fi
 # 載入環境變數
 load_enviroment_env ${CUR_ENV}
 
-
 # 定義顯示說明的函數
 show_help() {
     echo "usage: kde <command>"
     echo ""
     echo "command:"
     echo "  list, ls                            列出 k8s 環境"
-    echo "  start <env_name> [--k3d]            建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 --k3d 啟動 k3d)"
-    echo "  create <env_name> [--k3d]           建立/啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 建立 k3d)"
+    echo "  start <env_name> [--k3d]            建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 --k3d 啟動 k3d，可使用參數 --k8s 啟動外部 K8S)"
+    echo "  create <env_name> [--k3d]           建立/啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 建立 k3d，可使用參數 --k8s 建立外部 K8S)"
     echo "  stop [env_name]                     停止 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)"
     echo "  restart                             重啟 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)"
     echo "  status                              顯示 k8s 環境狀態"
@@ -71,10 +72,6 @@ case "$1" in
     create)
         shift  # 移除 "create" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh
-        ;;
-    add)
-        shift  # 移除 "add" 指令
-        source ${KDE_SCRIPTS_PATH}/add/command.sh
         ;;
     stop)
         shift  # 移除 "stop" 指令

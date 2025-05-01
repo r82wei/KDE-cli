@@ -14,5 +14,20 @@ if [[ $1 == "--help" || $1 == "-h" ]]; then
     exit 0
 fi
 
-# 關閉環境
-stop_env ${1:-${CUR_ENV}} $2
+# 根據環境類型來選擇不同的處理流程
+case "${ENV_TYPE}" in
+    k3d)
+        echo "關閉 k3d 環境"
+        stop_k3d ${1:-${CUR_ENV}} $2
+        ;;
+    kind)
+        echo "關閉 kind 環境"
+        stop_kind ${1:-${CUR_ENV}} $2
+        ;;
+    k8s)
+        echo "外部 K8S 環境請自行關閉"
+        ;;
+    *)
+        show_help
+        ;;
+esac
