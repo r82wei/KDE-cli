@@ -20,6 +20,8 @@ is_env_init() {
 }
 
 is_env_running() {
+    ENV_NAME=${1:-${CUR_ENV}}
+    CUR_ENV=${ENV_NAME}
     if [[ $(is_k8s_node_ready) == "true" ]]; then
         echo "true"
     else
@@ -236,6 +238,8 @@ exec_script_in_deploy_env() {
 
 # 在 deploy-env 容器中執行指令，並且回傳結果（不使用 TTY 模式執行命令）
 exec_script_in_deploy_env_without_tty() {
+    KUBECONFIG=${ENVIROMENTS_PATH}/${ENV_NAME}/${KUBE_CONFIG_DIR}/config
+
     output=$(docker run --rm -i \
     --net ${DOCKER_NETWORK} \
     -e KUBECONFIG=/.kube/config \
