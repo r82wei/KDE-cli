@@ -22,10 +22,12 @@ is_env_init() {
 is_env_running() {
     ENV_NAME=${1:-${CUR_ENV}}
     CUR_ENV=${ENV_NAME}
-    if [[ $(is_k8s_node_ready) == "true" ]]; then
-        echo "true"
-    else
+    if [[ $(is_env_init ${ENV_NAME}) == "false" ]]; then
         echo "false"
+    elif [[ $(is_k8s_node_ready) == "false" ]]; then
+        echo "false"
+    else
+        echo "true"
     fi
 }
 
