@@ -122,6 +122,14 @@ cloudflare_delete_tunnel() {
 }
 
 
+cloudflare_tunnel_url() {
+    DOMAIN=$1
+    TARGET_URL=$2
+    DOCKER_NETWORK=${3:-host}
 
+    cloudflare_login
+    cloudflare_create_tunnel ${DOMAIN} ${TARGET_URL}
+    cloudflare_start_tunnel ${DOMAIN} ${DOCKER_NETWORK}
+}
 
 
