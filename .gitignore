@@ -5,3 +5,4 @@ cloudflared
 # file
 current.env
 ngrok.env
+kde.env
