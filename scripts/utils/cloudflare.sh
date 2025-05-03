@@ -26,7 +26,6 @@ cloudflare_set_dns() {
     docker run -it --rm \
         --name cloudflared \
         -e TUNNEL_ORIGIN_CERT=/etc/cloudflared/cert.pem \
-        -e TUNNEL_CRED_FILE=/etc/cloudflared/${DOMAIN}.json \
         -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
         cloudflare/cloudflared:latest \
         tunnel route dns --overwrite-dns ${DOMAIN} ${DOMAIN}
@@ -46,6 +45,7 @@ cloudflare_get_tunnel_id() {
 
 cloudflare_create_tunnel() {
     DOMAIN=$1
+    FILE_NAME=${DOMAIN/\*/all}
     TARGET_URL=$2
     
     # 如果 tunnel 存在，則刪除
@@ -57,12 +57,12 @@ cloudflare_create_tunnel() {
         --user $UID \
         --name cloudflared \
         -e TUNNEL_ORIGIN_CERT=/etc/cloudflared/cert.pem \
-        -e TUNNEL_CRED_FILE=/etc/cloudflared/${DOMAIN}.json \
+        -e TUNNEL_CRED_FILE=/etc/cloudflared/${FILE_NAME}.json \
         -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
         cloudflare/cloudflared:latest \
         tunnel create ${DOMAIN}
 
-    chmod 755 ${KDE_PATH}/cloudflared/${DOMAIN}.json
+    chmod 755 ${KDE_PATH}/cloudflared/${FILE_NAME}.json
 
     # 取得 tunnel id
     TUNNEL_ID=$(cloudflare_get_tunnel_id ${DOMAIN})
@@ -72,11 +72,11 @@ cloudflare_create_tunnel() {
     cloudflare_set_dns ${DOMAIN} ${TUNNEL_ID}
 
     echo "Creating config for tunnel ${DOMAIN} and target URL ${TARGET_URL}"
-    cat > ${KDE_PATH}/cloudflared/${DOMAIN}.yml << EOF
-tunnel: ${DOMAIN}
-credentials-file: /etc/cloudflared/${DOMAIN}.json
+    cat > ${KDE_PATH}/cloudflared/${FILE_NAME}.yml << EOF
+tunnel: "${DOMAIN}"
+credentials-file: /etc/cloudflared/${FILE_NAME}.json
 ingress:
-  - hostname: ${DOMAIN}
+  - hostname: "${DOMAIN}"
     service: ${TARGET_URL}
   - service: http_status:404
 EOF
@@ -85,15 +85,16 @@ EOF
 
 cloudflare_start_tunnel() {
     DOMAIN=$1
+    FILE_NAME=${DOMAIN/\*/all}
     DOCKER_NETWORK=$2
 
     echo "Starting tunnel ${DOMAIN}"
     docker run -it --rm \
-        --name cloudflared-tunnel-${DOMAIN} \
+        --name cloudflared-tunnel-${DOMAIN/\*/all} \
         --network ${DOCKER_NETWORK} \
         -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
         cloudflare/cloudflared:latest \
-        tunnel --config /etc/cloudflared/${DOMAIN}.yml run ${DOMAIN}
+        tunnel --config /etc/cloudflared/${FILE_NAME}.yml run ${DOMAIN}
     echo "Tunnel ${DOMAIN} stopped"
 }
 
@@ -106,10 +107,11 @@ cloudflare_stop_tunnel() {
 
 cloudflare_delete_tunnel() {
     DOMAIN=$1
+    FILE_NAME=${DOMAIN/\*/all}
     
     echo "Deleting tunnel ${DOMAIN}"
-    rm -f ${KDE_PATH}/cloudflared/${DOMAIN}.json
-    rm -f ${KDE_PATH}/cloudflared/${DOMAIN}.yml
+    rm -f ${KDE_PATH}/cloudflared/${FILE_NAME}.json
+    rm -f ${KDE_PATH}/cloudflared/${FILE_NAME}.yml
     docker run -it --rm \
         --name cloudflared \
         -e TUNNEL_ORIGIN_CERT=/etc/cloudflared/cert.pem \
