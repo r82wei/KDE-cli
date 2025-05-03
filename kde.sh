@@ -15,14 +15,33 @@ source ${KDE_SCRIPTS_PATH}/utils/environment/k8s.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/kind.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 
-# 設定預設 kde 預設環境變數
+# 設定預設 kde 預設 image 環境變數
 if [[ ! -f ${KDE_PATH}/kde.env ]]; then
-    echo "KIND_IMAGE=r82wei/kind:v0.27.0" > ${KDE_PATH}/kde.env
-    echo "K3D_IMAGE=r82wei/k3d:v5.8.3" >> ${KDE_PATH}/kde.env
-    echo "KDE_DEPLOY_ENV_IMAGE=r82wei/deploy-env:1.0.0" >> ${KDE_PATH}/kde.env
-    echo "NGROK_PROXY_IMAGE=r82wei/ngrok-proxy:1.0.0" >> ${KDE_PATH}/kde.env
+    touch ${KDE_PATH}/kde.env
+else
+    source ${KDE_PATH}/kde.env
 fi
-source ${KDE_PATH}/kde.env
+if [[ -z ${KIND_IMAGE} ]]; then
+    export KIND_IMAGE=r82wei/kind:v0.27.0
+    echo "KIND_IMAGE=${KIND_IMAGE}" >> ${KDE_PATH}/kde.env
+fi
+if [[ -z ${K3D_IMAGE} ]]; then
+    export K3D_IMAGE=r82wei/k3d:v5.8.3
+    echo "K3D_IMAGE=${K3D_IMAGE}" >> ${KDE_PATH}/kde.env
+fi
+if [[ -z ${KDE_DEPLOY_ENV_IMAGE} ]]; then
+    export KDE_DEPLOY_ENV_IMAGE=r82wei/deploy-env:1.0.0
+    echo "KDE_DEPLOY_ENV_IMAGE=${KDE_DEPLOY_ENV_IMAGE}" >> ${KDE_PATH}/kde.env
+fi
+if [[ -z ${NGROK_PROXY_IMAGE} ]]; then
+    export NGROK_PROXY_IMAGE=r82wei/ngrok-proxy:1.0.0
+    echo "NGROK_PROXY_IMAGE=${NGROK_PROXY_IMAGE}" >> ${KDE_PATH}/kde.env
+fi
+if [[ -z ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} ]]; then
+    export CLOUDFLARE_TUNNEL_PROXY_IMAGE=r82wei/cloudflare-tunnel-proxy:1.0.0
+    echo "CLOUDFLARE_TUNNEL_PROXY_IMAGE=${CLOUDFLARE_TUNNEL_PROXY_IMAGE}" >> ${KDE_PATH}/kde.env
+fi
+
 
 # 設定 ngrok 的環境變數
 if [[ -f ${KDE_PATH}/ngrok.env ]]; then
@@ -48,24 +67,24 @@ show_help() {
     echo "usage: kde <command>"
     echo ""
     echo "command:"
-    echo "  list, ls                            列出 k8s 環境"
-    echo "  start <env_name> [--k3d]            建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 --k3d 啟動 k3d，可使用參數 --k8s 啟動外部 K8S)"
-    echo "  create <env_name> [--k3d]           建立/啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 建立 k3d，可使用參數 --k8s 建立外部 K8S)"
-    echo "  stop [env_name]                     停止 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)"
-    echo "  restart                             重啟 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)"
-    echo "  status                              顯示 k8s 環境狀態"
-    echo "  remove, rm                          移除 k8s 環境"
-    echo "  current, cur                        顯示當前使用中的 k8s 環境名稱"
-    echo "  use [env_name]                      切換當前使用中的 k8s 環境名稱"
-    echo "  load-image <image> [env_name]       載入 docker image 到 k8s 環境"
-    echo "  k9s [-p port]                       進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port"
-    echo "  expose                              將 service/pod port forward 到本地指定的 port"
-    echo "  exec                                進入 k8s node container 環境"
-    echo "  reset                               重置 kde 環境，清除全部 environments 和 projects 資料夾"
-    echo "  project, proj, namespace, ns        project 管理 (可以使用 kde project -h 查看詳細說明)"
-    echo "  projects, projs                     projects(namespaces) 專案集合管理 (可以使用 kde projects -h 查看詳細說明)"
-    echo "  ngrok                               啟動 ngrok"
-    echo "  cloudflare-tunnel <domain> <target> 透過 Cloudflare Tunnel 建立連線"
+    echo "  list, ls                                列出 k8s 環境"
+    echo "  start <env_name> [--k3d]                建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 --k3d 啟動 k3d，可使用參數 --k8s 啟動外部 K8S)"
+    echo "  create <env_name> [--k3d]               建立/啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 建立 k3d，可使用參數 --k8s 建立外部 K8S)"
+    echo "  stop [env_name]                         停止 k8s 環境 (預設操作 current.env 的當前使用中的 k8s 環境)"
+    echo "  restart [env_name]                      重啟 k8s 環境 (預設操作 current.env 的當前使用中的 k8s 環境)"
+    echo "  status                                  顯示 k8s 環境狀態"
+    echo "  remove, rm                              移除 k8s 環境"
+    echo "  current, cur                            顯示當前使用中的 k8s 環境名稱"
+    echo "  use [env_name]                          切換當前使用中的 k8s 環境名稱"
+    echo "  load-image <image> [env_name]           載入 docker image 到 k8s 環境"
+    echo "  k9s [-p port]                           進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port"
+    echo "  expose                                  將 service/pod port forward 到本地指定的 port"
+    echo "  exec                                    進入 k8s node container 環境"
+    echo "  reset                                   重置 kde 環境，清除全部 environments 和 projects 資料夾"
+    echo "  project, proj, namespace, ns            project 管理 (可以使用 kde project -h 查看詳細說明)"
+    echo "  projects, projs                         projects(namespaces) 專案集合管理"
+    echo "  ngrok                                   啟動 ngrok"
+    echo "  cloudflare-tunnel <domain> <target>     透過 Cloudflare Tunnel 建立連線"
 }
 
 
