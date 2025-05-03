@@ -109,7 +109,7 @@ start_k3d() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
     -v ${ENV_PATH}/k3d-config.yaml:/config.yaml \
-    r82wei/k3d:v5.8.3 \
+    ${K3D_IMAGE} \
     sh -c "k3d cluster create --config=/config.yaml && sed "s/0.0.0.0:[0-9]*/$K8S_CONTAINER_NAME:6443/ig" /root/.kube/config > /root/.kube/config.new && mv /root/.kube/config.new /root/.kube/config && chown $(id -u):$(id -g) /root/.kube/config"
 
     if [ $? -ne 0 ]; then
@@ -134,6 +134,6 @@ k3d_load_image() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
     -v ${ENV_PATH}/kind-config.yaml:/config.yaml \
-    r82wei/k3d:v5.8.3 \
+    ${K3D_IMAGE} \
     sh -c "k3d image import ${IMAGE} -c ${ENV_NAME}"
 }

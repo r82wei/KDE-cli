@@ -15,6 +15,15 @@ source ${KDE_SCRIPTS_PATH}/utils/environment/k8s.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/kind.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 
+# 設定預設 kde 預設環境變數
+if [[ ! -f ${KDE_PATH}/kde.env ]]; then
+    echo "KIND_IMAGE=r82wei/kind:v0.27.0" > ${KDE_PATH}/kde.env
+    echo "K3D_IMAGE=r82wei/k3d:v5.8.3" >> ${KDE_PATH}/kde.env
+    echo "KDE_DEPLOY_ENV_IMAGE=r82wei/deploy-env:1.0.0" >> ${KDE_PATH}/kde.env
+    echo "NGROK_PROXY_IMAGE=r82wei/ngrok-proxy:1.0.0" >> ${KDE_PATH}/kde.env
+fi
+source ${KDE_PATH}/kde.env
+
 # 設定 ngrok 的環境變數
 if [[ -f ${KDE_PATH}/ngrok.env ]]; then
     source ${KDE_PATH}/ngrok.env
@@ -56,6 +65,7 @@ show_help() {
     echo "  project, proj, namespace, ns        project 管理 (可以使用 kde project -h 查看詳細說明)"
     echo "  projects, projs                     projects(namespaces) 專案集合管理 (可以使用 kde projects -h 查看詳細說明)"
     echo "  ngrok                               啟動 ngrok"
+    echo "  cloudflare-tunnel <domain> <target> 透過 Cloudflare Tunnel 建立連線"
 }
 
 
@@ -115,7 +125,6 @@ case "$1" in
     k9s)
         shift  # 移除 "k9s" 指令
         source ${KDE_SCRIPTS_PATH}/k9s/command.sh
-        exit 0
         ;;
     project|proj|namespace|ns)
         shift  # 移除 "project"  指令
@@ -128,15 +137,16 @@ case "$1" in
     reset)
         shift  # 移除 "reset" 指令
         source ${KDE_SCRIPTS_PATH}/reset/command.sh
-        exit 0
         ;;
     ngrok)
         shift  # 移除 "ngrok" 指令
         source ${KDE_SCRIPTS_PATH}/ngrok/command.sh
-        exit 0
+        ;;
+    cloudflare-tunnel)
+        shift  # 移除 "cloudflare-tunnel" 指令
+        source ${KDE_SCRIPTS_PATH}/cloudflare-tunnel/command.sh
         ;;
     *)
         show_help
-        exit 0
         ;;
 esac

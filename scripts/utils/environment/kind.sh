@@ -110,7 +110,7 @@ start_kind() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
     -v ${ENV_PATH}/kind-config.yaml:/config.yaml \
-    r82wei/kind:v0.27.0 \
+    ${KIND_IMAGE} \
     sh -c "kind create cluster --config=/config.yaml && sed "s/0.0.0.0:[0-9]*/$K8S_CONTAINER_NAME:6443/ig" ~/.kube/config > ~/.kube/config.new && mv ~/.kube/config.new ~/.kube/config && chown $(id -u):$(id -g) ~/.kube/config"
 
     if [ $? -ne 0 ]; then
@@ -135,6 +135,6 @@ kind_load_image() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
     -v ${ENV_PATH}/kind-config.yaml:/config.yaml \
-    r82wei/kind:v0.27.0 \
+    ${KIND_IMAGE} \
     sh -c "kind load docker-image ${IMAGE} --name ${ENV_NAME}"
 }

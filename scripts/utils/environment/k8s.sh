@@ -216,7 +216,7 @@ exec_port_forward() {
     --net ${DOCKER_NETWORK} \
     -v ${KUBECONFIG}:/root/.kube/config \
     -p ${LOCAL_PORT}:${LOCAL_PORT} \
-    r82wei/deploy-env:1.0.0 \
+    ${KDE_DEPLOY_ENV_IMAGE} \
     bash -c "kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 ${RESOURCE_TYPE}/${RESOURCE_NAME} ${LOCAL_PORT}:${TARGET_PORT}"
 }
 
@@ -234,7 +234,7 @@ exec_script_in_deploy_env() {
     --net ${DOCKER_NETWORK} \
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
-    r82wei/deploy-env:1.0.0 \
+    ${KDE_DEPLOY_ENV_IMAGE} \
     bash -c "$1"
 }
 
@@ -246,7 +246,7 @@ exec_script_in_deploy_env_without_tty() {
     --net ${DOCKER_NETWORK} \
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
-    r82wei/deploy-env:1.0.0 \
+    ${KDE_DEPLOY_ENV_IMAGE} \
     bash -c "$1" 2>/dev/null || echo "")
     
     echo "${output}"
@@ -265,7 +265,7 @@ exec_bash_in_deploy_env_with_projects() {
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
-    r82wei/deploy-env:1.0.0 \
+    ${KDE_DEPLOY_ENV_IMAGE} \
     bash
 }
 
