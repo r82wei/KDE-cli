@@ -32,7 +32,7 @@ stop_k3d() {
     fi
 }
 
-init_k3d(){
+init_k3d_env(){
     # 設定 K8S container 名稱
     export K8S_CONTAINER_NAME=k3d-${ENV_NAME}-serverlb
     echo "K8S_CONTAINER_NAME=${K8S_CONTAINER_NAME}" >> ${K8S_ENV_FILE_PATH}
@@ -59,7 +59,6 @@ init_k3d(){
     fi
 
     touch ${KUBECONFIG}
-
     init_k3d_config
 }
 
@@ -79,17 +78,19 @@ init_k3d_config() {
     fi
     
     # 設定 VOLUMES_PATH
-    echo "VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}" > ${ENV_PATH}/volume.env
+    echo "VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}" >> ${LOCAL_ENV_FILE_PATH}
     
     # 設定 k3d-config.yaml
     envsubst < ${KDE_SCRIPTS_PATH}/utils/environment/k3d-config.yaml > ${ENV_PATH}/k3d-config.yaml
 }
 
 start_k3d() {
-    exit_if_env_running ${ENV_NAME}
+    if [[ $(is_env_initializing ${ENV_NAME}) == "true" ]]; then
+        init_k3d_env
+    fi
 
     if [[ $(is_k3d_init ${ENV_NAME}) == "false" ]]; then
-        init_k3d
+        init_k3d_config
     fi
 
     if [[ ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
@@ -101,6 +102,8 @@ start_k3d() {
         docker network create $DOCKER_NETWORK
     fi
 
+    exit_if_env_running ${ENV_NAME}
+
     # Install K3S
     docker run \
     --rm \
@@ -109,7 +112,7 @@ start_k3d() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
     -v ${ENV_PATH}/k3d-config.yaml:/config.yaml \
-    r82wei/k3d:v5.8.3 \
+    ${K3D_IMAGE} \
     sh -c "k3d cluster create --config=/config.yaml && sed "s/0.0.0.0:[0-9]*/$K8S_CONTAINER_NAME:6443/ig" /root/.kube/config > /root/.kube/config.new && mv /root/.kube/config.new /root/.kube/config && chown $(id -u):$(id -g) /root/.kube/config"
 
     if [ $? -ne 0 ]; then
@@ -134,6 +137,6 @@ k3d_load_image() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
     -v ${ENV_PATH}/kind-config.yaml:/config.yaml \
-    r82wei/k3d:v5.8.3 \
+    ${K3D_IMAGE} \
     sh -c "k3d image import ${IMAGE} -c ${ENV_NAME}"
 }

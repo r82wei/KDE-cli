@@ -10,6 +10,14 @@ is_env_exist() {
     fi
 }
 
+is_env_initializing() {
+    if [[ ${INITIALIZING} == "true" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 is_env_init() {
     ENV_NAME=$1
     if [[ -f ${ENVIROMENTS_PATH}/${ENV_NAME}/${KUBE_CONFIG_DIR}/config ]]; then
@@ -158,6 +166,9 @@ init_env() {
     else
         echo "環境 ${ENV_NAME} 尚未存在，開始初始化環境..."
         
+        # 設定環境初始化中
+        export INITIALIZING=true
+        
         # 設定環境資料夾路徑
         mkdir -p ${ENV_PATH}
 
@@ -216,7 +227,7 @@ exec_port_forward() {
     --net ${DOCKER_NETWORK} \
     -v ${KUBECONFIG}:/root/.kube/config \
     -p ${LOCAL_PORT}:${LOCAL_PORT} \
-    r82wei/deploy-env:1.0.0 \
+    ${KDE_DEPLOY_ENV_IMAGE} \
     bash -c "kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 ${RESOURCE_TYPE}/${RESOURCE_NAME} ${LOCAL_PORT}:${TARGET_PORT}"
 }
 
@@ -234,7 +245,7 @@ exec_script_in_deploy_env() {
     --net ${DOCKER_NETWORK} \
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
-    r82wei/deploy-env:1.0.0 \
+    ${KDE_DEPLOY_ENV_IMAGE} \
     bash -c "$1"
 }
 
@@ -246,7 +257,7 @@ exec_script_in_deploy_env_without_tty() {
     --net ${DOCKER_NETWORK} \
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
-    r82wei/deploy-env:1.0.0 \
+    ${KDE_DEPLOY_ENV_IMAGE} \
     bash -c "$1" 2>/dev/null || echo "")
     
     echo "${output}"
@@ -265,7 +276,7 @@ exec_bash_in_deploy_env_with_projects() {
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
-    r82wei/deploy-env:1.0.0 \
+    ${KDE_DEPLOY_ENV_IMAGE} \
     bash
 }
 
@@ -501,6 +512,7 @@ select_service() {
         exit 1
     elif [ ${#services[@]} -eq 1 ]; then
         export TARGET_SERVICE=${services[0]}
+        echo "你選擇了 Service: ${TARGET_SERVICE}"
     else
         PS3="請選擇一個 Service（輸入編號）："
         select service in "${services[@]}" "退出"
@@ -537,6 +549,7 @@ select_pod() {
     elif [ ${#pods[@]} -eq 1 ]; then
         # 如果 pods 數量等於 1，則直接使用 Pod
         export TARGET_POD=${pods[0]}
+        echo "你選擇了 Pod: ${TARGET_POD}"
     else
         PS3="請選擇一個 Pod（輸入編號）："
         select pod in "${pods[@]}" "退出"
@@ -580,6 +593,7 @@ select_port() {
     elif [[ ${#ports[@]} == 1 ]]; then
         # 如果 ports 數量等於 1，則直接使用 Port
         export TARGET_PORT=${ports[0]}
+        echo "你選擇了 Port: ${TARGET_PORT}"
     else
         # 如果 ports 數量大於 1，則顯示選單
         PS3="請選擇要轉發的 Port（輸入編號）："
