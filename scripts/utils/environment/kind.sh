@@ -32,7 +32,7 @@ stop_kind() {
     fi
 }
 
-init_kind() {
+init_kind_env() {
     # 設定 K8S container 名稱
     export K8S_CONTAINER_NAME=${ENV_NAME}-control-plane
     echo "K8S_CONTAINER_NAME=${K8S_CONTAINER_NAME}" >> ${K8S_ENV_FILE_PATH}
@@ -59,7 +59,6 @@ init_kind() {
     fi
 
     touch ${KUBECONFIG}
-
     init_kind_config
 }
 
@@ -79,27 +78,34 @@ init_kind_config() {
     fi
 
     # 設定 VOLUMES_PATH
-    echo "VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}" > ${LOCAL_ENV_FILE_PATH}
+    echo "VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}" >> ${LOCAL_ENV_FILE_PATH}
 
     # 設定 kind-config.yaml
     envsubst < ${KDE_SCRIPTS_PATH}/utils/environment/kind-config.yaml > ${ENV_PATH}/kind-config.yaml
 }
 
 start_kind() {
-    exit_if_env_running ${ENV_NAME}
+
+    if [[ $(is_env_initializing ${ENV_NAME}) == "true" ]]; then
+        init_kind_env
+    fi
     
     if [[ $(is_kind_init ${ENV_NAME}) == "false" ]]; then
-        init_kind
+        init_kind_config
     fi
-
+    
+    # 如果 VOLUMES_PATH 不等于 ENV_PATH/${VOLUMES_DIR}，則重新初始化 kind-config.yaml
+    # TODO: 有些人需要重新初始化 kind-config.yaml，有些人不需要，需要研究
     if [[ ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
         init_kind_config
     fi
-
+    
     # Ensure Docker network
     if [ -z "$( docker network ls | awk '{print $2}' | grep ^$DOCKER_NETWORK$ )" ]; then
         docker network create $DOCKER_NETWORK
     fi
+
+    exit_if_env_running ${ENV_NAME}
 
     # Install K8S
     docker run \
@@ -110,7 +116,7 @@ start_kind() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
     -v ${ENV_PATH}/kind-config.yaml:/config.yaml \
-    docker.anyong.com.tw/quick-start/kind:v0.27.0 \
+    ${KIND_IMAGE} \
     sh -c "kind create cluster --config=/config.yaml && sed "s/0.0.0.0:[0-9]*/$K8S_CONTAINER_NAME:6443/ig" ~/.kube/config > ~/.kube/config.new && mv ~/.kube/config.new ~/.kube/config && chown $(id -u):$(id -g) ~/.kube/config"
 
     if [ $? -ne 0 ]; then
@@ -135,6 +141,6 @@ kind_load_image() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
     -v ${ENV_PATH}/kind-config.yaml:/config.yaml \
-    docker.anyong.com.tw/quick-start/kind:v0.27.0 \
+    ${KIND_IMAGE} \
     sh -c "kind load docker-image ${IMAGE} --name ${ENV_NAME}"
 }

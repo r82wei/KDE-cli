@@ -24,6 +24,11 @@ else
     ENV_TYPE="kind"
 fi
 
+if [[ -z "${1:-${CUR_ENV}}" ]]; then
+    echo "請輸入環境名稱"
+    exit 1
+fi
+
 # 初始化環境變數
 init_env ${1:-${CUR_ENV}} ${ENV_TYPE}
 
