@@ -36,22 +36,24 @@
   usage: kde <command>
 
   command:
-    list, ls                            列出 k8s 環境
-    start <env_name> [--k3d]            建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 --k3d 啟動 k3d)
-    create <env_name> [--k3d]           建立/啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 建立 k3d)
-    stop [env_name]                     停止 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)
-    restart                             重啟 k8s 環境 (預設停止 current.env 的當前使用中的 k8s 環境)
-    status                              顯示 k8s 環境狀態
-    remove, rm                          移除 k8s 環境
-    current, cur                        顯示當前使用中的 k8s 環境名稱
-    use [env_name]                      切換當前使用中的 k8s 環境名稱
-    load-image <image> [env_name]       載入 docker image 到 k8s 環境
-    k9s [-p port]                       進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port
-    expose                              將 service/pod port forward 到本地指定的 port
-    exec                                進入 k8s node container 環境
-    reset                               重置 kde 環境，清除全部 environments 和 projects 資料夾
-    project, proj, namespace, ns        project 管理 (可以使用 kde project -h 查看詳細說明)
-    projects, projs                     projects(namespaces) 專案集合管理 (可以使用 kde projects -h 查看詳細說明)
+    list, ls                                列出 k8s 環境
+    start <env_name> [--k3d]                建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 --k3d 啟動 k3d，可使用參數 --k8s 啟動外部 K8S)
+    create <env_name> [--k3d]               建立/啟動 k8s 環境 (預設使用 kind，可使用參數 --k3d 建立 k3d，可使用參數 --k8s 建立外部 K8S)
+    stop [env_name]                         停止 k8s 環境 (預設操作 current.env 的當前使用中的 k8s 環境)
+    restart [env_name]                      重啟 k8s 環境 (預設操作 current.env 的當前使用中的 k8s 環境)
+    status                                  顯示 k8s 環境狀態
+    remove, rm                              移除 k8s 環境
+    current, cur                            顯示當前使用中的 k8s 環境名稱
+    use [env_name]                          切換當前使用中的 k8s 環境名稱
+    load-image <image> [env_name]           載入 docker image 到 k8s 環境
+    k9s [-p port]                           進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port
+    expose                                  將 service/pod port forward 到本地指定的 port
+    exec                                    進入 k8s node container 環境
+    reset                                   重置 kde 環境，清除全部 environments 和 projects 資料夾
+    project, proj, namespace, ns            project 管理 (可以使用 kde project -h 查看詳細說明)
+    projects, projs                         projects(namespaces) 專案集合管理
+    ngrok                                   啟動 ngrok
+    cloudflare-tunnel <domain> <target>     透過 Cloudflare Tunnel 建立連線
   ```
 
 - 執行 `kde start` 啟動 / 新增 K8S
@@ -96,9 +98,14 @@
 #### Core Features
 
 - [x] ls (列出 k8s 環境)
-- [x] start/create (啟動 k8s 環境)
+- [x] start/create (啟動/新增 k8s 環境)
   - [x] kind (使用 kind 啟動 K8S)
   - [x] k3d (使用 k3d 啟動 K8S)
+  - [ ] gke (GCP k8s)
+  - [ ] aks (Azure k8s)
+  - [ ] eks (AWS k8s)
+  - [ ] lke (Linode k8s)
+  - [x] k8s (加入現有的 K8S 環境)
 - [x] stop (停止 k8s 環境)
 - [x] restart (重啟 k8s 環境)
 - [x] status (顯示 k8s 環境狀態)
@@ -117,30 +124,35 @@
   - [x] pull (透過 project.env 內的設定重新抓取專案 repo)
   - [x] link (建立專案資料夾的 softlink 到 namespace 資料夾底下)
   - [x] deploy (部署專案)
-  - [ ] diff (透過 kubectl diff 比較部署 yaml 與 目前 K8S yaml 差異)
   - [x] undeploy (解除部署專案)
   - [x] redeploy (重新部署專案)
   - [x] tail (查看 pod 的 log，預設查看最後 100 行)
   - [x] remove (刪除專案)
   - [x] exec (進入專案的 Container 環境)
     - [x] develop (進入專案的開發 Container 環境)
-      - [ ] --root (需要支援使用系統管理員權限)
-      - [ ] --port (需要支援 bind port)
+      - [x] --port (需要支援 bind port)
     - [x] deploy (進入專案的部署 Container 環境)
-- [ ] projects (project 的集合)
+      - [x] --port (需要支援 bind port)
+- [x] projects (project 的集合)
   - [x] fetch (輸入 git url，抓取一個 project 集合)
   - [x] pull (一次性 pull project 集合內全部 project.env 設定的 git repo)
   - [x] link (建立 project 集合資料夾的 softlink 成為 namespaces 資料夾)
   - [x] exec (進入預設部署環境，並且掛載 namespaces 資料夾)
+- [x] ngrok (透過 Ngrok 設定對外網址)
+- [x] cloudflare-tunnel (透過 Cloudflare Tunnel 設定對外網址)
 
 #### Extra Features
 
 - [x] ngrok
+- [x] Cloudflare Tunnel
 - [ ] mcp server
 - [ ] kube-metrics-server
 - [ ] Grafana/Loki/Prometheus
 - [ ] cert-manager
-- [ ] Cloudflare Tunnel
+- [ ] GKE by terraform
+- [ ] AKS by terraform
+- [ ] EKS by terraform
+- [ ] LKE by terraform
 - [ ] Zeabur
 
 ## 相關套件清單
