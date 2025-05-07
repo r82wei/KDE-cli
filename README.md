@@ -81,9 +81,10 @@
   |_ *[env_name]/         # 自訂 k8s 環境名稱
     |_ kubeconfig/            # kubeconfig 存放位置
     |_ pki/                   # k8s ca 存放位置
-    |_ .env                   # k8s 環境設定
-    |_ kind-config.yaml       # kind 設定檔
-    |_ k3d-config.yaml        # k3d 設定檔
+    |_ .env                   # 本地環境設定檔 (會根據不同使用者而有不同設定的環境變數)
+    |_ k8s.env                # k8s 環境設定檔
+    |_ kind-config.yaml       # kind 設定檔 (optional)
+    |_ k3d-config.yaml        # k3d 設定檔 (optional)
     |_ namespaces/            # project 集合存放位置，底下的每個 project 資料夾就是一個 k8s namespace
       |_ *[k8s namespace = project name]    # k8s namespace ，也是 project name
         |_ project.env                      # project 的環境變數，包含專案的 Git repo url & branch、開發 Container image、部署 Container image
