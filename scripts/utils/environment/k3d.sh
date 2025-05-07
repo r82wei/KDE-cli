@@ -32,7 +32,7 @@ stop_k3d() {
     fi
 }
 
-init_k3d_env(){
+create_k3d_env(){
     # 設定 K8S container 名稱
     export K8S_CONTAINER_NAME=k3d-${ENV_NAME}-serverlb
     echo "K8S_CONTAINER_NAME=${K8S_CONTAINER_NAME}" >> ${K8S_ENV_FILE_PATH}
@@ -42,57 +42,17 @@ init_k3d_env(){
     echo "DOCKER_NETWORK=${DOCKER_NETWORK}" >> ${K8S_ENV_FILE_PATH}
 
     # 設定 STORAGE_CLASS
-    STORAGE_CLASS=local-path
+    export STORAGE_CLASS=local-path
     echo "STORAGE_CLASS=${STORAGE_CLASS}" >> ${K8S_ENV_FILE_PATH}
-    
-    # 如果 ca.key 不存在，則生成 ca.key 和 ca.crt
-    if [[ ! -f ${ENV_PATH}/pki/ca.key ]]; then
-        mkdir -p ${ENV_PATH}/pki
-        openssl genrsa -out ${ENV_PATH}/pki/ca.key 2048
-        openssl req -x509 -new -nodes -key ${ENV_PATH}/pki/ca.key -sha256 -days 3650 -out ${ENV_PATH}/pki/ca.crt \
-            -subj "/C=TW/ST=Taipei/L=Taipei/O=KDE/OU=KDE/CN=${K8S_CONTAINER_NAME}" \
-            -extensions v3_ca \
-            -config <(cat /etc/ssl/openssl.cnf <(printf "\n[v3_ca]\n\
-                basicConstraints=CA:TRUE\n\
-                subjectKeyIdentifier=hash\n\
-                authorityKeyIdentifier=keyid:always,issuer:always\n"))
-    fi
-
-    touch ${KUBECONFIG}
-    init_k3d_config
 }
 
 init_k3d_config() {
-    # 輸入 K8S_API_SERVER_PORT
-    if [[ -z "${K8S_API_SERVER_PORT}" ]]; then
-        read -p "請輸入 K8S api server port (預設: 6443): " K8S_API_SERVER_PORT
-        export K8S_API_SERVER_PORT=${K8S_API_SERVER_PORT:-6443}
-        echo "K8S_API_SERVER_PORT=${K8S_API_SERVER_PORT}" >> ${LOCAL_ENV_FILE_PATH}
-    fi
-
-    # 輸入 K8S_INGRESS_NGINX_PORT
-    if [[ -z "${K8S_INGRESS_NGINX_PORT}" ]]; then
-        read -p "請輸入 K8S ingress nginx port (預設: 80): " K8S_INGRESS_NGINX_PORT
-        export K8S_INGRESS_NGINX_PORT=${K8S_INGRESS_NGINX_PORT:-80}
-        echo "K8S_INGRESS_NGINX_PORT=${K8S_INGRESS_NGINX_PORT}" >> ${LOCAL_ENV_FILE_PATH}
-    fi
-    
-    # 設定 VOLUMES_PATH
-    echo "VOLUMES_PATH=${ENV_PATH}/${VOLUMES_DIR}" >> ${LOCAL_ENV_FILE_PATH}
-    
     # 設定 k3d-config.yaml
     envsubst < ${KDE_SCRIPTS_PATH}/utils/environment/k3d-config.yaml > ${ENV_PATH}/k3d-config.yaml
 }
 
 start_k3d() {
-    if [[ $(is_env_initializing ${ENV_NAME}) == "true" ]]; then
-        init_k3d_env
-    fi
-
-    if [[ $(is_k3d_init ${ENV_NAME}) == "false" ]]; then
-        init_k3d_config
-    fi
-
+    # 如果 VOLUMES_PATH 不等于 ENV_PATH/${VOLUMES_DIR}，則重新初始化 k3d-config.yaml
     if [[ ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
         init_k3d_config
     fi
@@ -101,8 +61,6 @@ start_k3d() {
     if [ -z "$( docker network ls | awk '{print $2}' | grep ^$DOCKER_NETWORK$ )" ]; then
         docker network create $DOCKER_NETWORK
     fi
-
-    exit_if_env_running ${ENV_NAME}
 
     # Install K3S
     docker run \
