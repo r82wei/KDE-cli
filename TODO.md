@@ -5,7 +5,9 @@
 - [x] ls (列出 k8s 環境)
 - [x] start/create (啟動/新增 k8s 環境)
   - [x] kind (使用 kind 啟動 K8S)
+    - [ ] 需要可以指定自訂的 kind-config.yaml
   - [x] k3d (使用 k3d 啟動 K8S)
+    - [ ] 需要可以指定自訂的 k3d-config.yaml
   - [ ] gke (GCP k8s)
   - [ ] aks (Azure k8s)
   - [ ] eks (AWS k8s)
