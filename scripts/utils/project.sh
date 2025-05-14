@@ -120,6 +120,14 @@ pull_project() {
     download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${PROJECT_REPO_PATH}/$(git_repo_name ${GIT_REPO_URL})
 }
 
+pull_if_project_not_exist() {
+    PROJECT_NAME=$1
+
+    if [[ $(is_project_exist ${PROJECT_NAME}) == "false" ]]; then
+        pull_project ${PROJECT_NAME}
+    fi
+}
+
 init_project_deploy_script() {
     PROJECT_NAME=$1
     PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
@@ -183,7 +191,7 @@ create_link() {
 deploy_project() {
     PROJECT_NAME=$1
 
-    exit_if_project_not_exist ${PROJECT_NAME}
+    pull_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/build.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} ./build.sh
