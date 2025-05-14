@@ -141,15 +141,13 @@
   - [x] exec (進入預設部署環境，並且掛載 namespaces 資料夾)
 - [x] ngrok (透過 Ngrok 設定對外網址)
 - [x] cloudflare-tunnel (透過 Cloudflare Tunnel 設定對外網址)
+- [ ] dashboard (啟動管理後台介面)
 
 #### Extra Features
 
 - [x] ngrok
 - [x] Cloudflare Tunnel
 - [ ] mcp server
-- [ ] kube-metrics-server
-- [ ] Grafana/Loki/Prometheus
-- [ ] cert-manager
 - [ ] GKE by terraform
 - [ ] AKS by terraform
 - [ ] EKS by terraform
