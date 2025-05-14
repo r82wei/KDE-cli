@@ -19,6 +19,16 @@ if_ngrok_container_exist() {
     fi
 }
 
+ngrok_http_url() {
+    CUR_ENV=$1
+    TARGET_URL=$2
+    DOCKER_NETWORK=${3:-host}
+
+    check_ngrok_token ${CUR_ENV}
+    # 啟動 ngrok
+    docker run -it --rm -e NGROK_AUTHTOKEN=${NGROK_TOKEN} --network ${DOCKER_NETWORK} ngrok/ngrok:latest http ${TARGET_URL}
+}
+
 ngrok_http_ingress() {
     CUR_ENV=$1
 
