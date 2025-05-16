@@ -16,7 +16,7 @@
 
 - 🌐 `多種服務公開方式`：可透過本地 Port 映射、Ngrok 或 Cloudflare Tunnel 對外公開服務。
 
-- 📊 `整合 K9s Dashboard`：內建啟動 K9s 功能，方便開發者在 IDE 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
+- 📊 `整合 K9s/kubernetesui Dashboard`：內建啟動 Dashboard 功能，方便開發者在終端機/Web UI 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
 
 - ⚡ `安裝簡易、零依賴`：使用 Shell Script 撰寫，不需額外安裝語言執行環境，僅需安裝 Docker 即可運行。
 
@@ -66,6 +66,8 @@
 ### Dashboard
 
 - `kde k9s` 啟動 K9S Dashboard
+- `kde dashboard` 啟動 Web UI Dashboard (kubernetesui/dashboard)
+  - 可透過 --insecure 參數略過登入動作，但會關閉 https (不建議用來連接正式環境)
 
 ### 服務公開
 
@@ -99,3 +101,4 @@
 - [kind](https://kind.sigs.k8s.io/)
 - [k9s](https://k9scli.io/)
 - [rancher/local-path-provisioner](https://github.com/rancher/local-path-provisioner)
+- [kubernetesui/dashboard](https://github.com/kubernetes/dashboard)

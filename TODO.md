@@ -47,7 +47,7 @@
   - [x] exec (進入預設部署環境，並且掛載 namespaces 資料夾)
 - [x] ngrok (透過 Ngrok 設定對外網址)
 - [x] cloudflare-tunnel (透過 Cloudflare Tunnel 設定對外網址)
-- [ ] dashboard (啟動管理後台介面)
+- [x] dashboard (啟動 Web UI 管理後台介面)
 
 #### Extra Features
 
