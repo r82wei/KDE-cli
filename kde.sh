@@ -41,6 +41,10 @@ if [[ -z ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} ]]; then
     export CLOUDFLARE_TUNNEL_PROXY_IMAGE=r82wei/cloudflare-tunnel-proxy:1.0.0
     echo "CLOUDFLARE_TUNNEL_PROXY_IMAGE=${CLOUDFLARE_TUNNEL_PROXY_IMAGE}" >> ${KDE_PATH}/kde.env
 fi
+if [[ -z ${K8S_UI_DASHBOARD_IMAGE} ]]; then
+    export K8S_UI_DASHBOARD_IMAGE=kubernetesui/dashboard:v2.7.0
+    echo "K8S_UI_DASHBOARD_IMAGE=${K8S_UI_DASHBOARD_IMAGE}" >> ${KDE_PATH}/kde.env
+fi
 
 
 # 設定 ngrok 的環境變數
@@ -96,7 +100,7 @@ case "$1" in
     start)
         shift  # 移除 "start" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh
-        source ${KDE_SCRIPTS_PATH}/k9s/start.sh
+        source ${KDE_SCRIPTS_PATH}/k9s/command.sh
         ;;
     create)
         shift  # 移除 "create" 指令
@@ -144,6 +148,10 @@ case "$1" in
     k9s)
         shift  # 移除 "k9s" 指令
         source ${KDE_SCRIPTS_PATH}/k9s/command.sh
+        ;;
+    dashboard)
+        shift  # 移除 "dashboard" 指令
+        source ${KDE_SCRIPTS_PATH}/dashboard/command.sh
         ;;
     project|proj|namespace|ns)
         shift  # 移除 "project"  指令
