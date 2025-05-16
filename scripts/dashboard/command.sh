@@ -19,15 +19,24 @@ fi
 # 根據第一個參數來選擇不同的處理流程
 case "$1" in
     --port|-p)
-        shift  # 移除 "--port" 指令
-        start_dashboard $2
+        if [[ "$3" == "--insecure" ]]; then
+            ENABLE_SSL="false"
+        else
+            ENABLE_SSL="true"
+        fi
+        start_dashboard $2 $3
         ;;
     --help|-h)
         show_help
         exit 0
         ;;
     *)
-        start_dashboard 9090
+        if [[ "$2" == "--insecure" ]]; then
+            ENABLE_SSL="false"
+        else
+            ENABLE_SSL="true"
+        fi
+        start_dashboard 8443 $2
         exit 0
         ;;
 esac
