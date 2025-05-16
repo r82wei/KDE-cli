@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ${KDE_SCRIPTS_PATH}/utils/k9s.sh
+
 # 定義顯示說明的函數
 show_help() {
     echo "usage: kde k9s [option]"
@@ -18,14 +20,14 @@ fi
 case "$1" in
     --port|-p)
         shift  # 移除 "--port" 指令
-        source ${KDE_SCRIPTS_PATH}/k9s/expose.sh $1
+        expose_k9s $2
         ;;
     --help|-h)
         show_help
         exit 0
         ;;
     *)
-        source ${KDE_SCRIPTS_PATH}/k9s/start.sh
+        start_k9s
         exit 0
         ;;
 esac
