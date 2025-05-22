@@ -33,6 +33,18 @@ stop_kind() {
 }
 
 create_kind_env() {
+    CONFIG_PATH=$1
+    
+    # 如果 $1 存在，則使用指定的 kind 的 config 路徑
+    if [[ -n "${CONFIG_PATH}" ]]; then
+        if [[ ! -f "${CONFIG_PATH}" ]]; then
+            echo "指定的 kind 的 config 路徑不存在"
+            exit 1
+        fi
+        cp ${CONFIG_PATH} ${ENV_PATH}/kind-config.yaml
+        echo "CUSTOM_CONFIG=true" >> ${K8S_ENV_FILE_PATH}
+    fi
+
     # 設定 K8S container 名稱
     export K8S_CONTAINER_NAME=${ENV_NAME}-control-plane
     echo "K8S_CONTAINER_NAME=${K8S_CONTAINER_NAME}" >> ${K8S_ENV_FILE_PATH}
@@ -47,8 +59,10 @@ create_kind_env() {
 }
 
 init_kind_config() {
-    # 設定 kind-config.yaml
-    envsubst < ${KDE_SCRIPTS_PATH}/utils/environment/kind-config.yaml > ${ENV_PATH}/kind-config.yaml
+    if [[ ${CUSTOM_CONFIG} != "true" ]]; then
+        # 設定 kind-config.yaml
+        envsubst < ${KDE_SCRIPTS_PATH}/utils/environment/kind-config.yaml > ${ENV_PATH}/kind-config.yaml
+    fi
 }
 
 start_kind() {

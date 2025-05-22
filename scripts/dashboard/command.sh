@@ -4,7 +4,7 @@ source ${KDE_SCRIPTS_PATH}/utils/dashboard.sh
 
 # 定義顯示說明的函數
 show_help() {
-    echo "usage: kde dashboard [option]"
+    echo "usage: kde dashboard [-p port] [--insecure]"
     echo ""
     echo "example:"
     echo "  -p, --port          透過指定的 Port 啟動 K8S Dashboard (預設為 8443)"

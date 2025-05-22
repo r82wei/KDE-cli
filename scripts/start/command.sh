@@ -3,12 +3,13 @@
 # 定義顯示說明的函數
 show_help() {
     echo "usage:"
-    echo "  kde start <name> [option]  啟動 k8s 環境"
+    echo "  kde start <name> [option] [config] 啟動 k8s 環境"
     echo ""
     echo "option:"
     echo "  --kind           啟動 kind 環境 (預設)"
     echo "  --k3d, --k3s     啟動 k3d 環境"
     echo "  --k8s            啟動外部 K8S 環境"
+    echo "config:            kind/k3d 的 config 路徑 (Optional)"
 }
 
 if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
@@ -42,10 +43,10 @@ if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
     create_k8s_env
     case "${ENV_TYPE}" in
         k3d)
-            create_k3d_env
+            create_k3d_env $3
             ;;
         kind)
-            create_kind_env
+            create_kind_env $3
             ;;
         k8s)
             create_external_k8s_env
