@@ -34,6 +34,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx \
     --set controller.service.type=NodePort \
     --set controller.config.enable-access-log=true \
     --set controller.allowSnippetAnnotations=true \
+    --set controller.annotationsRiskLevel=Critical \
     --set controller.service.nodePorts.http=30080 \
     --set controller.service.nodePorts.https=30443
 
