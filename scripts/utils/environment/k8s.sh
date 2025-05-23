@@ -303,7 +303,9 @@ exec_bash_in_deploy_env_with_projects() {
     --group-add $(getent group docker | cut -d: -f3) \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
-    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
@@ -326,7 +328,9 @@ exec_script_in_container_with_project_and_port() {
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
     -p ${PORT}:${PORT} \
-    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
@@ -348,7 +352,9 @@ exec_script_in_container_with_project() {
     --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
-    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
