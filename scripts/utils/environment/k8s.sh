@@ -303,7 +303,9 @@ exec_bash_in_deploy_env_with_projects() {
     --group-add $(getent group docker | cut -d: -f3) \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
-    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
@@ -316,6 +318,14 @@ exec_script_in_container_with_project_and_port() {
     DOCKER_IMAGE=$2
     SCRIPT=$3
     PORT=$4
+    ENV_FILE=$5
+    ENV_FILE_OPTION=""
+    export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+
+    if [[ -f "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}" ]]; then
+        envsubst < ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE} > ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp
+        ENV_FILE_OPTION="--env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp"
+    fi
     
     docker run --rm -it \
     --user $UID:$(id -g) \
@@ -323,15 +333,22 @@ exec_script_in_container_with_project_and_port() {
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
+    ${ENV_FILE_OPTION} \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
     -p ${PORT}:${PORT} \
-    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
+    
+    if [[ -f "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp" ]]; then
+        rm -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp
+    fi
 }
 
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
@@ -339,6 +356,14 @@ exec_script_in_container_with_project() {
     PROJECT_NAME=$1
     DOCKER_IMAGE=$2
     SCRIPT=$3
+    ENV_FILE=$4
+    ENV_FILE_OPTION=""
+    export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+
+    if [[ -f "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}" ]]; then
+        envsubst < ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE} > ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp
+        ENV_FILE_OPTION="--env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp"
+    fi
     
     docker run --rm -it \
     --user $UID:$(id -g) \
@@ -346,14 +371,21 @@ exec_script_in_container_with_project() {
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
+    ${ENV_FILE_OPTION} \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
-    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
     -v ${HOME}/.docker:/.docker \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
+
+    if [[ -f "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp" ]]; then
+        rm -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp
+    fi
 }
 
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)

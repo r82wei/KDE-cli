@@ -1,20 +1,18 @@
 # KDE-cli
 
-針對 Kubernetes 本地開發與部署流程優化的命令列工具，支援開發者與 DevOps 團隊快速建構、管理與部署多個專案。它整合 Kind、K3d、CI/CD 腳本、Docker 映像、Volume 掛載、服務對外公開及 K9S Dashboard 支援，協助你無痛打造「接近實際雲端」的本地開發環境。
+針對 Kubernetes 本地開發與部署流程優化的命令列工具，支援開發者與 DevOps 團隊快速建構、管理與部署多個專案。它整合 Kind、K3d、CI/CD pipeline、Ngrok、Cloudflare Tunnel 及 K9S Dashboard 支援，協助你無痛打造「接近實際雲端」的本地開發環境。
 
 ### 🔑 主要功能特色
 
 - ⚙️ `建立與管理 K8s 環境`：透過 Kind / K3d 快速建立本地 Kubernetes 環境，或加入既有叢集，集中管理所有開發用環境。
 
-- 📦 `專案快速部署`：從 Git 倉庫加入專案，並指定 Build-time / Deploy-time 使用的 Docker Image。
+- 📦 `自訂專案開發/部署環境`：從 Git 倉庫加入專案，並指定 Build-time / Deploy-time 使用的 Docker Image。
 
 - 🚀 `一鍵 CI/CD`：透過 build.sh / deploy.sh 定義 CI/CD 流程，搭配 kde project deploy 部署指令快速觸發建置與部署。
 
-- 🔄 `可逆部署流程`：透過 undeploy.sh 定義解除部署流程，搭配 kde project undeploy 指令自動清除部署資源。
+- 🖥️ `支援 Hot Reload`：將本機 Repo 資料夾以 Persistent Volume 掛載至本地 K8s，配合 HMR / nodemon 等機制支援即時開發。
 
-- 🖥️ `原始碼熱更新支援`：將本機 Repo 資料夾以 Persistent Volume 掛載至本地 K8s，配合 HMR / nodemon 等機制支援即時開發。
-
-- 🌐 `多種服務公開方式`：可透過本地 Port 映射、Ngrok 或 Cloudflare Tunnel 對外公開服務。
+- 🌐 `多種服務公開方式`：可透過本地 Port forwarding、Ngrok 及 Cloudflare Tunnel 對外公開服務。
 
 - 📊 `整合 K9s/kubernetesui Dashboard`：內建啟動 Dashboard 功能，方便開發者在終端機/Web UI 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
 
@@ -54,7 +52,7 @@
 - `kde project deploy [project name]` 執行時，如果下列 shell 存在，會依序執行下列 shell
   - `build.sh`: 建置腳本，在透過 DEVELOP_IMAGE 啟動的 container 內執行的 shell script，通常用來 build code 或是安裝關聯套件。
   - `pre-deploy.sh`: 部署前置作業腳本，在透過 DEPLOY_IMAGE 啟動的 container 內執行的 shell script，可用來 build docker image 或是初始化資料庫等作業
-  - `deploy.sh`: 部署腳本，在透過 DEPLOY_IMAGE 啟動的 container 內執行的 shell script，可用 helm、kubectl、docker compose、docker 等指令來部署或啟動服務
+  - `deploy.sh`: 部署腳本，在透過 DEPLOY_IMAGE 啟動的 container 內執行的 shell script，可用 helm、kubectl、docker compose、docker 等指令來部署或啟動服務，或是透過 Ansible 來部署服務
   - `post-deploy.sh`: 部署後置作業腳本，在透過 DEPLOY_IMAGE 啟動的 container 內執行的 shell script，可用來
 
 🔄 解除部署
@@ -71,7 +69,7 @@
 
 ### 服務公開
 
-- `kde expose` 透過本地 port 公開服務
+- `kde expose` 透過本地 port forwarding
 - `kde ngrok <target>` 透過 ngrok 公開服務
 - `kde cloudflare-tunnel <domain> <target>` 透過 Cloudflare Tunnel 公開服務
 
