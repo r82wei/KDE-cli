@@ -8,10 +8,7 @@
     - [x] 需要可以指定自訂的 kind-config.yaml
   - [x] k3d (使用 k3d 啟動 K8S)
     - [x] 需要可以指定自訂的 k3d-config.yaml
-  - [ ] gke (GCP k8s by Terraform)
-  - [ ] aks (Azure k8s by Terraform)
-  - [ ] eks (AWS k8s by Terraform)
-  - [ ] lke (Linode k8s by Terraform)
+  - [ ] terraform
   - [x] k8s (加入現有的 K8S 環境)
 - [x] stop (停止 k8s 環境)
 - [x] restart (重啟 k8s 環境)
