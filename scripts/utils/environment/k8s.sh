@@ -318,22 +318,18 @@ exec_script_in_container_with_project_and_port() {
     DOCKER_IMAGE=$2
     SCRIPT=$3
     PORT=$4
-    ENV_FILE=$5
-    ENV_FILE_OPTION=""
     export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+    PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
+    PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
 
-    if [[ -f "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}" ]]; then
-        envsubst < ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE} > ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp
-        ENV_FILE_OPTION="--env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp"
-    fi
+    envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
     
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
-    --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
-    ${ENV_FILE_OPTION} \
+    --env-file ${PROJECT_ENV_FILE_TMP} \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
     -p ${PORT}:${PORT} \
@@ -346,8 +342,8 @@ exec_script_in_container_with_project_and_port() {
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
     
-    if [[ -f "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp" ]]; then
-        rm -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp
+    if [[ -f "${PROJECT_ENV_FILE_TMP}" ]]; then
+        rm -f ${PROJECT_ENV_FILE_TMP}
     fi
 }
 
@@ -356,21 +352,18 @@ exec_script_in_container_with_project() {
     PROJECT_NAME=$1
     DOCKER_IMAGE=$2
     SCRIPT=$3
-    ENV_FILE=$4
-    ENV_FILE_OPTION=""
     export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+    PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
+    PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
 
-    if [[ -f "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}" ]]; then
-        envsubst < ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE} > ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp
-        ENV_FILE_OPTION="--env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp"
-    fi
+    envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
     
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
-    --env-file ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env \
+    --env-file ${PROJECT_ENV_FILE_TMP} \
     ${ENV_FILE_OPTION} \
     -e KUBECONFIG=/.kube/config \
     -e DOCKER_CONFIG=/.docker \
@@ -383,8 +376,8 @@ exec_script_in_container_with_project() {
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
 
-    if [[ -f "${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp" ]]; then
-        rm -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${ENV_FILE}.tmp
+    if [[ -f "${PROJECT_ENV_FILE_TMP}" ]]; then
+        rm -f ${PROJECT_ENV_FILE_TMP}
     fi
 }
 
