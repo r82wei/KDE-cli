@@ -194,16 +194,16 @@ deploy_project() {
     pull_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/build.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} ./build.sh develop.env
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} ./build.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/pre-deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./pre-deploy.sh deploy.env
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./pre-deploy.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./deploy.sh deploy.env
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./deploy.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/post-deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./post-deploy.sh deploy.env
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./post-deploy.sh
     fi
     echo "專案 ${PROJECT_NAME} 已部署完成"
 }
@@ -241,9 +241,9 @@ exec_project_develop_container() {
     REPO_NAME=$(git_repo_name ${GIT_REPO_URL})
     echo "REPO_NAME: ${REPO_NAME}"
     if [[ -z "${PORT}" ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash" develop.env
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash"
     else
-        exec_script_in_container_with_project_and_port ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash" ${PORT} develop.env
+        exec_script_in_container_with_project_and_port ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash" ${PORT}
     fi
 }
 
@@ -254,9 +254,9 @@ exec_project_deploy_container() {
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     if [[ -z "${PORT}" ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} bash deploy.env
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} bash
     else
-        exec_script_in_container_with_project_and_port ${PROJECT_NAME} ${DEPLOY_IMAGE} bash ${PORT} deploy.env
+        exec_script_in_container_with_project_and_port ${PROJECT_NAME} ${DEPLOY_IMAGE} bash ${PORT}
     fi
 }
 
