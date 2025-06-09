@@ -8,7 +8,7 @@ check_project_name() {
     PROJECT_NAME=$1
 
     if [[ -z "${PROJECT_NAME}" ]]; then
-        select_porject
+        select_project
     fi
 }
 
@@ -260,7 +260,7 @@ exec_project_deploy_container() {
     fi
 }
 
-select_porject() {
+select_project() {
     TARGET_NAMESPACE=$1
 
     projects=($(list_projects))
