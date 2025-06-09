@@ -9,12 +9,12 @@ KDE-cli 是一套針對 **Kubernetes 本地開發** 與 **部署流程優化** �
 - 📦 `自訂專案開發/部署環境`
   - 從 Git 倉庫加入專案，並指定**開發(編譯)**/**部署**環境使用的 Docker Image。
 - 🧑🏻‍💻 `Container 即時開發`
-  - 快速啟動 Devlop Image container 開發環境，支援 hot reload 或其他即時開發需求。
-  - 快速啟動 Deploy Image container 部署測試環境。
+  - 快速啟動 container 開發環境(**DEVELOP_IMAGE**)，並且映射到本地 port，支援 hot reload 或其他即時開發需求。
+  - 快速啟動 container 部署環境(**DEPLOY_IMAGE**)，方便測試 CI/CD 腳本。
 - 🧑🏻‍💻 `K8s Pod 即時開發`
-  - 建立與專案下資料夾同名的 pvc，即可將資料夾掛載至 K8s 的 Pod 內，支援 hot reload 或其他即時開發需求。（僅支援 Kind、K3d 環境）
+  - 建立與專案下資料夾同名的 pvc，即可將程式碼資料夾掛載至 K8s 的 Pod 內，支援 hot reload 或其他即時開發需求。（僅支援 Kind、K3d 環境）
 - 🚀 `簡易且彈性的 CI/CD`
-  - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等腳本，使專案能用 CI/CD 流程快速建置與部署。
+  - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等腳本，並且透過 project.env 設定環境變數，使專案能用 CI/CD 流程快速建置與部署。
 - 🖥️ `除錯與監控`
   - 整合 **k9s** 與 **kubernetesui Dashboard**，方便開發者在終端機/Web UI 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
 - 🌐 `服務公開`
@@ -38,7 +38,7 @@ KDE-cli 是一套針對 **Kubernetes 本地開發** 與 **部署流程優化** �
 
 1. **建立並啟動 K8s 環境**
    ```bash
-   kde start <cluster-name> --kind    # 或 --k3d 或 --k8s
+   kde create <cluster-name> --kind    # 或 --k3d 或 --k8s
    ```
 2. **新增專案（namespace）**
    ```bash

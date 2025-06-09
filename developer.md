@@ -13,7 +13,7 @@ KDE-cli 是一套針對 **Kubernetes 本地開發** 與 **部署** 流程優化�
   - 快速啟動 Devlop Image container 開發環境，支援 hot reload 或其他即時開發需求。
   - 快速啟動 Deploy Image container 部署測試環境。
 - **K8s Pod 即時開發**
-  - 建立與本機資料夾同名的 pv，即可將本機資料夾掛載至 K8s 的 Pod，支援 hot reload 或其他即時開發需求。
+  - 建立與本機資料夾同名的 pv，即可將程式碼資料夾掛載至 K8s 的 Pod，支援 hot reload 或其他即時開發需求。
 - **簡易且彈性的 CI/CD**
   - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等腳本，使專案能用 CI/CD 流程快速建置與部署。
 - **除錯與監控**
@@ -37,7 +37,7 @@ KDE-cli 是一套針對 **Kubernetes 本地開發** 與 **部署** 流程優化�
 
 1. **建立並啟動 K8s 環境**
    ```bash
-   kde start <cluster-name> --kind    # 或 --k3d 或 --k8s
+   kde create <cluster-name> --kind    # 或 --k3d 或 --k8s
    ```
 2. **新增專案（namespace）**
    ```bash
