@@ -13,11 +13,33 @@
 
 ### 載入 Docker Image
 
-- `kde load-image <image> [env_name]`：將本地映像載入指定環境。
+- `kde load-image <image> [env_name]`：將本地映像載入指定 K8s 環境。(Kind、K3d 適用)
+
+### 自訂 Docker Image
+
+- **dockerfiles/** 可自行建置 kde 環境所使用的 docker image
+- **kde.env** 可指定 kde 環境使用的 docker image
+- **environments/\<cluster-name\>/namespaces/\<project-name\>/project.env** 可指定 **開發(編譯)**/**部署** 所使用的 docker image
 
 ## 專案部署
 
-專案可在目錄內撰寫 `build.sh`、`deploy.sh` 等腳本，透過下列指令自動執行建置與部署流程：
+### 腳本測試
+
+- 可以將**編譯**/**部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
+
+- 透過下列指令啟動環境，測試編譯、部署腳本：
+
+  ```bash
+  # 透過 project.env 自訂的 Docker image(DEVELOP_IMAGE) 啟動編譯執行環境
+  kde project exec <project-name> dev [port]
+
+  # 透過 project.env 自訂的 Docker image(DEPLOY_IMAGE) 啟動部署執行環境
+  kde project exec <project-name> dep [port]
+  ```
+
+### 專案部署
+
+專案可在目錄內撰寫 `build.sh`、`pre-deploy.sh`、`deploy.sh`、`post-deploy.sh` 等腳本，透過下列指令自動執行編譯與部署流程：
 
 ```
 kde project deploy <project_name>
@@ -33,8 +55,8 @@ kde project deploy <project_name>
 
 ## 監控工具
 
-- `kde k9s`：開啟終端機版 K9s Dashboard。
-- `kde dashboard`：啟動 Web UI Dashboard，可加上 `--insecure` 跳過登入。
+- `kde k9s [--port]`：開啟終端機版 K9s Dashboard。
+- `kde dashboard [--port] [--insecure]`：啟動 Web UI Dashboard，可加上 `--insecure` 跳過登入。
 
 ## 其他常用指令
 
