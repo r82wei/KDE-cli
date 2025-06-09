@@ -1,26 +1,25 @@
-# KDE-cli
+# KDE-cli 開發者指南
 
-KDE-cli 是一套針對 **Kubernetes 本地開發** 與 **部署流程優化** 的命令列工具，支援開發者與 DevOps 團隊快速建構、管理與部署多個專案。它利用 `Kind` 與 `K3d` 來快速建立多個 K8s 環境，並整合 CI/CD、Dashboard、以及服務對外公開等常用功能，目標是讓開發者輕鬆複製接近「正式環境」的本地開發環境。
+KDE-cli 是一套針對 **Kubernetes 本地開發** 與 **部署** 流程優化的命令列工具。它利用 `Kind` 與 `K3d` 來快速建立多個 K8s 環境，並整合 CI/CD、Dashboard、以及服務對外公開等常用功能，目標是讓開發者輕鬆複製近似「正式」的環境於本機。
 
-## 🔑 主要功能特色
+## 功能總覽
 
-- ⚙️ `建立與管理 K8s 環境`
-  - 透過 Kind / K3d 快速建立本地 Kubernetes 環境，或加入既有叢集，集中管理所有開發用環境。
-- 📦 `自訂專案開發/部署環境`
-  - 從 Git 倉庫加入專案，並指定**開發(編譯)**/**部署**環境使用的 Docker Image。
-- 🧑🏻‍💻 `Container 即時開發`
+- **環境管理**
+  - 建立、啟動、停止、刪除及切換多個 K8s 叢集（可選擇 Kind 或 K3d）。
+  - 連結或新增外部 K8s 叢集，統一管理不同環境。
+- **專案管理**
+  - 在 K8s 叢集下建立專案（對應 namespace），可從 Git 倉庫取得程式碼並自訂 Devlop/Deploy 環境的 Image。
+- **Container 即時開發**
   - 快速啟動 Devlop Image container 開發環境，支援 hot reload 或其他即時開發需求。
   - 快速啟動 Deploy Image container 部署測試環境。
-- 🧑🏻‍💻 `K8s Pod 即時開發`
-  - 建立與專案下資料夾同名的 pvc，即可將資料夾掛載至 K8s 的 Pod 內，支援 hot reload 或其他即時開發需求。（僅支援 Kind、K3d 環境）
-- 🚀 `簡易且彈性的 CI/CD`
+- **K8s Pod 即時開發**
+  - 建立與本機資料夾同名的 pv，即可將本機資料夾掛載至 K8s 的 Pod，支援 hot reload 或其他即時開發需求。
+- **簡易且彈性的 CI/CD**
   - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等腳本，使專案能用 CI/CD 流程快速建置與部署。
-- 🖥️ `除錯與監控`
-  - 整合 **k9s** 與 **kubernetesui Dashboard**，方便開發者在終端機/Web UI 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
-- 🌐 `服務公開`
-  - 可透過本地 Port forwarding、Ngrok 及 Cloudflare Tunnel 對外公開服務。
-- 🛠️ `IaC 化環境管理`
-  - 所有環境設定、部署流程、專案資料皆可版本化管理，透過 Git 儲存與還原。
+- **除錯與監控**
+  - 內建 k9s 與 kubernetesui Dashboard，方便檢視 Pod 狀態、日誌和資源。
+- **服務公開**
+  - 除了本地 port forwarding，亦提供 Ngrok 與 Cloudflare Tunnel，能快速讓外部存取服務。
 
 ## 安裝
 
