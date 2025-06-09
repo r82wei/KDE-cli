@@ -38,7 +38,7 @@ create_k3d_env(){
     # 如果 $1 存在，則使用指定的 k3d 的 config 路徑
     if [[ -n "${CONFIG_PATH}" ]]; then
         if [[ ! -f "${CONFIG_PATH}" ]]; then
-            echo "指定的 kind 的 config 路徑不存在"
+            echo "指定的 k3d 的 config 路徑不存在"
             exit 1
         fi
         cp ${CONFIG_PATH} ${ENV_PATH}/k3d-config.yaml
@@ -108,7 +108,7 @@ k3d_load_image() {
     -e KIND_EXPERIMENTAL_DOCKER_NETWORK=${DOCKER_NETWORK} \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v ${ENV_PATH}/${KUBE_CONFIG_DIR}:/root/.kube \
-    -v ${ENV_PATH}/kind-config.yaml:/config.yaml \
+    -v ${ENV_PATH}/k3d-config.yaml:/config.yaml \
     ${K3D_IMAGE} \
     sh -c "k3d image import ${IMAGE} -c ${ENV_NAME}"
 }
