@@ -19,7 +19,6 @@ fi
 # 根據第一個參數來選擇不同的處理流程
 case "$1" in
     --port|-p)
-        shift  # 移除 "--port" 指令
         expose_k9s $2
         ;;
     --help|-h)
