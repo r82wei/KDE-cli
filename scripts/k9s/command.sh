@@ -7,7 +7,7 @@ show_help() {
     echo "usage: kde k9s [option]"
     echo ""
     echo "example:"
-    echo "  -p, --publish       透過 docker run --expose 將 k9s 指定的 port 或 port 範圍對應到本機"
+    echo "  -p, --port          透過 docker run --expose 將 k9s 指定的 port 或 port 範圍對應到本機"
     echo "  -h, --help          顯示此幫助訊息"
 }
 

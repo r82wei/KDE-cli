@@ -63,11 +63,11 @@ download_projects_git_repo() {
 # 建立資料夾軟連結
 create_projects_link() {
     exit_if_projects_not_exist
-    read -p "請輸入資料夾路徑: " DIR_PATH
+    read -e -p "請輸入資料夾路徑: " DIR_PATH
     if [[ ! -d ${DIR_PATH} ]]; then
         echo "資料夾 ${DIR_PATH} 不存在"
         exit 1
     fi
 
-    ln -s ${VOLUMES_DIR} ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}
+    ln -s ${DIR_PATH} ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}
 }
