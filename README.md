@@ -1,102 +1,136 @@
 # KDE-cli
 
-針對 Kubernetes 本地開發與部署流程優化的命令列工具，支援開發者與 DevOps 團隊快速建構、管理與部署多個專案。它整合 Kind、K3d、CI/CD pipeline、Ngrok、Cloudflare Tunnel 及 K9S Dashboard 支援，協助你無痛打造「接近實際雲端」的本地開發環境。
+KDE-cli 是一套針對 **Kubernetes 本地開發** 與 **部署流程優化** 的命令列工具，支援開發者與 DevOps 團隊快速建構、管理與部署多個專案。它利用 `Kind` 與 `K3d` 來快速建立多個 K8s 環境，並整合 CI/CD、Dashboard、以及服務對外公開等常用功能，目標是讓開發者輕鬆複製接近「正式環境」的本地開發環境。
 
-### 🔑 主要功能特色
+## 🔑 主要功能特色
 
-- ⚙️ `建立與管理 K8s 環境`：透過 Kind / K3d 快速建立本地 Kubernetes 環境，或加入既有叢集，集中管理所有開發用環境。
+- ⚙️ `建立與管理 K8s 環境`
+  - 透過 Kind / K3d 快速建立本地 Kubernetes 環境，或加入既有叢集，集中管理所有開發用環境。
+- 📦 `自訂專案開發/部署環境`
+  - 從 Git 倉庫加入專案，並指定**開發(編譯)**/**部署**環境使用的 Docker Image。
+- 🧑🏻‍💻 `Container 即時開發`
+  - 快速啟動 Devlop Image container 開發環境，支援 hot reload 或其他即時開發需求。
+  - 快速啟動 Deploy Image container 部署測試環境。
+- 🧑🏻‍💻 `K8s Pod 即時開發`
+  - 建立與專案下資料夾同名的 pvc，即可將資料夾掛載至 K8s 的 Pod 內，支援 hot reload 或其他即時開發需求。（僅支援 Kind、K3d 環境）
+- 🚀 `簡易且彈性的 CI/CD`
+  - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等腳本，使專案能用 CI/CD 流程快速建置與部署。
+- 🖥️ `除錯與監控`
+  - 整合 **k9s** 與 **kubernetesui Dashboard**，方便開發者在終端機/Web UI 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
+- 🌐 `服務公開`
+  - 可透過本地 Port forwarding、Ngrok 及 Cloudflare Tunnel 對外公開服務。
+- 🛠️ `IaC 化環境管理`
+  - 所有環境設定、部署流程、專案資料皆可版本化管理，透過 Git 儲存與還原。
 
-- 📦 `自訂專案開發/部署環境`：從 Git 倉庫加入專案，並指定 Build-time / Deploy-time 使用的 Docker Image。
+## 安裝
 
-- 🚀 `一鍵 CI/CD`：透過 build.sh / deploy.sh 定義 CI/CD 流程，搭配 kde project deploy 部署指令快速觸發建置與部署。
+1. **準備 Docker**
+   - 必須先安裝 Docker。
+2. **安裝 KDE-cli**
+   ```bash
+   git clone https://github.com/r82wei/KDE-cli.git
+   cd KDE-cli
+   sudo ./install.sh
+   ```
+   安裝完成後，可在任意目錄透過 `kde` 指令操作。
 
-- 🖥️ `支援 Hot Reload`：將本機 Repo 資料夾以 Persistent Volume 掛載至本地 K8s，配合 HMR / nodemon 等機制支援即時開發。
+## 基本用法
 
-- 🌐 `多種服務公開方式`：可透過本地 Port forwarding、Ngrok 及 Cloudflare Tunnel 對外公開服務。
+1. **建立並啟動 K8s 環境**
+   ```bash
+   kde start <cluster-name> --kind    # 或 --k3d 或 --k8s
+   ```
+2. **新增專案（namespace）**
+   ```bash
+   # 將專案建立在 environment/<cluster-name>/namespaces/<project-name>，並且新增專案相關設定到 project.env
+   kde project create <project-name>
+   ```
+3. **快速啟動開發/部署環境**
 
-- 📊 `整合 K9s/kubernetesui Dashboard`：內建啟動 Dashboard 功能，方便開發者在終端機/Web UI 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
+   - 可以將**開發**/**部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
 
-- ⚡ `安裝簡易、零依賴`：使用 Shell Script 撰寫，不需額外安裝語言執行環境，僅需安裝 Docker 即可運行。
+   ```bash
+   # 透過 project.env 自訂的 Docker image(DEVELOP_IMAGE) 啟動開發執行環境
+   kde project exec <project-name> dev [port]
 
-- 🛠️ `IaC 化環境管理`：所有環境設定、部署流程、專案資料皆可版本化管理，透過 Git 儲存與還原。
+   # 透過 project.env 自訂的 Docker image(DEPLOY_IMAGE) 啟動部署執行環境
+   kde project exec <project-name> dep [port]
+   ```
 
-# 安裝說明
+4. **執行 CI/CD 部署**
 
-- 安裝 Docker
-- Clone 專案並且執行 `install.sh` (需要有系統管理員權限)
+   - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，執行 CI/CD 時會自動注入 container 環境內
+
+   ```bash
+   # 依序觸發 build.sh、pre-deploy.sh、deploy.sh、post-deploy.sh（若檔案存在）
+   # build.sh 將會在 project.env 定義的 DEVELOP_IMAGE container 內執行
+   # pre-deploy.sh、deploy.sh、post-deploy.sh 將會在 project.env 定義的 DEPLOY_IMAGE container 內執行
+   kde project deploy <project-name>
+
+   ```
+
+5. **執行 CI/CD 解除部署**
+
+   - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
+
+   ```bash
+   # 觸發 undeploy.sh（若檔案存在）
+   # undeploy.sh 將會在 project.env 定義的 DEPLOY_IMAGE container 內執行
+   # 如果 undeploy.sh 不存在則執行 kubectl delete ns <project-name>
+   kde project undeploy <project-name>
+   ```
+
+6. **查看或切換當前環境**
+
+   ```bash
+   kde current              # 取得目前使用的 cluster
+   kde use <cluster-name>   # 切換當前使用的 K8s cluster
+   ```
+
+7. **查看全部 K8s 環境狀態**
+   ```bash
+   kde status
+   ```
+
+## 進階功能
+
+- **開啟 Dashboard**
+  ```bash
+  kde k9s [--port]                          # 文字介面，可在 IDE 的終端機使用
+  kde dashboard [--port] [--insecure]       # Web UI，可加上 `--insecure` 跳過登入
   ```
-  git clone https://github.com/r82wei/KDE-cli.git && \
-  cd KDE-cli && \
-  sudo ./install.sh && \
-  cd .. && \
-  rm -rf KDE-cli
+- **公開服務**
+  ```bash
+  kde expose                                # 本地 port forwarding
+  kde ngrok <target>                        # Ngrok
+  kde cloudflare-tunnel <domain> <target>   # Cloudflare Tunnel
   ```
 
-# 使用說明
+## 目錄結構概念
 
-### 啟動環境
+```
+environment/
+  └─ <cluster-name>/
+      └─ namespaces/
+          └─ <project-name>/
+              ├─ build.sh
+              ├─ pre-deploy.sh
+              ├─ deploy.sh
+              ├─ post-deploy.sh
+              ├─ undeploy.sh
+              ├─ [repo]/
+              └─ ...
 
-- `kde start [k8s name]` 啟動 K8S
+current.env  # 當前使用的 K8s 環境
+kde.env      # kde 開發環境使用的 docker image
+kde.sh       # 主腳本，連動 scripts/* 內的子指令 (安裝到 /usr/local/lib)
+scripts/     # 各項指令的實作 (安裝到 /usr/local/lib)
+```
 
-### 新增專案
-
-- `kde project create [project name]` 新增專案
-  - DEVELOP_IMAGE: 開發環境/Build code 使用的 docker image
-  - DEPLOY_IMAGE: CD 部署環境時使用的 docker image
-  - 會在 environment/[k8s name]/namespaces/[project name]/ 底下新增 build.sh、deploy.sh
-
-### CI/CD
-
-🚀 自動部署
-
-- `kde project deploy [project name]` 執行時，如果下列 shell 存在，會依序執行下列 shell
-  - `build.sh`: 建置腳本，在透過 DEVELOP_IMAGE 啟動的 container 內執行的 shell script，通常用來 build code 或是安裝關聯套件。
-  - `pre-deploy.sh`: 部署前置作業腳本，在透過 DEPLOY_IMAGE 啟動的 container 內執行的 shell script，可用來 build docker image 或是初始化資料庫等作業
-  - `deploy.sh`: 部署腳本，在透過 DEPLOY_IMAGE 啟動的 container 內執行的 shell script，可用 helm、kubectl、docker compose、docker 等指令來部署或啟動服務，或是透過 Ansible 來部署服務
-  - `post-deploy.sh`: 部署後置作業腳本，在透過 DEPLOY_IMAGE 啟動的 container 內執行的 shell script，可用來
-
-🔄 解除部署
-
-- `kde project undeploy [project name]` 執行時，會執行 `undeploy.sh`，否則預設刪除與 `[project name]` 同名的 k8s namespace
-  - `undeploy.sh`: 解除部署腳本，在透過 DEPLOY_IMAGE 啟動的 container 內執行的 shell script，可用 helm、kubectl、docker compose、docker 等指令來解除部署或關閉服務
-  - 如果 `undeploy.sh` 不存在：kubectl delete ns [project name]
-
-### Dashboard
-
-- `kde k9s` 啟動 K9S Dashboard
-- `kde dashboard` 啟動 Web UI Dashboard (kubernetesui/dashboard)
-  - 可透過 --insecure 參數略過登入動作，但會關閉 https (不建議用來連接正式環境)
-
-### 服務公開
-
-- `kde expose` 透過本地 port forwarding
-- `kde ngrok <target>` 透過 ngrok 公開服務
-- `kde cloudflare-tunnel <domain> <target>` 透過 Cloudflare Tunnel 公開服務
-
-### 解除部署
-
-- 執行 `kde project undeploy [project name]` 解除部署
-
-### 查看當前使用的環境名稱
-
-- 執行 `kde current` 查看目前使用的 K8S 名稱
-
-### 切換環境
-
-- 執行 `kde use [k8s name]` 切換目前使用的 K8S 環境
-
-### 停止環境
-
-- 執行 `kde stop [k8s name]` 停止 K8S
-
-### 查看所有環境狀態
-
-- 執行 `kde status` 查看所有 K8S 環境狀態
-
-## 相關套件
+## 相關連結
 
 - [k3d](https://k3d.io/stable/)
 - [kind](https://kind.sigs.k8s.io/)
 - [k9s](https://k9scli.io/)
-- [rancher/local-path-provisioner](https://github.com/rancher/local-path-provisioner)
-- [kubernetesui/dashboard](https://github.com/kubernetes/dashboard)
+- [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
+- [Ngrok](https://ngrok.com/)
