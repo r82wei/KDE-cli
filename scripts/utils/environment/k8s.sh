@@ -296,17 +296,22 @@ exec_script_in_deploy_env_without_tty() {
 
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes 的資料夾掛載進去 (使用 TTY 模式執行命令)
 exec_bash_in_deploy_env_with_projects() {
+    HOME_IN_CONTAINER=/home/${USER}
+    
+    touch ${HOME}/.netrc
+    
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
     --group-add $(getent group docker | cut -d: -f3) \
+    -e HOME=${HOME_IN_CONTAINER} \
     -e KUBECONFIG=/.kube/config \
-    -e DOCKER_CONFIG=/.docker \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    -v ${HOME}/.docker:/.docker \
+    -v ${HOME}/.docker:/${HOME_IN_CONTAINER}/.docker \
+    -v ${HOME}/.netrc:/${HOME_IN_CONTAINER}/.netrc \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
     ${KDE_DEPLOY_ENV_IMAGE} \
@@ -321,8 +326,11 @@ exec_script_in_container_with_project_and_port() {
     export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
+    HOME_IN_CONTAINER=/home/${USER}
 
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
+
+    touch ${HOME}/.netrc
     
     docker run --rm -it \
     --user $UID:$(id -g) \
@@ -330,13 +338,14 @@ exec_script_in_container_with_project_and_port() {
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${PROJECT_ENV_FILE_TMP} \
+    -e HOME=${HOME_IN_CONTAINER} \
     -e KUBECONFIG=/.kube/config \
-    -e DOCKER_CONFIG=/.docker \
     -p ${PORT}:${PORT} \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    -v ${HOME}/.docker:/.docker \
+    -v ${HOME}/.docker:/.home/.docker \
+    -v ${HOME}/.netrc:/.home/.netrc \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
@@ -355,8 +364,11 @@ exec_script_in_container_with_project() {
     export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
+    HOME_IN_CONTAINER=/home/${USER}
 
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
+
+    touch ${HOME}/.netrc
     
     docker run --rm -it \
     --user $UID:$(id -g) \
@@ -364,13 +376,13 @@ exec_script_in_container_with_project() {
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${PROJECT_ENV_FILE_TMP} \
-    ${ENV_FILE_OPTION} \
+    -e HOME=${HOME_IN_CONTAINER} \
     -e KUBECONFIG=/.kube/config \
-    -e DOCKER_CONFIG=/.docker \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    -v ${HOME}/.docker:/.docker \
+    -v ${HOME}/.docker:/${HOME_IN_CONTAINER}/.docker \
+    -v ${HOME}/.netrc:/${HOME_IN_CONTAINER}/.netrc \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
