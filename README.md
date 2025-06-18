@@ -19,8 +19,6 @@ KDE-cli 是一套用來建置 **Kubernetes 本地開發環境** 與 **部署流�
   - 整合 **k9s** 與 **kubernetesui Dashboard**，方便開發者在終端機/Web UI 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
 - 🌐 `服務公開`
   - 可透過本地 Port forwarding、Ngrok 及 Cloudflare Tunnel 對外公開服務。
-- 🛠️ `IaC 化環境管理`
-  - 所有環境設定、部署流程、專案資料皆可版本化管理，透過 Git 儲存與還原。
 
 ## 安裝
 
