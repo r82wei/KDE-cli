@@ -45,6 +45,10 @@ if [[ -z ${K8S_UI_DASHBOARD_IMAGE} ]]; then
     export K8S_UI_DASHBOARD_IMAGE=kubernetesui/dashboard:v2.7.0
     echo "K8S_UI_DASHBOARD_IMAGE=${K8S_UI_DASHBOARD_IMAGE}" >> ${KDE_PATH}/kde.env
 fi
+if [[ -z ${K9S_IMAGE} ]]; then
+    export K9S_IMAGE=quay.io/derailed/k9s
+    echo "K9S_IMAGE=${K9S_IMAGE}" >> ${KDE_PATH}/kde.env
+fi
 
 
 # 設定 ngrok 的環境變數
