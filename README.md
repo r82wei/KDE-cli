@@ -1,25 +1,35 @@
-# KDE-cli
+# KDE-cli (Kubernetes Development Environment)
 
-KDE-cli 是一套用來建置 **Kubernetes 本地開發環境** 與 **部署流程優化** 的命令列工具，目標是讓開發者輕鬆複製接近「正式環境」的本地開發環境，讓開發者快速建構、管理與部署多個專案。
+KDE-cli 是一套結合 **Kubernetes 本地開發環境** 與 **CI/CD 部署流程** 的命令列工具，目標是讓開發者可以在本地快速建構、開發與部署多個專案、測試 CI/CD pipeline 以及驗證 yaml 設定。
 
-## 🔑 主要功能特色
+## 🔑 主要功能
 
-- ⚙️ `建立與管理 K8s 環境`
-  - 透過 Kind / K3d 快速建立本地 Kubernetes 環境，或加入既有叢集，集中管理所有開發用環境。
-- 📦 `自訂專案開發/部署環境`
-  - 從 Git 倉庫加入專案，並指定**開發(編譯)**/**部署**環境使用的 Docker Image。
-- 🧑🏻‍💻 `Container 即時開發`
-  - 快速啟動 container 開發環境(**DEVELOP_IMAGE**)，並且映射到本地 port，支援 hot reload 或其他即時開發需求。
-  - 快速啟動 container 部署環境(**DEPLOY_IMAGE**)，方便測試 CI/CD 腳本。
-- 🧑🏻‍💻 `K8s Pod 即時開發`
-  - 可以透過專案的 yaml 部署程式到本地的 Kubernetes 環境，並且在 Pod 內進行開發，模擬實際執行環境。
-  - 建立與專案下資料夾同名的 pvc，即可將程式碼資料夾掛載至 K8s 的 Pod 內，支援 hot reload 或其他即時開發需求。（僅支援 Kind、K3d 環境）
+- ⚙️ `多種 K8s 環境支持`
+  - [kind](https://kind.sigs.k8s.io/): Docker 中的 Kubernetes 集群 (預設)
+  - [k3d](https://k3d.io/stable/): 輕量級 K3s 集群
+  - 外部 K8s: 連接現有的 Kubernetes 集群
+- 📦 `IaC 化的環境設定`
+  - 開發環境設定檔可透過 git 版本化
+  - 團隊同步的標準化開發環境
+- 🧑🏻‍💻 `即時開發`
+  - Git 專案拉取和管理
+  - 快速啟動容器化開發環境 (各專案可自訂開發和部署的 image)
+  - 可以透過 k8s yaml 部署到本地環境，只需建立 PVC，即可掛載本地專案原始碼資料夾到 Pod 內進行開發，模擬實際執行環境（僅支援 Kind、K3d 環境）
 - 🚀 `簡易且彈性的 CI/CD`
-  - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等腳本，並且透過 project.env 設定環境變數，使專案能用 CI/CD 流程快速建置與部署。
-- 🖥️ `除錯與監控`
-  - 整合 **k9s** 與 **kubernetesui Dashboard**，方便開發者在終端機/Web UI 即時監控 Pod 狀態、日誌與資源配置，強化除錯體驗。
-- 🌐 `服務公開`
-  - 可透過本地 Port forwarding、Ngrok 及 Cloudflare Tunnel 對外公開服務。
+  - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等自動化部署腳本，可以透過 project.env 自訂 pipeline 環境變數
+  - 支援所有 CD 工具(可自訂 Deploy 環境 image)
+  - 快速驗證 CI/CD pipeline
+- 📊 `監控和管理工具`
+  - [k9s](https://k9scli.io/): 終端 Kubernetes 管理界面，方便在 IDE 開發除錯
+  - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard): Web UI 管理界面
+- 🌐 `公開服務`
+  - Ngrok 整合: 將本地服務暴露到外網
+  - Cloudflare Tunnel: 通過 Cloudflare 建立安全隧道
+  - Port Forward: 將 K8s 服務/Pod 端口轉發到本地
+- 🐳 `完全容器化`
+  - 所有操作都在 Docker 容器中執行
+  - 隔離的開發環境，支持多個專案同時開發
+  - 只需安裝 Docker 就可以複製一致的開發環境
 
 ## 安裝
 
@@ -68,7 +78,7 @@ KDE-cli 是一套用來建置 **Kubernetes 本地開發環境** 與 **部署流�
 
    ```
 
-5. **執行 CI/CD 解除部署**
+5. **解除部署**
 
    - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
 
@@ -94,30 +104,43 @@ KDE-cli 是一套用來建置 **Kubernetes 本地開發環境** 與 **部署流�
 ## 進階功能
 
 - **開啟 Dashboard**
+
   ```bash
-  kde k9s [--port]                          # 文字介面，可在 IDE 的終端機使用
-  kde dashboard [--port] [--insecure]       # Web UI，可加上 `--insecure` 跳過登入
+  # 文字介面，可在 IDE 的終端機使用
+  kde k9s [--port]
+
+  # Web UI，可加上 `--insecure` 跳過登入
+  kde dashboard [--port] [--insecure]
   ```
+
 - **公開服務**
+
   ```bash
-  kde expose                                # 本地 port forwarding
-  kde ngrok <target>                        # Ngrok
-  kde cloudflare-tunnel <domain> <target>   # Cloudflare Tunnel
+  # 本地 port forwarding
+  kde expose
+
+  # Ngrok
+  kde ngrok <target>
+
+  # Cloudflare Tunnel
+  kde cloudflare-tunnel <domain> <target>
   ```
 
 ## 目錄結構概念
 
 ```
-environment/
-  └─ <cluster-name>/
+environments/
+  └─ <cluster-name>/      # K8S 環境
       └─ namespaces/
-          └─ <project-name>/
-              ├─ build.sh
-              ├─ pre-deploy.sh
-              ├─ deploy.sh
-              ├─ post-deploy.sh
-              ├─ undeploy.sh
-              ├─ [repo]/
+          └─ <project-name>/      # 專案名稱(K8S namespace 名稱)
+              ├─ project.env      # 專案設定檔(包含專案 Repo、開發/部署環境 image 設定，可增加自訂環境變數)
+              ├─ build.sh         # CI 執行腳本，會在 DEVELOP_IMAGE 啟動的容器中執行 (optional)
+              ├─ pre-deploy.sh    # CD 前置腳本，會在 DEPLOY_IMAGE 啟動的容器中執行 (optional)
+              ├─ deploy.sh        # CD 執行腳本，會在 DEPLOY_IMAGE 啟動的容器中執行 (optional)
+              ├─ post-deploy.sh   # CD 後置腳本，會在 DEPLOY_IMAGE 啟動的容器中執行 (optional)
+              ├─ undeploy.sh      # 解除部署指令，會在 DEPLOY_IMAGE 啟動的容器中執行 (optional，如果不存在，預設動作為刪除 K8S 環境內與專案名稱同名的 namespace)
+              ├─ [repo]/          # 專案 git repo
+              ├─ [pvc dir]/       # PVC 掛載的資料夾 (StroageClass: local-path)
               └─ ...
 
 current.env  # 當前使用的 K8s 環境
@@ -131,5 +154,6 @@ scripts/     # 各項指令的實作 (安裝到 /usr/local/lib)
 - [k3d](https://k3d.io/stable/)
 - [kind](https://kind.sigs.k8s.io/)
 - [k9s](https://k9scli.io/)
+- [Kubernetes Dashboard](https://github.com/kubernetes/dashboard)
 - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
 - [Ngrok](https://ngrok.com/)
