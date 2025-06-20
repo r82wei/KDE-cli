@@ -34,7 +34,7 @@ KDE-cli 是一套結合 **Kubernetes 本地開發環境** 與 **CI/CD 部署流�
 ## 安裝
 
 1. **準備 Docker**
-   - 必須先安裝 Docker。
+   - 必須先安裝 [Docker](https://docs.docker.com/engine/install/)。
 2. **安裝 KDE-cli**
    ```bash
    git clone https://github.com/r82wei/KDE-cli.git
@@ -78,7 +78,18 @@ KDE-cli 是一套結合 **Kubernetes 本地開發環境** 與 **CI/CD 部署流�
 
    ```
 
-5. **解除部署**
+5. **開啟 Dashboard 開發/除錯**
+
+   ```bash
+   # 文字介面，可在 IDE 的終端機使用
+   # 如果指定 --port 30000-30020，就可以使用 K9S 的 Port forwarding 功能將 port 30000-30020 對應到本地
+   kde k9s [--port]
+
+   # Web UI，可加上 `--insecure` 跳過登入
+   kde dashboard [--port] [--insecure]
+   ```
+
+6. **解除部署**
 
    - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
 
@@ -89,29 +100,22 @@ KDE-cli 是一套結合 **Kubernetes 本地開發環境** 與 **CI/CD 部署流�
    kde project undeploy <project-name>
    ```
 
-6. **查看或切換當前環境**
+7. **查看或切換當前環境**
 
    ```bash
-   kde current              # 取得目前使用的 cluster
-   kde use <cluster-name>   # 切換當前使用的 K8s cluster
+   # 取得目前使用的 cluster
+   kde current
+
+   # 切換當前使用的 K8s cluster
+   kde use <cluster-name>
    ```
 
-7. **查看全部 K8s 環境狀態**
+8. **查看全部 K8s 環境狀態**
    ```bash
    kde status
    ```
 
 ## 進階功能
-
-- **開啟 Dashboard**
-
-  ```bash
-  # 文字介面，可在 IDE 的終端機使用
-  kde k9s [--port]
-
-  # Web UI，可加上 `--insecure` 跳過登入
-  kde dashboard [--port] [--insecure]
-  ```
 
 - **公開服務**
 
