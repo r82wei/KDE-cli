@@ -132,7 +132,7 @@ case "$1" in
         ;;
     use)
         shift  # 移除 "use" 指令
-        set_default_env $1
+        source ${KDE_SCRIPTS_PATH}/use/command.sh
         ;;
     load-image)
         shift  # 移除 "load-image" 指令
