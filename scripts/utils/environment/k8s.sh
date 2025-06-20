@@ -253,13 +253,24 @@ exec_port_forward() {
     RESOURCE_NAME=$3
     TARGET_PORT=$4
     LOCAL_PORT=$5
+    BACKGROUND=$6
 
-    docker run --rm -it \
-    --net ${DOCKER_NETWORK} \
-    -v ${KUBECONFIG}:/root/.kube/config \
-    -p ${LOCAL_PORT}:${LOCAL_PORT} \
-    ${KDE_DEPLOY_ENV_IMAGE} \
-    bash -c "kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 ${RESOURCE_TYPE}/${RESOURCE_NAME} ${LOCAL_PORT}:${TARGET_PORT}"
+    # 如果 BACKGROUND 為 true，則在背景執行
+    if [[ "${BACKGROUND}" == "true" ]]; then
+        docker run --rm -d \
+        --net ${DOCKER_NETWORK} \
+        -v ${KUBECONFIG}:/root/.kube/config \
+        -p ${LOCAL_PORT}:${LOCAL_PORT} \
+        ${KDE_DEPLOY_ENV_IMAGE} \
+        bash -c "kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 ${RESOURCE_TYPE}/${RESOURCE_NAME} ${LOCAL_PORT}:${TARGET_PORT}"
+    else
+        docker run --rm -it \
+        --net ${DOCKER_NETWORK} \
+        -v ${KUBECONFIG}:/root/.kube/config \
+        -p ${LOCAL_PORT}:${LOCAL_PORT} \
+        ${KDE_DEPLOY_ENV_IMAGE} \
+        bash -c "kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 ${RESOURCE_TYPE}/${RESOURCE_NAME} ${LOCAL_PORT}:${TARGET_PORT}"
+    fi
 }
 
 is_port_valid() {
@@ -670,9 +681,10 @@ select_port() {
                     exit 0
                     ;;
                 "自選 Port")
-                    read -p "請輸入 ${TYPE} port: " LOCAL_PORT
+                    read -p "請選擇要轉發的 Port: " LOCAL_PORT
                     export TARGET_PORT=${LOCAL_PORT}
                     echo "你選擇了 Port: ${TARGET_PORT}"
+                    break
                     ;;
                 "")
                     echo "無效選擇，請重新輸入。"
