@@ -659,19 +659,20 @@ select_port() {
         read -p "請輸入 ${TYPE} port: " LOCAL_PORT
         export TARGET_PORT=${LOCAL_PORT}
         echo "你選擇了 Port: ${TARGET_PORT}"
-    elif [[ ${#ports[@]} == 1 ]]; then
-        # 如果 ports 數量等於 1，則直接使用 Port
-        export TARGET_PORT=${ports[0]}
-        echo "你選擇了 Port: ${TARGET_PORT}"
     else
         # 如果 ports 數量大於 1，則顯示選單
         PS3="請選擇要轉發的 Port（輸入編號）："
-        select port in "${ports[@]}" "退出"
+        select port in "${ports[@]}" "自選 Port" "退出"
         do
             case $port in
                 "退出")
                     echo "退出"
                     exit 0
+                    ;;
+                "自選 Port")
+                    read -p "請輸入 ${TYPE} port: " LOCAL_PORT
+                    export TARGET_PORT=${LOCAL_PORT}
+                    echo "你選擇了 Port: ${TARGET_PORT}"
                     ;;
                 "")
                     echo "無效選擇，請重新輸入。"
