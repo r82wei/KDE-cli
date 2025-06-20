@@ -3,10 +3,11 @@
 # 定義顯示說明的函數
 show_help() {
     echo "usage:"
-    echo "  kde expose [namespace] [pod|service] [target port] [local port]         將 port forward 到本地端"
+    echo "  kde expose [option] [namespace] [pod|service] [target port] [local port]         將 port forward 到本地端"
     echo ""
     echo "option:"
     echo "  -h, --help           顯示說明"
+    echo "  -d                   在背景執行"
 }
 
 if [[ $1 == "--help" || $1 == "-h" ]]; then
@@ -16,6 +17,11 @@ fi
 
 exit_if_env_not_running ${ENV_NAME}
 
+if [[ $1 == "-d" ]]; then
+    BACKGROUND=true
+    shift
+fi
+
 NAMESPACE=$1
 RESOURCE_TYPE=$(echo $2 | tr '[:upper:]' '[:lower:]')
 RESOURCE_NAME=$3
@@ -23,7 +29,7 @@ TARGET_PORT=$4
 LOCAL_PORT=$5
 
 if [[ $(is_namespace_exist ${NAMESPACE}) == "true" && $(is_pod_or_service_exist ${NAMESPACE} ${RESOURCE_TYPE} ${RESOURCE_NAME}) == "true" && $(is_port_valid ${TARGET_PORT}) == "true" && $(is_port_valid ${LOCAL_PORT}) == "true" ]]; then    
-    exec_port_forward ${NAMESPACE} ${RESOURCE_TYPE} ${RESOURCE_NAME} ${TARGET_PORT} ${LOCAL_PORT}
+    exec_port_forward ${NAMESPACE} ${RESOURCE_TYPE} ${RESOURCE_NAME} ${TARGET_PORT} ${LOCAL_PORT} ${BACKGROUND}
 else
     # 取得 Namespace 名稱
     select_namespace
@@ -79,7 +85,7 @@ else
             *)
                 select_port ${TARGET_NAMESPACE} ${RESOURCE_TYPE} ${resource}
                 read -p "請輸入本地 port: " LOCAL_PORT
-                exec_port_forward ${TARGET_NAMESPACE} ${RESOURCE_TYPE} ${resource} ${TARGET_PORT} ${LOCAL_PORT}
+                exec_port_forward ${TARGET_NAMESPACE} ${RESOURCE_TYPE} ${resource} ${TARGET_PORT} ${LOCAL_PORT} ${BACKGROUND}
                 break
                 ;;
         esac

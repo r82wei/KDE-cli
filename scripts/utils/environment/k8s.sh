@@ -253,13 +253,24 @@ exec_port_forward() {
     RESOURCE_NAME=$3
     TARGET_PORT=$4
     LOCAL_PORT=$5
+    BACKGROUND=$6
 
-    docker run --rm -it \
-    --net ${DOCKER_NETWORK} \
-    -v ${KUBECONFIG}:/root/.kube/config \
-    -p ${LOCAL_PORT}:${LOCAL_PORT} \
-    ${KDE_DEPLOY_ENV_IMAGE} \
-    bash -c "kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 ${RESOURCE_TYPE}/${RESOURCE_NAME} ${LOCAL_PORT}:${TARGET_PORT}"
+    # 如果 BACKGROUND 為 true，則在背景執行
+    if [[ "${BACKGROUND}" == "true" ]]; then
+        docker run --rm -d \
+        --net ${DOCKER_NETWORK} \
+        -v ${KUBECONFIG}:/root/.kube/config \
+        -p ${LOCAL_PORT}:${LOCAL_PORT} \
+        ${KDE_DEPLOY_ENV_IMAGE} \
+        bash -c "kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 ${RESOURCE_TYPE}/${RESOURCE_NAME} ${LOCAL_PORT}:${TARGET_PORT}"
+    else
+        docker run --rm -it \
+        --net ${DOCKER_NETWORK} \
+        -v ${KUBECONFIG}:/root/.kube/config \
+        -p ${LOCAL_PORT}:${LOCAL_PORT} \
+        ${KDE_DEPLOY_ENV_IMAGE} \
+        bash -c "kubectl -n ${NAMESPACE} port-forward --address 0.0.0.0 ${RESOURCE_TYPE}/${RESOURCE_NAME} ${LOCAL_PORT}:${TARGET_PORT}"
+    fi
 }
 
 is_port_valid() {
@@ -655,22 +666,25 @@ select_port() {
     fi
 
     if [[ ${#ports[@]} == 0 || (${#ports[@]} == 1 && "${ports[0]}" == "<none>") ]]; then
-        # 如果 ports 數量等於 0 或是顯示 "<none>"，顯示錯誤
-        echo "${TARGET_NAMESPACE}/${TARGET_RESOURCE} ${TYPE} yaml 目前沒有任何 port 存在。"
-        exit 1
-    elif [[ ${#ports[@]} == 1 ]]; then
-        # 如果 ports 數量等於 1，則直接使用 Port
-        export TARGET_PORT=${ports[0]}
+        # 如果 ports 數量等於 0 或是顯示 "<none>"，請使用者輸入 port
+        read -p "請輸入 ${TYPE} port: " LOCAL_PORT
+        export TARGET_PORT=${LOCAL_PORT}
         echo "你選擇了 Port: ${TARGET_PORT}"
     else
         # 如果 ports 數量大於 1，則顯示選單
         PS3="請選擇要轉發的 Port（輸入編號）："
-        select port in "${ports[@]}" "退出"
+        select port in "${ports[@]}" "自選 Port" "退出"
         do
             case $port in
                 "退出")
                     echo "退出"
                     exit 0
+                    ;;
+                "自選 Port")
+                    read -p "請選擇要轉發的 Port: " LOCAL_PORT
+                    export TARGET_PORT=${LOCAL_PORT}
+                    echo "你選擇了 Port: ${TARGET_PORT}"
+                    break
                     ;;
                 "")
                     echo "無效選擇，請重新輸入。"
