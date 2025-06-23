@@ -11,6 +11,10 @@ show_help() {
     echo "  -h, --help          顯示此幫助訊息"
 }
 
+if [[ $ENABLE_K9S == "false" ]]; then
+    exit 0
+fi
+
 if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
     echo "請先建立 k8s 環境"
     exit 1
