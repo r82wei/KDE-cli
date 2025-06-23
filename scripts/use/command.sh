@@ -1,22 +1,27 @@
 #!/bin/bash
 
-PS3="請選擇環境（輸入編號）："
-select resource in $(ls ${ENVIROMENTS_PATH}) "退出"
-do
-    case $resource in
-        "退出")
-            echo "退出"
-            exit 0
-            ;;
-        "")
-            echo "無效選擇，請重新輸入。"
-            ;;
-        *)
-            set_default_env ${resource}
-            break
-            ;;
-    esac
-done
+# 如果 $1 有帶入參數，則設定 CUR_ENV 為 $1
+if [[ -n "$1" ]]; then
+    set_default_env $1
+else
+    PS3="請選擇環境（輸入編號）："
+    select resource in $(ls ${ENVIROMENTS_PATH}) "退出"
+    do
+        case $resource in
+            "退出")
+                echo "退出"
+                exit 0
+                ;;
+            "")
+                echo "無效選擇，請重新輸入。"
+                ;;
+            *)
+                set_default_env ${resource}
+                break
+                ;;
+        esac
+    done
+fi
 
 
 if [[ ! -f ${ENVIROMENTS_PATH}/${CUR_ENV}/.env || ! -f ${ENVIROMENTS_PATH}/${CUR_ENV}/kind-config.yaml ]]; then
