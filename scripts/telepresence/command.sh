@@ -58,10 +58,16 @@ case "${COMMAND}" in
 esac
 
 # 啟動 telepresence container 並且透過 telepresence connect ${NAMESPACE} 連線
+if [[ -z "${TELEPRESENCE_ALSO_PROXY_CIDR}" ]]; then
+    read -p "請輸入要 Proxy 的內網網段(CIDR)，如果沒有請直接按 Enter: " PROXY_CIDR
+    export TELEPRESENCE_ALSO_PROXY_CIDR=${PROXY_CIDR}
+else
+    echo "TELEPRESENCE_ALSO_PROXY_CIDR: ${TELEPRESENCE_ALSO_PROXY_CIDR}"
+fi
 create_telepresence_session_container ${NAMESPACE}
 
 # 將後面啟動的 container 的 docker network 設定為 telepresence container 的網路
-export DOCKER_NETWORK="container:kde-telepresence-session-${NAMESPACE}"
+export DOCKER_NETWORK="container:kde-telepresence-session-${CUR_ENV}-${NAMESPACE}"
 
 
 if [[ -z "${WORKLOAD}" ]]; then
