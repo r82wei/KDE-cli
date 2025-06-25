@@ -194,7 +194,7 @@ replace_workload() {
     LOCAL_PORT=$3
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence replace ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence replace ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 intercept_workload() {
@@ -203,7 +203,7 @@ intercept_workload() {
     LOCAL_PORT=$3
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence intercept ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence intercept ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 wiretap_workload() {
@@ -212,7 +212,7 @@ wiretap_workload() {
     LOCAL_PORT=$3
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence wiretap ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence wiretap ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 ingest_workload() {
@@ -220,5 +220,18 @@ ingest_workload() {
     WORKLOAD=$2
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence ingest ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${WORKLOAD}.env --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence ingest ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
+}
+
+uninstall_telepresence_agents() {
+    NAMESPACE=$1
+
+    # 如果 telepresence session container 不存在，則建立連線
+    if [[ -z "$(docker ps -q -f name=kde-telepresence-session-${NAMESPACE})" ]]; then
+        create_telepresence_session_container ${NAMESPACE}
+    fi
+
+    docker exec -it kde-telepresence-session-${NAMESPACE} telepresence uninstall --all-agents
+
+    stop_telepresence_session_container ${NAMESPACE}
 }

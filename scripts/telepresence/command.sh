@@ -6,15 +6,16 @@ source ${KDE_SCRIPTS_PATH}/utils/telepresence.sh
 # 定義顯示說明的函數
 show_help() {
     echo "usage:"
-    echo "  kde telepresence <command> [namespace] [workload]     透過 Telepresence 建立連線現有的 k8s 環境"
+    echo "  kde telepresence <command> [namespace] [workload]     透過 Telepresence 在本地啟動擁有遠端 Pod 相同網路及環境變數的容器，並且可以攔截遠端 Pod 的流量到本地環境"
     echo ""
     echo "command:"
     echo "  list            列出目前所有 Telepresence 的連線狀態"
+    echo "  replace         啟動本地開發環境，並且攔截遠端 Pod 的流量到本地環境，並且停止遠端 Pod 的運行 (攔截流量、停止遠端 Pod 運行)"
+    echo "  intercept       啟動本地開發環境，並且攔截遠端 Pod 的流量到本地環境，但不干擾遠端 Pod 的運行 (攔截流量、不干擾遠端 Pod 運行)"
+    echo "  wiretap         啟動本地開發環境，並且複製遠端 Pod 的流量到本地環境，但不干擾遠端 Pod 的運行 (不攔截流量、不干擾遠端 Pod 運行，僅傳送流量副本)"
+    echo "  ingest          啟動本地開發環境，但不會攔截流量，也不干擾遠端 Pod 的運行，僅讓本地環境可以連線 k8s 環境內的服務 (不攔截流量、不干擾遠端 Pod 運行)"
+    echo "  uninstall       卸載 Namespace 下所有 Telepresence 的代理程式"
     echo "  clear           停止所有 Telepresence 的連線"
-    echo "  replace         攔截目標 Pod 的流量到本地環境，並且停止 Pod 的運行 (攔截流量、停止 Pod 運行)"
-    echo "  intercept       攔截目標 Pod 的流量到本地環境，但不干擾目標 Pod 的運行 (攔截流量、不干擾 Pod 運行)"
-    echo "  wiretap         複製目標 Pod 的流量到本地環境，但不干擾目標 Pod 的運行 (不攔截流量、不干擾 Pod 運行，僅傳送流量副本)"
-    echo "  ingest          不會攔截流量，也不不干擾目標 Pod 的運行，僅讓本地環境可以連線 k8s 環境內的服務 (不攔截流量、不干擾 Pod 運行)"
     echo ""
     echo ""
     echo "namespace:    k8s 環境的 namespace"
@@ -48,6 +49,10 @@ fi
 case "${COMMAND}" in
     "list")
         list_status ${NAMESPACE}
+        exit 0
+        ;;
+    "uninstall")
+        uninstall_telepresence_agents ${NAMESPACE}
         exit 0
         ;;
 esac
