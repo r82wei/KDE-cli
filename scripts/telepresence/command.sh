@@ -95,6 +95,10 @@ case "${COMMAND}" in
         ;;
 esac
 
+if [[ $? -ne 0 ]]; then
+    exit 1
+fi
+
 # 選擇專案
 select_project ${NAMESPACE}
 
@@ -102,4 +106,6 @@ select_project ${NAMESPACE}
 exec_project_develop_container ${PROJECT_NAME}
 
 # 停止 telepresence session container
-stop_telepresence_session_container ${NAMESPACE}
+if [[ $(is_any_container_use_telepresence_session_network ${NAMESPACE}) == "false" ]]; then
+    stop_telepresence_session_container ${NAMESPACE}
+fi

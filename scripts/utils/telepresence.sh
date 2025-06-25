@@ -1,7 +1,19 @@
 #!/bin/bash
 
+is_any_container_use_telepresence_session_network() {
+    NAMESPACE=$1
+    
+    TELEPRESENCE_DOCKER_NETWORK="container:$(docker ps -q --no-trunc -f name=kde-telepresence-session-${CUR_ENV}-${NAMESPACE})"
+    if [[ -n "$(docker ps -aq | xargs docker inspect --format '{{.Id}} {{.HostConfig.NetworkMode}}' | grep ${TELEPRESENCE_DOCKER_NETWORK})" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 exit_if_not_telepresence_session_container() {
     NAMESPACE=$1
+
     if [[ -z "$(docker ps -q -f name=kde-telepresence-session-${CUR_ENV}-${NAMESPACE})" ]]; then
         echo "NAMESPACE: ${NAMESPACE} 的 telepresence session container 不存在"
         exit 1
@@ -10,6 +22,7 @@ exit_if_not_telepresence_session_container() {
 
 exit_if_not_any_telepresence_session_container() {
     NAMESPACE=$1
+
     if [[ -z "$(docker ps -q -f name=kde-telepresence-session-)" ]]; then
         echo "沒有找到任何 Telepresence 的連線"
         exit 1
@@ -18,6 +31,7 @@ exit_if_not_any_telepresence_session_container() {
 
 select_workload() {
     NAMESPACE=$1
+
     # 透過 telepresence list 列出所有可用的 workload
     workloads=($(docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence list | grep "ready" | awk '{print $2}' | xargs))
     # echo "workloads: ${workloads[@]}"
@@ -109,45 +123,6 @@ stop_telepresence_session_container() {
 stop_all_telepresence_session_containers() {
     exit_if_not_any_telepresence_session_container
     docker ps -q -f name=kde-telepresence-session- | xargs docker stop
-}
-
-
-
-exec_script_in_container_with_project_and_port() {
-    PROJECT_NAME=$1
-    DOCKER_IMAGE=$2
-    SCRIPT=$3
-    PORT=$4
-    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-    PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
-    PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
-    ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
-    HOME_IN_CONTAINER=/home/${USER}
-
-    envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
-
-    touch ${HOME}/.netrc
-    
-    docker run --rm -it \
-    --user $UID:$(id -g) \
-    --net ${DOCKER_NETWORK} \
-    --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
-    --group-add $(getent group docker | cut -d: -f3) \
-    --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env \
-    --env-file ${PROJECT_ENV_FILE_TMP} \
-    -e HOME=${HOME_IN_CONTAINER} \
-    -e KUBECONFIG=/.kube/config \
-    -p ${PORT}:${PORT} \
-    -v /etc/passwd:/etc/passwd:ro \
-    -v /etc/group:/etc/group:ro \
-    -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    -v ${HOME}/.docker:/.home/.docker \
-    -v ${HOME}/.netrc:/.home/.netrc \
-    -v ${KUBECONFIG}:/.kube/config \
-    -v ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE} \
-    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
-    ${DOCKER_IMAGE} \
-    bash -c "${SCRIPT}"
 }
 
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
