@@ -178,6 +178,10 @@ case "$1" in
         shift  # 移除 "cloudflare-tunnel" 指令
         source ${KDE_SCRIPTS_PATH}/cloudflare-tunnel/command.sh
         ;;
+    telepresence)
+        shift  # 移除 "telepresence" 指令
+        source ${KDE_SCRIPTS_PATH}/telepresence/command.sh
+        ;;
     *)
         show_help
         ;;

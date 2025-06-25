@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ${KDE_SCRIPTS_PATH}/utils/k8s.sh
+source ${KDE_SCRIPTS_PATH}/utils/project.sh
 source ${KDE_SCRIPTS_PATH}/utils/telepresence.sh
 
 # 定義顯示說明的函數
@@ -9,6 +9,8 @@ show_help() {
     echo "  kde telepresence <command> [namespace] [workload]     透過 Telepresence 建立連線現有的 k8s 環境"
     echo ""
     echo "command:"
+    echo "  list            列出目前所有 Telepresence 的連線狀態"
+    echo "  clear           停止所有 Telepresence 的連線"
     echo "  replace         攔截目標 Pod 的流量到本地環境，並且停止 Pod 的運行 (攔截流量、停止 Pod 運行)"
     echo "  intercept       攔截目標 Pod 的流量到本地環境，但不干擾目標 Pod 的運行 (攔截流量、不干擾 Pod 運行)"
     echo "  wiretap         複製目標 Pod 的流量到本地環境，但不干擾目標 Pod 的運行 (不攔截流量、不干擾 Pod 運行，僅傳送流量副本)"
@@ -23,16 +25,32 @@ COMMAND=$1
 NAMESPACE=$2
 WORKLOAD=$3
 
-if [[ -z "${COMMAND}" || "${COMMAND}" == "--help" || "${COMMAND}" == "-h" ]]; then
-    show_help
-    exit 1
-fi
+
+case "${COMMAND}" in
+    "clear")
+        stop_all_telepresence_session_containers
+        exit 0
+        ;;
+    "-h"|"--help"|"")
+        show_help
+        exit 1
+        ;;
+esac
+
 
 if [[ -z "${NAMESPACE}" ]]; then
     # select namespace
     select_namespace
     export NAMESPACE=${TARGET_NAMESPACE}
 fi
+
+
+case "${COMMAND}" in
+    "list")
+        list_status ${NAMESPACE}
+        exit 0
+        ;;
+esac
 
 # 啟動 telepresence container 並且透過 telepresence connect ${NAMESPACE} 連線
 create_telepresence_session_container ${NAMESPACE}
@@ -42,24 +60,23 @@ export DOCKER_NETWORK="container:kde-telepresence-session-${NAMESPACE}"
 
 
 if [[ -z "${WORKLOAD}" ]]; then
-    # TODO: 透過 telepresence list 列出所有可用的 Intercepts
-    select_workload
-    export WORKLOAD=${TARGET_SERVICE}
+    select_workload ${NAMESPACE}
 fi
 
-# TODO: 需要輸出 env-file (WORKLOAD.env) 到 /root/.telepresence/env-files 中
+read -p "請輸入本地對應的 Port: " LOCAL_PORT
+
 case "${COMMAND}" in
     "replace")
-        
+        replace_workload ${NAMESPACE} ${WORKLOAD} ${LOCAL_PORT}
         ;;
     "intercept")
-    
+        intercept_workload ${NAMESPACE} ${WORKLOAD} ${LOCAL_PORT}
         ;;
     "wiretap")
-        
+        wiretap_workload ${NAMESPACE} ${WORKLOAD} ${LOCAL_PORT}
         ;;
     "ingest")
-        
+        ingest_workload ${NAMESPACE} ${WORKLOAD}
         ;;
     *)
         show_help
@@ -67,7 +84,11 @@ case "${COMMAND}" in
         ;;
 esac
 
+# 選擇專案
+select_project ${NAMESPACE}
 
 # 進入專案開發容器
-select_project ${NAMESPACE}
 exec_project_develop_container ${PROJECT_NAME}
+
+# 停止 telepresence session container
+stop_telepresence_session_container ${NAMESPACE}
