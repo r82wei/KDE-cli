@@ -64,7 +64,6 @@ list_status() {
 
 create_telepresence_session_container() {
     NAMESPACE=$1
-    DOCKER_NETWORK=kde-telepresence
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
     # Ensure Docker network
@@ -77,7 +76,7 @@ create_telepresence_session_container() {
         echo "telepresence session container 已經存在"
         return
     fi
-
+    
     # 啟動 telepresence container 並且透過 telepresence connect ${NAMESPACE} 連線
     docker run -d --rm \
     --name kde-telepresence-session-${CUR_ENV}-${NAMESPACE} \
@@ -86,28 +85,28 @@ create_telepresence_session_container() {
     --network ${DOCKER_NETWORK} \
     -e TELEPRESENCE_CONNECT_NAMESPACE=${NAMESPACE} \
     -e TELEPRESENCE_ALSO_PROXY_CIDR=${TELEPRESENCE_ALSO_PROXY_CIDR} \
-    -v ~/.kube/concords.ay.telepresence.config:/root/.kube/config:ro \
+    -v ${KUBECONFIG}:/root/.kube/config:ro \
     -v ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE} \
     -v ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE} \
     r82wei/telepresence:1.0.2
 
-    # 使用 docker logs 判斷 telepresence container 是否啟動成功
+    # 使用 docker logs 判斷 telepresence 是否啟動成功
     count=0
-    while ! docker logs kde-telepresence-session-${CUR_ENV}-${NAMESPACE} | grep "Connected to OSS Traffic Agent"; do
-        echo "telepresence container 連線中..."
+    while ! docker logs kde-telepresence-session-${CUR_ENV}-${NAMESPACE} | grep "Connected to context"; do
+        echo "telepresence 連線中..."
         sleep 1
         count=$((count + 1))
         if [[ ${count} -gt 30 ]]; then
-            echo "telepresence container 連線失敗"
+            echo "telepresence 連線失敗"
             stop_telepresence_session_container ${NAMESPACE}
             exit 1
         fi
     done
 
     if [[ -n "$(docker ps -q -f name=kde-telepresence-session-${CUR_ENV}-${NAMESPACE})" ]]; then
-        echo "telepresence container 連線成功"
+        echo "telepresence 連線成功"
     else
-        echo "telepresence container 連線失敗"
+        echo "telepresence 連線失敗"
         exit 1
     fi
 }
@@ -116,7 +115,7 @@ stop_telepresence_session_container() {
     NAMESPACE=$1
     
     if [[ -n "$(docker ps -q -f name=kde-telepresence-session-${CUR_ENV}-${NAMESPACE})" ]]; then
-        docker stop kde-telepresence-session-${CUR_ENV}-${NAMESPACE}
+        echo "stop telepresence session container: $(docker stop kde-telepresence-session-${CUR_ENV}-${NAMESPACE})"
     fi
 }
 
