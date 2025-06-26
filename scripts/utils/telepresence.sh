@@ -90,6 +90,9 @@ create_telepresence_session_container() {
     -v ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE} \
     r82wei/telepresence:1.0.2
 
+    # 提示使用者可以另開視窗執行：docker logs -f kde-telepresence-session-${CUR_ENV}-${NAMESPACE} 來查看詳細的連線資訊
+    echo "telepresence 連線中，如果要看詳細的連線資訊，可以另開終端機視窗執行：docker logs -f kde-telepresence-session-${CUR_ENV}-${NAMESPACE}"
+
     # 使用 docker logs 判斷 telepresence 是否啟動成功
     count=0
     while ! docker logs kde-telepresence-session-${CUR_ENV}-${NAMESPACE} | grep "Connected to context"; do
