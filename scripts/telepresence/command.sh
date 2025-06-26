@@ -74,17 +74,15 @@ if [[ -z "${WORKLOAD}" ]]; then
     select_workload ${NAMESPACE}
 fi
 
-read -p "請輸入本地對應的 Port: " LOCAL_PORT
-
 case "${COMMAND}" in
     "replace")
-        replace_workload ${NAMESPACE} ${WORKLOAD} ${LOCAL_PORT}
+        replace_workload ${NAMESPACE} ${WORKLOAD}
         ;;
     "intercept")
-        intercept_workload ${NAMESPACE} ${WORKLOAD} ${LOCAL_PORT}
+        intercept_workload ${NAMESPACE} ${WORKLOAD}
         ;;
     "wiretap")
-        wiretap_workload ${NAMESPACE} ${WORKLOAD} ${LOCAL_PORT}
+        wiretap_workload ${NAMESPACE} ${WORKLOAD}
         ;;
     "ingest")
         ingest_workload ${NAMESPACE} ${WORKLOAD}
