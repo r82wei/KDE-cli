@@ -1,6 +1,6 @@
 # KDE-cli (Kubernetes Development Environment)
 
-KDE-cli 是一套結合 **Kubernetes 本地開發環境** 與 **CI/CD 部署流程** 的命令列工具，目標是讓開發者可以在本地快速建構、開發與部署多個專案、測試 CI/CD pipeline 以及驗證 yaml 設定。
+KDE-cli 是一套結合 **Kubernetes 開發環境** 與 **CI/CD 部署流程** 的命令列工具，目標是讓開發者可以在本地快速建構、開發與部署多個專案、測試 CI/CD pipeline 以及驗證 yaml 設定。
 
 ## 🔑 主要功能
 
@@ -14,6 +14,7 @@ KDE-cli 是一套結合 **Kubernetes 本地開發環境** 與 **CI/CD 部署流�
 - 🧑🏻‍💻 `即時開發`
   - Git 專案拉取和管理
   - 快速啟動容器化開發環境 (各專案可自訂開發和部署的 image)
+  - 透過 telepresence ，讓開發者可以用本地容器環境取代遠端 K8s 上的服務，加速開發與測試，不需每次變更都需要等待 CI/CD
   - 可以透過 k8s yaml 部署到本地環境，只需建立 PVC，即可掛載本地專案原始碼資料夾到 Pod 內進行開發，模擬實際執行環境（僅支援 Kind、K3d 環境）
 - 🚀 `簡易且彈性的 CI/CD`
   - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等自動化部署腳本，可以透過 project.env 自訂 pipeline 環境變數
@@ -117,6 +118,18 @@ KDE-cli 是一套結合 **Kubernetes 本地開發環境** 與 **CI/CD 部署流�
 
 ## 進階功能
 
+- **將遠端環境流量導流到本地容器環境開發/測試 (Telepresence)**
+
+  ```bash
+  kde telepresence <command>
+  ```
+
+  - command
+    - `replace` 攔截遠端 Pod 的流量到本地環境，並且停止 Pod 的運行 (攔截流量、停止遠端 Pod 運行)"
+    - `intercept` 攔截遠端 Pod 的流量到本地環境，但不干擾遠端 Pod 的運行 (攔截流量、不干擾遠端 Pod 運行)"
+    - `wiretap` 複製遠端 Pod 的流量到本地環境，但不干擾遠端 Pod 的運行 (不攔截流量、不干擾遠端 Pod 運行，僅傳送流量副本)"
+    - `ingest` 不會攔截流量，也不不干擾遠端 Pod 的運行，僅讓本地環境可以連線 k8s 環境內的服務 (不攔截流量、不干擾遠端 Pod 運行)"
+
 - **公開服務**
 
   ```bash
@@ -161,3 +174,4 @@ scripts/     # 各項指令的實作 (安裝到 /usr/local/lib)
 - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard)
 - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
 - [Ngrok](https://ngrok.com/)
+- [Telepresence](https://telepresence.io/docs/quick-start)
