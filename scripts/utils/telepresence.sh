@@ -90,6 +90,10 @@ create_telepresence_session_container() {
     -v ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE} \
     r82wei/telepresence:1.0.2
 
+    # 提示使用者可以另開視窗執行：docker logs -f kde-telepresence-session-${CUR_ENV}-${NAMESPACE} 來查看詳細的連線資訊
+    echo "telepresence 連線中，如果要看詳細的連線資訊，可以另開終端機視窗執行："
+    echo "docker logs -f kde-telepresence-session-${CUR_ENV}-${NAMESPACE}"
+
     # 使用 docker logs 判斷 telepresence 是否啟動成功
     count=0
     while ! docker logs kde-telepresence-session-${CUR_ENV}-${NAMESPACE} | grep "Connected to context"; do
@@ -163,28 +167,34 @@ exec_script_in_container_with_project() {
 replace_workload() {
     NAMESPACE=$1
     WORKLOAD=$2
-    LOCAL_PORT=$3
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence replace ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
+    read -p "請輸入遠端 Pod 使用的 Port: " REMOTE_PORT
+    read -p "請輸入本地對應的 Port: " LOCAL_PORT
+
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence replace ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT}:${REMOTE_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 intercept_workload() {
     NAMESPACE=$1
     WORKLOAD=$2
-    LOCAL_PORT=$3
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence intercept ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
+    read -p "請輸入遠端 Pod 使用的 Port: " REMOTE_PORT
+    read -p "請輸入本地對應的 Port: " LOCAL_PORT
+
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence intercept ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT}:${REMOTE_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 wiretap_workload() {
     NAMESPACE=$1
     WORKLOAD=$2
-    LOCAL_PORT=$3
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence wiretap ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
+    read -p "請輸入遠端 Pod 使用的 Port: " REMOTE_PORT
+    read -p "請輸入本地對應的 Port: " LOCAL_PORT
+
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence wiretap ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT}:${REMOTE_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 ingest_workload() {
