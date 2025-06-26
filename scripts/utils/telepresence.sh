@@ -164,15 +164,29 @@ exec_script_in_container_with_project() {
     bash -c "${SCRIPT}"
 }
 
+select_ports() {
+    FORWARD_PORTS=()
+    IS_MORE_PORTS="y"
+
+    while [[ ${IS_MORE_PORTS} == "y" ]]; do
+        read -p "請輸入遠端 Pod 使用的 Port: " REMOTE_PORT
+        read -p "請輸入本地對應的 Port: " LOCAL_PORT
+        FORWARD_PORTS+=("--port ${LOCAL_PORT}:${REMOTE_PORT} ")
+
+        read -p "是否還有其他 Port 需要轉發? (y/n): " IS_MORE_PORTS
+        # 將 IS_MORE_PORTS 轉小寫
+        IS_MORE_PORTS=$(echo ${IS_MORE_PORTS} | tr '[:upper:]' '[:lower:]')
+    done
+    
+    echo "${FORWARD_PORTS[@]}"
+}
+
 replace_workload() {
     NAMESPACE=$1
     WORKLOAD=$2
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    read -p "請輸入遠端 Pod 使用的 Port: " REMOTE_PORT
-    read -p "請輸入本地對應的 Port: " LOCAL_PORT
-
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence replace ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT}:${REMOTE_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence replace ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 intercept_workload() {
@@ -183,7 +197,7 @@ intercept_workload() {
     read -p "請輸入遠端 Pod 使用的 Port: " REMOTE_PORT
     read -p "請輸入本地對應的 Port: " LOCAL_PORT
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence intercept ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT}:${REMOTE_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence intercept ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 wiretap_workload() {
@@ -194,7 +208,7 @@ wiretap_workload() {
     read -p "請輸入遠端 Pod 使用的 Port: " REMOTE_PORT
     read -p "請輸入本地對應的 Port: " LOCAL_PORT
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence wiretap ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --port ${LOCAL_PORT}:${REMOTE_PORT} --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence wiretap ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}/${WORKLOAD}
 }
 
 ingest_workload() {
