@@ -13,7 +13,7 @@ KDE-cli 是一套結合 **Kubernetes 開發環境** 與 **CI/CD 部署流程** �
   - 團隊同步的標準化開發環境
 - 🧑🏻‍💻 `即時開發`
   - 快速啟動容器化開發環境 (各專案可自訂開發和部署的 image)
-  - 透過 telepresence ，讓開發者可以用本地容器環境取代遠端 K8s 上的服務，加速開發與測試，不需每次變更都需要等待 CI/CD
+  - 透過 [Telepresence](https://telepresence.io/docs/quick-start) 流量攔截與代理，讓開發者可以用本地容器環境取代遠端 K8s 上的服務，加速開發與測試，不需每次變更都需要等待 CI/CD
   - 透過 k8s yaml 部署到本地環境，只需建立 PVC，即可掛載本地專案原始碼資料夾到 Pod 內進行開發，模擬實際執行環境（僅支援 Kind、K3d 環境）
 - 🚀 `簡易且彈性的 CI/CD`
   - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等自動化部署腳本，可以透過 project.env 自訂 pipeline 環境變數
