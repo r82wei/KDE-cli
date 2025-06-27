@@ -89,7 +89,7 @@ create_telepresence_session_container() {
     -e TELEPRESENCE_CONNECT_NAMESPACE=${NAMESPACE} \
     -e TELEPRESENCE_ALSO_PROXY_CIDR=${TELEPRESENCE_ALSO_PROXY_CIDR} \
     -v ${KUBECONFIG}:/root/.kube/config:ro \
-    -v ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE} \
+    -v ${ENVIRONMENT_PATH}/.telepresence/mounts/local/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/local/${NAMESPACE} \
     -v ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE} \
     ${TELEPRESENCE_IMAGE}
 
@@ -161,7 +161,7 @@ exec_script_in_container_with_project() {
     -v ${HOME}/.docker:/${HOME_IN_CONTAINER}/.docker \
     -v ${HOME}/.netrc:/${HOME_IN_CONTAINER}/.netrc \
     -v ${KUBECONFIG}:/.kube/config \
-    -v ${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/${NAMESPACE} \
+    -v ${ENVIRONMENT_PATH}/.telepresence/mounts/local/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/local/${NAMESPACE} \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
@@ -189,7 +189,7 @@ replace_workload() {
     WORKLOAD=$2
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence replace ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/sshfs/mounts/${NAMESPACE}/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence replace ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/remote/${NAMESPACE}/${WORKLOAD}
 }
 
 intercept_workload() {
@@ -197,7 +197,7 @@ intercept_workload() {
     WORKLOAD=$2
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence intercept ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/sshfs/mounts/${NAMESPACE}/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence intercept ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/remote/${NAMESPACE}/${WORKLOAD}
 }
 
 wiretap_workload() {
@@ -205,7 +205,7 @@ wiretap_workload() {
     WORKLOAD=$2
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence wiretap ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/sshfs/mounts/${NAMESPACE}/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence wiretap ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env $(select_ports) --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/remote/${NAMESPACE}/${WORKLOAD}
 }
 
 ingest_workload() {
@@ -213,7 +213,7 @@ ingest_workload() {
     WORKLOAD=$2
     ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
 
-    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence ingest ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --mount ${ENVIRONMENT_PATH}/.telepresence/sshfs/mounts/${NAMESPACE}/${WORKLOAD}
+    docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} telepresence ingest ${WORKLOAD} --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env --mount ${ENVIRONMENT_PATH}/.telepresence/mounts/remote/${NAMESPACE}/${WORKLOAD}
 }
 
 uninstall_telepresence_agents() {
