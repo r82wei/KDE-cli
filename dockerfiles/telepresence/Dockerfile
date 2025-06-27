@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     lsb-release \
     sudo \
     iptables \
-    # FUSE 是 Telepresence 攔截 volume mounts 所需
+    sshfs \
     fuse3 && \
     rm -rf /var/lib/apt/lists/*
 

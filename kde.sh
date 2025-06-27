@@ -49,6 +49,10 @@ if [[ -z ${K9S_IMAGE} ]]; then
     export K9S_IMAGE=quay.io/derailed/k9s
     echo "K9S_IMAGE=${K9S_IMAGE}" >> ${KDE_PATH}/kde.env
 fi
+if [[ -z ${TELEPRESENCE_IMAGE} ]]; then
+    export TELEPRESENCE_IMAGE=r82wei/telepresence:1.0.3
+    echo "TELEPRESENCE_IMAGE=${TELEPRESENCE_IMAGE}" >> ${KDE_PATH}/kde.env
+fi
 
 
 # 設定 ngrok 的環境變數
