@@ -1,0 +1,495 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# KDE 運維工具詳細指南
+
+## 運維工具概覽
+
+KDE 提供多種運維工具，協助管理和監控 K8s 環境：
+
+1. **K9s** - 終端機 K8s 管理工具
+2. **Dashboard** - Web UI 管理介面
+3. **Exec** - 進入容器環境
+4. **Load Image** - 載入 Docker 映像
+
+## K9s 終端機管理工具
+
+### 功能特點
+- 終端機圖形化 K8s 管理
+- 即時資源監控
+- 快速操作和導航
+- 支援多種 K8s 資源
+
+### 基本語法
+```bash
+kde k9s [option]
+```
+
+### 選項說明
+
+#### 1. 基本選項
+```bash
+-p, --port <port>    # 指定 K9s 端口
+-h, --help           # 顯示說明
+```
+
+#### 2. 預設行為
+```bash
+# 不指定選項，直接啟動 K9s
+kde k9s
+```
+
+### 使用方式
+
+#### 1. 基本啟動
+```bash
+# 啟動 K9s（預設端口）
+kde k9s
+```
+
+#### 2. 指定端口啟動
+```bash
+# 在指定端口啟動 K9s
+kde k9s -p 9000
+kde k9s --port 9000
+```
+
+### K9s 操作指南
+
+#### 1. 基本導航
+- `1-9`: 切換不同的資源視圖
+- `Ctrl-C`: 退出 K9s
+- `?`: 顯示幫助
+- `q`: 返回上層
+
+#### 2. 資源管理
+- `d`: 描述資源
+- `l`: 查看日誌
+- `s`: 進入 Shell
+- `e`: 編輯資源
+- `Ctrl-K`: 刪除資源
+
+#### 3. 常用快捷鍵
+- `1`: Pods
+- `2`: Deployments
+- `3`: Services
+- `4`: ConfigMaps
+- `5`: Secrets
+- `6`: Namespaces
+
+### 使用範例
+
+#### 開發環境監控
+```bash
+# 1. 啟動開發環境
+kde start dev-env kind
+
+# 2. 啟動 K9s 監控
+kde k9s
+
+# 3. 在 K9s 中查看資源狀態
+# 使用數字鍵切換不同資源視圖
+```
+
+#### 生產環境管理
+```bash
+# 在指定端口啟動 K9s
+kde k9s -p 9001
+
+# 透過瀏覽器存取 http://localhost:9001
+```
+
+## Dashboard Web UI
+
+### 功能特點
+- Web 圖形化介面
+- 完整的 K8s 管理功能
+- 資源視覺化
+- 支援多種認證方式
+
+### 基本語法
+```bash
+kde dashboard [-p port] [--insecure]
+```
+
+### 選項說明
+
+#### 1. 端口選項
+```bash
+-p, --port <port>    # 指定 Dashboard 端口（預設 8443）
+```
+
+#### 2. 安全選項
+```bash
+--insecure           # 使用 HTTP 而非 HTTPS
+```
+
+### 使用方式
+
+#### 1. 基本啟動
+```bash
+# 使用預設設定啟動 Dashboard
+kde dashboard
+# 預設使用 HTTPS，端口 8443
+```
+
+#### 2. 自訂端口
+```bash
+# 在指定端口啟動
+kde dashboard -p 8080
+kde dashboard --port 8080
+```
+
+#### 3. 不安全模式
+```bash
+# 使用 HTTP 啟動（開發環境）
+kde dashboard --insecure
+kde dashboard -p 8080 --insecure
+```
+
+### Dashboard 功能
+
+#### 1. 資源管理
+- 查看和管理 Pods
+- 管理 Deployments
+- 配置 Services
+- 管理 ConfigMaps 和 Secrets
+
+#### 2. 監控功能
+- 資源使用情況
+- 日誌查看
+- 事件監控
+- 效能指標
+
+#### 3. 操作功能
+- 建立和編輯資源
+- 刪除資源
+- 擴展和縮放
+- 滾動更新
+
+### 使用範例
+
+#### 開發環境管理
+```bash
+# 1. 啟動開發環境
+kde start dev-env kind
+
+# 2. 部署應用
+kde project create myapp
+kde project deploy myapp
+
+# 3. 啟動 Dashboard
+kde dashboard --insecure
+
+# 4. 在瀏覽器中查看和管理資源
+# 存取 http://localhost:8443
+```
+
+#### 生產環境監控
+```bash
+# 使用安全模式啟動
+kde dashboard -p 8443
+
+# 透過 HTTPS 存取
+# 存取 https://localhost:8443
+```
+
+## Exec 容器環境
+
+### 功能特點
+- 進入 K8s 節點容器
+- 直接操作容器環境
+- 除錯和故障排除
+- 環境檢查
+
+### 基本語法
+```bash
+kde exec [env_name]
+```
+
+### 參數說明
+- `env_name`: 環境名稱（可選，預設使用當前環境）
+
+### 使用方式
+
+#### 1. 進入當前環境
+```bash
+# 進入當前環境的節點容器
+kde exec
+```
+
+#### 2. 進入指定環境
+```bash
+# 進入指定環境的節點容器
+kde exec my-dev-env
+```
+
+### 容器環境功能
+
+#### 1. 系統檢查
+```bash
+# 檢查節點狀態
+kubectl get nodes
+
+# 檢查系統資源
+df -h
+free -h
+```
+
+#### 2. 網路檢查
+```bash
+# 檢查網路配置
+ip addr
+ip route
+
+# 檢查 DNS 設定
+cat /etc/resolv.conf
+```
+
+#### 3. 容器管理
+```bash
+# 查看運行中的容器
+docker ps
+
+# 查看容器日誌
+docker logs <container_id>
+```
+
+### 使用範例
+
+#### 環境故障排除
+```bash
+# 1. 進入環境容器
+kde exec dev-env
+
+# 2. 檢查節點狀態
+kubectl get nodes
+kubectl get pods -A
+
+# 3. 檢查系統資源
+df -h
+free -h
+
+# 4. 檢查網路
+ip addr
+```
+
+#### 除錯應用問題
+```bash
+# 1. 進入環境
+kde exec
+
+# 2. 檢查 Pod 狀態
+kubectl get pods -A
+
+# 3. 查看 Pod 日誌
+kubectl logs <pod_name> -n <namespace>
+
+# 4. 檢查事件
+kubectl get events -A
+```
+
+## Load Image 映像載入
+
+### 功能特點
+- 載入 Docker 映像到 K8s 環境
+- 支援 kind 和 k3d 環境
+- 自動處理映像傳輸
+- 簡化映像管理
+
+### 基本語法
+```bash
+kde load-image <image> [env_name]
+```
+
+### 參數說明
+- `image`: Docker 映像名稱（必填）
+- `env_name`: 環境名稱（可選，預設使用當前環境）
+
+### 支援的環境
+
+#### 1. Kind 環境
+```bash
+# 載入映像到 kind 環境
+kde load-image myapp:latest
+kde load-image myapp:latest my-dev-env
+```
+
+#### 2. K3D 環境
+```bash
+# 載入映像到 k3d 環境
+kde load-image myapp:latest
+kde load-image myapp:latest my-test-env
+```
+
+#### 3. 外部 K8s 環境
+```bash
+# 外部 K8s 環境不支援映像載入
+# 需要使用其他方式推送映像
+```
+
+### 使用範例
+
+#### 開發環境映像載入
+```bash
+# 1. 建立開發環境
+kde start dev-env kind
+
+# 2. 建置本地映像
+docker build -t myapp:dev .
+
+# 3. 載入映像到環境
+kde load-image myapp:dev
+
+# 4. 部署應用
+kde project create myapp
+kde project deploy myapp
+```
+
+#### 多環境映像管理
+```bash
+# 載入到開發環境
+kde load-image myapp:dev dev-env
+
+# 載入到測試環境
+kde load-image myapp:test test-env
+
+# 載入到生產環境（需要先推送到 registry）
+# 外部 K8s 環境不支援直接載入
+```
+
+## 工具整合使用
+
+### 完整開發工作流程
+
+#### 1. 環境準備
+```bash
+# 建立開發環境
+kde start dev-env kind
+
+# 載入應用映像
+kde load-image myapp:dev
+```
+
+#### 2. 應用部署
+```bash
+# 建立專案
+kde project create myapp
+
+# 部署應用
+kde project deploy myapp
+```
+
+#### 3. 監控和管理
+```bash
+# 使用 K9s 監控
+kde k9s
+
+# 或使用 Dashboard
+kde dashboard --insecure
+```
+
+#### 4. 故障排除
+```bash
+# 進入容器環境除錯
+kde exec
+
+# 查看資源狀態
+kubectl get pods -A
+kubectl get events -A
+```
+
+### 生產環境管理
+
+#### 1. 環境監控
+```bash
+# 啟動 Dashboard
+kde dashboard
+
+# 或使用 K9s
+kde k9s -p 9000
+```
+
+#### 2. 資源管理
+```bash
+# 進入環境進行管理
+kde exec prod-env
+
+# 檢查系統狀態
+kubectl top nodes
+kubectl top pods -A
+```
+
+## 最佳實踐
+
+### 1. 工具選擇
+- **開發階段**: 使用 K9s 進行快速操作
+- **管理階段**: 使用 Dashboard 進行詳細管理
+- **除錯階段**: 使用 Exec 進入容器環境
+
+### 2. 效能優化
+- 定期清理不需要的映像
+- 監控資源使用情況
+- 適當配置資源限制
+
+### 3. 安全性考量
+- 生產環境使用 HTTPS
+- 限制 Dashboard 存取
+- 定期更新工具版本
+
+### 4. 故障處理
+- 建立監控和警報
+- 記錄操作日誌
+- 準備故障恢復方案
+
+## 故障排除
+
+### K9s 問題
+
+1. **啟動失敗**
+   - 檢查 K8s 環境是否正常
+   - 檢查端口是否被佔用
+   - 檢查網路連線
+
+2. **連線問題**
+   - 檢查 kubeconfig 是否正確
+   - 檢查權限設定
+   - 重新啟動 K9s
+
+### Dashboard 問題
+
+1. **無法存取**
+   - 檢查端口是否正確
+   - 檢查防火牆設定
+   - 檢查 SSL 憑證
+
+2. **認證問題**
+   - 檢查 RBAC 設定
+   - 檢查 Service Account
+   - 檢查 Token 配置
+
+### Exec 問題
+
+1. **無法進入容器**
+   - 檢查環境是否運行
+   - 檢查容器狀態
+   - 檢查權限設定
+
+2. **網路問題**
+   - 檢查容器網路配置
+   - 檢查 DNS 設定
+   - 檢查路由表
+
+### Load Image 問題
+
+1. **載入失敗**
+   - 檢查映像是否存在
+   - 檢查環境類型
+   - 檢查磁碟空間
+
+2. **映像找不到**
+   - 檢查映像名稱
+   - 檢查映像標籤
+   - 檢查 Docker 狀態

@@ -1,0 +1,410 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# KDE 雲端代理工具詳細指南
+
+## 雲端代理工具概覽
+
+KDE 提供多種雲端代理工具，用於不同的連線需求：
+
+1. **Cloudflare Tunnel** - 安全的外部連線
+2. **Ngrok** - 快速的外部連線
+3. **Telepresence** - 本地開發環境與 K8s 整合
+4. **Port Forward** - 本地端口轉發
+
+## Cloudflare Tunnel
+
+### 功能特點
+- 安全的外部連線
+- 自動 SSL 憑證管理
+- 支援自訂域名
+- 無需公開端口
+
+### 基本語法
+```bash
+kde cloudflare-tunnel <domain> <target>
+```
+
+### 目標類型
+
+#### 1. Ingress 連線
+```bash
+# 連接到環境的 Ingress
+kde cloudflare-tunnel myapp.example.com ingress
+```
+
+#### 2. Service 連線
+```bash
+# 連接到特定 Service
+kde cloudflare-tunnel myapp.example.com service
+# 系統會提示選擇 namespace 和 service
+```
+
+#### 3. Pod 連線
+```bash
+# 連接到特定 Pod
+kde cloudflare-tunnel myapp.example.com pod
+# 系統會提示選擇 namespace 和 pod
+```
+
+#### 4. 自訂 URL 連線
+```bash
+# 連接到自訂 URL
+kde cloudflare-tunnel myapp.example.com http://localhost:8080
+```
+
+### 配置要求
+
+#### 1. Cloudflare 帳號設定
+```bash
+# 首次使用需要登入 Cloudflare
+# 系統會自動處理登入流程
+```
+
+#### 2. 域名設定
+- 域名必須在 Cloudflare 管理下
+- 需要設定 DNS 記錄
+- 支援通配符域名
+
+### 使用範例
+
+#### 開發環境外部存取
+```bash
+# 1. 建立開發環境
+kde start dev-env kind
+
+# 2. 部署應用
+kde project create myapp
+kde project deploy myapp
+
+# 3. 建立 Cloudflare Tunnel
+kde cloudflare-tunnel dev.myapp.com service
+# 選擇 myapp namespace 和對應的 service
+```
+
+#### 生產環境安全連線
+```bash
+# 連接到生產環境的 Ingress
+kde cloudflare-tunnel prod.myapp.com ingress
+```
+
+## Ngrok
+
+### 功能特點
+- 快速的外部連線
+- 即時 URL 生成
+- 支援多種協議
+- 簡單易用
+
+### 基本語法
+```bash
+kde ngrok <target>
+```
+
+### 目標類型
+
+#### 1. Ingress 連線
+```bash
+# 連接到環境的 Ingress
+kde ngrok ingress
+```
+
+#### 2. Service 連線
+```bash
+# 連接到特定 Service
+kde ngrok service
+# 系統會提示選擇 namespace 和 service
+```
+
+#### 3. Pod 連線
+```bash
+# 連接到特定 Pod
+kde ngrok pod
+# 系統會提示選擇 namespace 和 pod
+```
+
+#### 4. 自訂 URL 連線
+```bash
+# 連接到自訂 URL
+kde ngrok http://localhost:3000
+```
+
+### 配置要求
+
+#### 1. Ngrok Token
+```bash
+# 需要在 ngrok.env 中設定 NGROK_TOKEN
+NGROK_TOKEN=your_ngrok_token_here
+```
+
+#### 2. 首次使用
+```bash
+# 首次使用會提示輸入 NGROK_TOKEN
+# 系統會自動儲存到 ngrok.env
+```
+
+### 使用範例
+
+#### 快速測試連線
+```bash
+# 快速測試本地服務
+kde ngrok http://localhost:8080
+```
+
+#### 開發環境外部存取
+```bash
+# 連接到開發環境的 Service
+kde ngrok service
+# 選擇對應的 namespace 和 service
+```
+
+## Telepresence
+
+### 功能特點
+- 本地開發環境與 K8s 整合
+- 流量攔截和代理
+- 環境變數同步
+- 支援多種工作模式
+
+### 基本語法
+```bash
+kde telepresence <command> [namespace] [workload]
+```
+
+### 命令類型
+
+#### 1. 列出連線狀態
+```bash
+# 查看所有 Telepresence 連線
+kde telepresence list [namespace]
+```
+
+#### 2. 取代模式 (Replace)
+```bash
+# 取代遠端 Pod，停止遠端 Pod 運行
+kde telepresence replace [namespace] [workload]
+```
+
+#### 3. 攔截模式 (Intercept)
+```bash
+# 攔截流量但不停止遠端 Pod
+kde telepresence intercept [namespace] [workload]
+```
+
+#### 4. 監聽模式 (Wiretap)
+```bash
+# 複製流量但不干擾遠端 Pod
+kde telepresence wiretap [namespace] [workload]
+```
+
+#### 5. 注入模式 (Ingest)
+```bash
+# 僅連線到 K8s 環境，不攔截流量
+kde telepresence ingest [namespace] [workload]
+```
+
+#### 6. 清理操作
+```bash
+# 停止所有 Telepresence 連線
+kde telepresence clear
+
+# 卸載代理程式
+kde telepresence uninstall [namespace]
+```
+
+### 工作流程
+
+#### 1. 建立連線
+```bash
+# 選擇 namespace（如果未指定）
+# 系統會顯示可用的 namespace 列表
+
+# 設定代理網段（如果需要）
+# 系統會詢問要代理的內網網段
+
+# 選擇 workload
+# 系統會顯示可用的 workload 列表
+```
+
+#### 2. 選擇專案
+```bash
+# 系統會顯示可用的專案列表
+# 選擇要開發的專案
+```
+
+#### 3. 進入開發環境
+```bash
+# 自動進入專案的開發容器
+# 容器會連接到 Telepresence 網路
+```
+
+### 使用範例
+
+#### 本地開發與遠端整合
+```bash
+# 1. 啟動 Telepresence 連線
+kde telepresence intercept myapp myapp-deployment
+
+# 2. 選擇專案
+# 系統會顯示專案列表
+
+# 3. 進入開發環境
+# 自動進入開發容器，可以訪問 K8s 服務
+```
+
+#### 流量攔截測試
+```bash
+# 攔截特定 Pod 的流量到本地
+kde telepresence replace myapp myapp-deployment
+```
+
+## Port Forward
+
+### 功能特點
+- 本地端口轉發
+- 支援 Service 和 Pod
+- 互動式選擇
+- 背景執行支援
+
+### 基本語法
+```bash
+kde expose [option] [namespace] [pod|service] [target_port] [local_port]
+```
+
+### 選項說明
+
+#### 1. 基本選項
+```bash
+-h, --help    # 顯示說明
+-d            # 在背景執行
+```
+
+#### 2. 參數說明
+- `namespace`: 命名空間
+- `pod|service`: 資源類型
+- `target_port`: 目標端口
+- `local_port`: 本地端口
+
+### 使用方式
+
+#### 1. 直接指定參數
+```bash
+# 轉發 Service
+kde expose myapp service myapp-service 8080 3000
+
+# 轉發 Pod
+kde expose myapp pod myapp-pod 8080 3000
+```
+
+#### 2. 互動式選擇
+```bash
+# 不指定參數，系統會互動式引導
+kde expose
+
+# 1. 選擇 namespace
+# 2. 選擇資源類型 (Service/Pod)
+# 3. 選擇具體資源
+# 4. 選擇目標端口
+# 5. 輸入本地端口
+```
+
+### 使用範例
+
+#### 本地開發存取
+```bash
+# 轉發開發環境的 Service
+kde expose dev-app service dev-app-service 8080 3000
+
+# 在本地瀏覽器存取 http://localhost:3000
+```
+
+#### 背景執行
+```bash
+# 在背景執行 port forward
+kde expose -d myapp service myapp-service 8080 3000
+```
+
+## 工具比較與選擇
+
+### 選擇指南
+
+| 工具 | 適用場景 | 優點 | 缺點 |
+|------|----------|------|------|
+| Cloudflare Tunnel | 生產環境、安全要求高 | 安全、SSL、自訂域名 | 需要 Cloudflare 帳號 |
+| Ngrok | 快速測試、開發 | 簡單、快速 | 免費版限制多 |
+| Telepresence | 本地開發、K8s 整合 | 完整整合、環境同步 | 學習曲線較陡 |
+| Port Forward | 本地存取、簡單需求 | 簡單、直接 | 僅限本地存取 |
+
+### 使用建議
+
+1. **開發階段**: 使用 Port Forward 或 Ngrok
+2. **測試階段**: 使用 Telepresence 進行整合測試
+3. **生產階段**: 使用 Cloudflare Tunnel 確保安全
+
+## 故障排除
+
+### Cloudflare Tunnel 問題
+
+1. **登入失敗**
+   - 檢查 Cloudflare 帳號
+   - 檢查網路連線
+   - 重新執行登入流程
+
+2. **域名設定失敗**
+   - 檢查域名是否在 Cloudflare 管理下
+   - 檢查 DNS 設定
+   - 等待 DNS 傳播
+
+### Ngrok 問題
+
+1. **Token 無效**
+   - 檢查 NGROK_TOKEN 是否正確
+   - 重新設定 Token
+
+2. **連線失敗**
+   - 檢查目標服務是否運行
+   - 檢查端口是否正確
+   - 檢查網路連線
+
+### Telepresence 問題
+
+1. **連線失敗**
+   - 檢查 K8s 環境是否正常
+   - 檢查 Telepresence 代理是否安裝
+   - 檢查網路設定
+
+2. **流量攔截失敗**
+   - 檢查 workload 是否存在
+   - 檢查權限設定
+   - 查看 Telepresence 日誌
+
+### Port Forward 問題
+
+1. **端口被佔用**
+   - 檢查本地端口是否可用
+   - 使用不同的本地端口
+   - 停止佔用端口的程序
+
+2. **連線失敗**
+   - 檢查目標資源是否存在
+   - 檢查端口是否正確
+   - 檢查 K8s 環境狀態
+
+## 最佳實踐
+
+### 1. 安全性考量
+- 生產環境使用 Cloudflare Tunnel
+- 定期更新 Token 和憑證
+- 限制存取權限
+
+### 2. 效能優化
+- 選擇合適的代理工具
+- 避免不必要的流量轉發
+- 監控資源使用情況
+
+### 3. 故障處理
+- 建立備用連線方案
+- 記錄連線配置
+- 定期測試連線狀態

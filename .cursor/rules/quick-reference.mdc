@@ -1,0 +1,328 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# KDE CLI 快速參考指南
+
+## 核心指令速查
+
+### 環境管理
+```bash
+# 列出所有環境
+kde list | kde ls
+
+# 建立/啟動環境
+kde start <env_name> [kind|k3d|k8s]
+
+# 停止環境
+kde stop [env_name]
+
+# 重啟環境
+kde restart [env_name]
+
+# 切換環境
+kde use [env_name]
+
+# 查看狀態
+kde status
+
+# 移除環境
+kde remove <env_name> | kde rm <env_name>
+
+# 重置環境
+kde reset [env_name]
+```
+
+### 專案管理
+```bash
+# 列出專案
+kde project list | kde proj ls
+
+# 建立專案
+kde project create <project_name> | kde proj create <project_name>
+
+# 從 Git 抓取專案
+kde project fetch <project_name> <git_url> <branch>
+
+# 重新抓取專案
+kde project pull <project_name>
+
+# 部署專案
+kde project deploy <project_name> | kde proj deploy <project_name>
+
+# 卸載專案
+kde project undeploy <project_name> | kde proj undeploy <project_name>
+
+# 重新部署專案
+kde project redeploy <project_name> | kde proj redeploy <project_name>
+
+# 進入專案容器
+kde project exec <project_name> [develop|deploy] [port]
+
+# 查看專案日誌
+kde project tail <project_name> [pod_name] [line_count]
+
+# 建立 Ingress
+kde project ingress <project_name>
+
+# 移除專案
+kde project remove <project_name> | kde proj rm <project_name>
+```
+
+### 專案集合管理
+```bash
+# 從 Git 抓取專案集合
+kde projects fetch <git_url> <branch>
+
+# 重新抓取專案集合
+kde projects pull
+
+# 連結專案集合
+kde projects link
+
+# 進入專案集合環境
+kde projects exec
+```
+
+### 運維工具
+```bash
+# 啟動 K9s
+kde k9s [-p port]
+
+# 啟動 Dashboard
+kde dashboard [-p port] [--insecure]
+
+# 進入容器環境
+kde exec [env_name]
+
+# 載入映像
+kde load-image <image> [env_name]
+
+# Port Forward
+kde expose [option] [namespace] [pod|service] [target_port] [local_port]
+```
+
+### 雲端代理
+```bash
+# Ngrok 連線
+kde ngrok <target>
+# target: ingress, service, pod, [url]
+
+# Cloudflare Tunnel
+kde cloudflare-tunnel <domain> <target>
+# target: ingress, service, pod, [url]
+
+# Telepresence
+kde telepresence <command> [namespace] [workload]
+# command: list, replace, intercept, wiretap, ingest, clear, uninstall
+```
+
+## 常用工作流程
+
+### 開發環境建立
+```bash
+# 1. 建立開發環境
+kde start dev-env kind
+
+# 2. 載入應用映像
+kde load-image myapp:dev
+
+# 3. 建立專案
+kde project create myapp
+
+# 4. 部署專案
+kde project deploy myapp
+
+# 5. 啟動監控
+kde k9s
+```
+
+### 專案開發
+```bash
+# 1. 進入開發容器
+kde project exec myapp develop
+
+# 2. 在容器中開發
+# ... 開發工作 ...
+
+# 3. 重新部署
+kde project redeploy myapp
+
+# 4. 查看日誌
+kde project tail myapp
+```
+
+### 外部存取設定
+```bash
+# 1. 建立 Ingress
+kde project ingress myapp
+
+# 2. 使用 Ngrok 快速測試
+kde ngrok service
+
+# 3. 或使用 Cloudflare Tunnel
+kde cloudflare-tunnel myapp.example.com service
+```
+
+### 本地開發與 K8s 整合
+```bash
+# 1. 啟動 Telepresence
+kde telepresence intercept myapp myapp-deployment
+
+# 2. 選擇專案並進入開發環境
+# 系統會自動進入開發容器
+
+# 3. 在本地開發，流量會導向 K8s 服務
+```
+
+## 環境變數參考
+
+### 主要環境變數
+```bash
+KDE_PATH=/opt/kde                    # KDE 根目錄
+KDE_SCRIPTS_PATH=/opt/kde/scripts    # 腳本目錄
+ENVIROMENTS_PATH=/opt/kde/environments # 環境目錄
+CUR_ENV=dev-env                      # 當前環境
+KUBECONFIG=/path/to/kubeconfig       # K8s 配置檔案
+```
+
+### 環境配置變數
+```bash
+ENV_NAME=dev-env                     # 環境名稱
+ENV_TYPE=kind                        # 環境類型 (kind/k3d/k8s)
+K8S_CONTAINER_NAME=dev-control-plane # K8s 容器名稱
+DOCKER_NETWORK=kde-dev-env           # Docker 網路名稱
+STORAGE_CLASS=local-path             # 儲存類別
+```
+
+## 配置檔案位置
+
+### 全域配置
+```
+/opt/kde/
+├── kde.env              # 主要環境變數
+├── current.env          # 當前環境
+├── ngrok.env            # Ngrok 配置
+└── environments/        # 環境目錄
+```
+
+### 環境配置
+```
+environments/<env_name>/
+├── k8s.env              # 環境基本配置
+├── .env                 # 環境本地配置
+├── kubeconfig/          # K8s 配置
+├── kind-config.yaml     # Kind 配置
+├── k3d-config.yaml      # K3D 配置
+└── namespaces/          # 專案目錄
+```
+
+### 專案配置
+```
+environments/<env_name>/namespaces/<project_name>/
+├── project.env          # 專案配置
+├── build.sh             # 建置腳本
+├── deploy.sh            # 部署腳本
+├── pre-deploy.sh        # 部署前腳本
+├── post-deploy.sh       # 部署後腳本
+├── undeploy.sh          # 卸載腳本
+└── <repo_name>/         # Git 倉庫內容
+```
+
+## 常用選項
+
+### 通用選項
+```bash
+-h, --help              # 顯示說明
+-v, --version           # 顯示版本
+-f, --force             # 強制執行
+-d                      # 背景執行
+```
+
+### 端口選項
+```bash
+-p, --port <port>       # 指定端口
+--insecure              # 使用 HTTP 而非 HTTPS
+```
+
+## 故障排除指令
+
+### 環境檢查
+```bash
+# 檢查環境狀態
+kde status
+
+# 檢查 K8s 連線
+kubectl get nodes
+
+# 檢查環境配置
+cat environments/<env_name>/k8s.env
+```
+
+### 除錯指令
+```bash
+# 查看 Pod 狀態
+kubectl get pods -A
+
+# 查看 Pod 日誌
+kubectl logs <pod_name> -n <namespace>
+
+# 查看事件
+kubectl get events -A
+
+# 進入 Pod 除錯
+kubectl exec -it <pod_name> -n <namespace> -- /bin/bash
+```
+
+### 網路檢查
+```bash
+# 檢查服務狀態
+kubectl get svc -A
+
+# 檢查 Ingress
+kubectl get ingress -A
+
+# 檢查網路策略
+kubectl get networkpolicy -A
+```
+
+## 最佳實踐
+
+### 命名慣例
+- 環境名稱: `dev-env`, `test-env`, `prod-env`
+- 專案名稱: 使用小寫字母和連字號
+- 映像標籤: `dev`, `test`, `prod`
+
+### 工作流程
+1. 開發環境使用 `kind` 或 `k3d`
+2. 測試環境使用 `k3d`
+3. 生產環境使用外部 K8s
+4. 使用 Telepresence 進行本地開發
+5. 使用 Cloudflare Tunnel 進行安全外部存取
+
+### 安全考量
+- 生產環境使用 HTTPS
+- 定期更新 Token 和憑證
+- 限制 Dashboard 存取
+- 使用適當的 RBAC 設定
+
+## 常用快捷鍵
+
+### K9s 快捷鍵
+- `1-9`: 切換資源視圖
+- `d`: 描述資源
+- `l`: 查看日誌
+- `s`: 進入 Shell
+- `e`: 編輯資源
+- `Ctrl-K`: 刪除資源
+- `q`: 返回上層
+- `Ctrl-C`: 退出
+
+### 常用資源視圖
+- `1`: Pods
+- `2`: Deployments
+- `3`: Services
+- `4`: ConfigMaps
+- `5`: Secrets
+- `6`: Namespaces
