@@ -194,22 +194,22 @@ deploy_project() {
     pull_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/pre-build.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} ./pre-build.sh
+        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./pre-build.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/build.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} ./build.sh
+        exec_script_in_container_with_project ${PROJECT_NAME} ${BUILD_IMAGE:-${DEVELOP_IMAGE}} ./build.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/post-build.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} ./post-build.sh
+        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./post-build.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/pre-deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./pre-deploy.sh
+        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./pre-deploy.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./deploy.sh
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE:-${DEVELOP_IMAGE}} ./deploy.sh
     fi
     if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/post-deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./post-deploy.sh
+        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./post-deploy.sh
     fi
     echo "專案 ${PROJECT_NAME} 已部署完成"
 }
