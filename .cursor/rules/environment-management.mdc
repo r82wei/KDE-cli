@@ -1,0 +1,226 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# KDE 環境管理詳細指南
+
+## 環境類型
+
+### 1. Kind 環境
+- **用途**: 本地開發和測試
+- **特點**: 輕量級、快速啟動、適合開發
+- **配置**: 使用 Docker 容器模擬 K8s 節點
+- **指令**: `kde start <env_name> kind` 或 `kde start <env_name> --kind`
+
+### 2. K3D 環境
+- **用途**: 本地開發和測試
+- **特點**: 基於 K3s、輕量級、快速啟動
+- **配置**: 使用 Docker 容器運行 K3s
+- **指令**: `kde start <env_name> k3d` 或 `kde start <env_name> --k3d`
+
+### 3. 外部 K8s 環境
+- **用途**: 連接到現有的 K8s 集群
+- **特點**: 連接到外部 K8s 環境
+- **配置**: 需要提供 kubeconfig 檔案
+- **指令**: `kde start <env_name> k8s` 或 `kde start <env_name> --k8s`
+
+## 環境管理指令詳解
+
+### 建立與啟動環境
+
+```bash
+# 基本語法
+kde start <env_name> [kind|k3d|k8s] [config_path]
+
+# 範例
+kde start my-dev kind                    # 建立 kind 環境
+kde start my-test k3d                    # 建立 k3d 環境
+kde start my-prod k8s                    # 連接到外部 K8s
+kde start my-custom kind ./custom-config.yaml  # 使用自訂配置
+```
+
+**參數說明**:
+- `env_name`: 環境名稱（必填）
+- `kind|k3d|k8s`: 環境類型（可選，預設為 kind）
+- `config_path`: 自訂配置檔案路徑（可選）
+
+### 環境狀態管理
+
+```bash
+# 查看所有環境
+kde list
+kde ls
+
+# 查看環境狀態
+kde status
+
+# 切換環境
+kde use <env_name>
+kde use                    # 互動式選擇環境
+
+# 查看當前環境
+kde current
+kde cur
+```
+
+### 環境生命週期管理
+
+```bash
+# 停止環境
+kde stop [env_name] [-f|--force]
+
+# 重啟環境
+kde restart [env_name]
+
+# 移除環境
+kde remove <env_name>
+kde rm <env_name>
+
+# 重置環境
+kde reset [env_name]
+```
+
+### 映像管理
+
+```bash
+# 載入 Docker 映像到環境
+kde load-image <image> [env_name]
+
+# 範例
+kde load-image myapp:latest
+kde load-image myapp:latest my-dev
+```
+
+## 環境配置檔案
+
+### 環境配置結構
+```
+environments/
+├── <env_name>/
+│   ├── k8s.env              # 環境基本配置
+│   ├── .env                 # 環境本地配置
+│   ├── kubeconfig/
+│   │   └── config           # K8s 配置檔案
+│   ├── namespaces/          # 專案/命名空間目錄
+│   ├── kind-config.yaml     # Kind 配置（僅 kind 環境）
+│   ├── k3d-config.yaml      # K3D 配置（僅 k3d 環境）
+│   └── pki/                 # PKI 憑證目錄
+```
+
+### 環境變數配置
+
+**k8s.env 檔案**:
+```bash
+ENV_NAME=my-dev
+ENV_TYPE=kind
+K8S_CONTAINER_NAME=my-dev-control-plane
+DOCKER_NETWORK=kde-my-dev
+STORAGE_CLASS=local-path
+```
+
+**環境變數說明**:
+- `ENV_NAME`: 環境名稱
+- `ENV_TYPE`: 環境類型（kind/k3d/k8s）
+- `K8S_CONTAINER_NAME`: K8s 容器名稱
+- `DOCKER_NETWORK`: Docker 網路名稱
+- `STORAGE_CLASS`: 儲存類別
+
+## 環境檢查與驗證
+
+### 環境存在性檢查
+```bash
+# 檢查環境是否存在
+is_env_exist <env_name>
+
+# 檢查環境是否已初始化
+is_env_init <env_name>
+
+# 檢查環境是否正在運行
+is_env_running <env_name>
+```
+
+### 節點狀態檢查
+```bash
+# 檢查 K8s 節點是否就緒
+is_k8s_node_ready
+
+# 檢查是否有任何環境存在
+has_any_env
+```
+
+## 環境操作範例
+
+### 建立開發環境
+```bash
+# 1. 建立 kind 開發環境
+kde start dev-env kind
+
+# 2. 切換到該環境
+kde use dev-env
+
+# 3. 載入應用映像
+kde load-image myapp:dev
+
+# 4. 啟動 K9s 進行管理
+kde k9s
+```
+
+### 建立測試環境
+```bash
+# 1. 建立 k3d 測試環境
+kde start test-env k3d
+
+# 2. 部署測試應用
+kde project create test-app
+kde project deploy test-app
+
+# 3. 啟動 Dashboard 查看
+kde dashboard
+```
+
+### 連接到生產環境
+```bash
+# 1. 連接到外部 K8s
+kde start prod-env k8s
+
+# 2. 驗證連線
+kde status
+
+# 3. 查看現有資源
+kde k9s
+```
+
+## 故障排除
+
+### 常見問題
+
+1. **環境啟動失敗**
+   - 檢查 Docker 是否運行
+   - 檢查端口是否被佔用
+   - 檢查磁碟空間是否充足
+
+2. **環境切換失敗**
+   - 檢查環境是否存在
+   - 檢查環境配置檔案是否完整
+   - 檢查 kubeconfig 是否有效
+
+3. **映像載入失敗**
+   - 檢查映像是否存在
+   - 檢查環境是否正在運行
+   - 檢查網路連線
+
+### 除錯指令
+```bash
+# 查看環境詳細資訊
+kde status
+
+# 查看環境配置
+cat environments/<env_name>/k8s.env
+
+# 查看 K8s 配置
+kubectl config view
+
+# 查看容器狀態
+docker ps -a | grep <env_name>
+```

@@ -1,0 +1,329 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# KDE 專案管理詳細指南
+
+## 專案管理概念
+
+### 專案結構
+```
+environments/<env_name>/namespaces/
+├── <project_name>/
+│   ├── project.env              # 專案配置檔案
+│   ├── build.sh                 # 建置腳本
+│   ├── deploy.sh                # 部署腳本
+│   ├── pre-deploy.sh            # 部署前腳本
+│   ├── post-deploy.sh           # 部署後腳本
+│   ├── undeploy.sh              # 卸載腳本
+│   └── <repo_name>/             # Git 倉庫內容
+```
+
+### 專案配置檔案 (project.env)
+```bash
+GIT_REPO_URL=https://github.com/user/repo.git
+GIT_REPO_BRANCH=main
+DEVELOP_IMAGE=node:18
+DEPLOY_IMAGE=r82wei/deploy-env:1.0.0
+```
+
+## 專案管理指令
+
+### 基本專案操作
+
+```bash
+# 列出所有專案
+kde project list
+kde project ls
+kde proj ls
+kde namespace ls
+kde ns ls
+
+# 建立專案
+kde project create <project_name>
+kde proj create <project_name>
+kde namespace create <project_name>
+kde ns create <project_name>
+
+# 刪除專案
+kde project remove <project_name>
+kde project rm <project_name>
+kde proj rm <project_name>
+```
+
+### Git 整合操作
+
+```bash
+# 從 Git 倉庫抓取專案
+kde project fetch <project_name> <git_url> <branch>
+kde proj fetch <project_name> <git_url> <branch>
+
+# 重新抓取專案
+kde project pull <project_name>
+kde proj pull <project_name>
+
+# 範例
+kde project fetch myapp https://github.com/user/myapp.git main
+kde project pull myapp
+```
+
+### 專案部署操作
+
+```bash
+# 部署專案
+kde project deploy <project_name>
+kde proj deploy <project_name>
+
+# 卸載專案
+kde project undeploy <project_name>
+kde proj undeploy <project_name>
+
+# 重新部署專案
+kde project redeploy <project_name>
+kde proj redeploy <project_name>
+```
+
+### 專案容器操作
+
+```bash
+# 進入專案開發容器
+kde project exec <project_name> [develop|dev] [port]
+kde proj exec <project_name> [develop|dev] [port]
+
+# 進入專案部署容器
+kde project exec <project_name> [deploy|dep] [port]
+kde proj exec <project_name> [deploy|dep] [port]
+
+# 範例
+kde project exec myapp develop 3000
+kde project exec myapp deploy 8080
+```
+
+### 專案監控操作
+
+```bash
+# 查看 Pod 日誌
+kde project tail <project_name> [pod_name] [line_count]
+kde proj tail <project_name> [pod_name] [line_count]
+
+# 範例
+kde project tail myapp myapp-pod 100
+```
+
+### 專案網路操作
+
+```bash
+# 建立 Ingress
+kde project ingress <project_name>
+kde proj ingress <project_name>
+
+# 連結外部資料夾
+kde project link <project_name>
+kde proj link <project_name>
+```
+
+## 專案集合管理
+
+### 專案集合操作
+
+```bash
+# 從 Git 倉庫抓取專案集合
+kde projects fetch <git_url> <branch>
+kde projs fetch <git_url> <branch>
+
+# 重新抓取專案集合
+kde projects pull
+kde projs pull
+
+# 連結專案集合
+kde projects link
+kde projs link
+
+# 進入專案集合環境
+kde projects exec
+kde projs exec
+```
+
+### 專案集合結構
+```
+environments/<env_name>/namespaces/
+├── project1/
+├── project2/
+├── project3/
+└── ...
+```
+
+## 專案生命週期
+
+### 1. 專案建立階段
+```bash
+# 建立專案
+kde project create myapp
+
+# 設定 Git 倉庫（如果需要的話）
+# 系統會詢問是否為 Git 倉庫
+# 如果是，需要提供 URL 和分支
+
+# 設定開發和部署映像
+# 系統會詢問開發映像和部署映像
+```
+
+### 2. 專案開發階段
+```bash
+# 進入開發容器
+kde project exec myapp develop
+
+# 在容器中進行開發
+# 修改程式碼、測試等
+
+# 建置專案（如果需要）
+./build.sh
+```
+
+### 3. 專案部署階段
+```bash
+# 部署專案
+kde project deploy myapp
+
+# 查看部署狀態
+kde project tail myapp
+
+# 建立 Ingress（如果需要外部存取）
+kde project ingress myapp
+```
+
+### 4. 專案維護階段
+```bash
+# 更新專案
+kde project pull myapp
+
+# 重新部署
+kde project redeploy myapp
+
+# 查看日誌
+kde project tail myapp
+```
+
+## 專案腳本說明
+
+### 自動生成的腳本檔案
+
+1. **build.sh** - 專案建置腳本
+   - 在開發容器中執行
+   - 用於編譯、打包、測試等
+
+2. **deploy.sh** - 專案部署腳本
+   - 在部署容器中執行
+   - 用於部署到 K8s
+
+3. **pre-deploy.sh** - 部署前腳本
+   - 在部署前執行
+   - 用於準備工作
+
+4. **post-deploy.sh** - 部署後腳本
+   - 在部署後執行
+   - 用於後續處理
+
+5. **undeploy.sh** - 卸載腳本
+   - 用於清理部署的資源
+
+### 腳本執行環境
+
+- **開發腳本**: 在 `DEVELOP_IMAGE` 容器中執行
+- **部署腳本**: 在 `DEPLOY_IMAGE` 容器中執行
+- **執行目錄**: 專案根目錄
+- **環境變數**: 自動載入 `project.env` 中的變數
+
+## 專案配置範例
+
+### Node.js 專案配置
+```bash
+# project.env
+GIT_REPO_URL=https://github.com/user/nodejs-app.git
+GIT_REPO_BRANCH=main
+DEVELOP_IMAGE=node:18
+DEPLOY_IMAGE=r82wei/deploy-env:1.0.0
+```
+
+```bash
+# build.sh
+npm install
+npm run build
+```
+
+```bash
+# deploy.sh
+kubectl apply -f k8s/
+```
+
+### Python 專案配置
+```bash
+# project.env
+GIT_REPO_URL=https://github.com/user/python-app.git
+GIT_REPO_BRANCH=main
+DEVELOP_IMAGE=python:3.9
+DEPLOY_IMAGE=r82wei/deploy-env:1.0.0
+```
+
+```bash
+# build.sh
+pip install -r requirements.txt
+python setup.py build
+```
+
+## 最佳實踐
+
+### 1. 專案命名
+- 使用有意義的專案名稱
+- 避免使用特殊字元
+- 保持命名一致性
+
+### 2. 專案組織
+- 將相關專案組織在專案集合中
+- 使用適當的 Git 分支策略
+- 保持專案結構清晰
+
+### 3. 腳本管理
+- 保持腳本簡潔明確
+- 使用適當的錯誤處理
+- 記錄腳本的功能和用途
+
+### 4. 環境管理
+- 為不同環境使用不同的專案配置
+- 妥善管理敏感資訊
+- 定期清理不需要的資源
+
+## 故障排除
+
+### 常見問題
+
+1. **專案建立失敗**
+   - 檢查專案名稱是否有效
+   - 檢查 Git 倉庫 URL 是否正確
+   - 檢查網路連線
+
+2. **部署失敗**
+   - 檢查 K8s 環境是否正常
+   - 檢查部署腳本是否正確
+   - 查看部署日誌
+
+3. **容器執行失敗**
+   - 檢查映像是否存在
+   - 檢查容器配置是否正確
+   - 查看容器日誌
+
+### 除錯指令
+```bash
+# 查看專案狀態
+kde project list
+
+# 查看專案配置
+cat environments/<env_name>/namespaces/<project_name>/project.env
+
+# 查看 Pod 狀態
+kubectl get pods -n <project_name>
+
+# 查看 Pod 日誌
+kubectl logs -n <project_name> <pod_name>
+```
