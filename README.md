@@ -1,6 +1,6 @@
 # KDE-cli (Kubernetes Development Environment)
 
-KDE-cli 是一套結合 **Kubernetes 開發環境** 與 **CI/CD 部署流程** 的命令列工具，目標是讓開發者可以在本地快速建構、開發與部署多個專案、測試 CI/CD pipeline 以及驗證 yaml 設定。
+一個以開發者為核心的基礎架構自動化框架，協助快速打造本地 Kubernetes 開發流程，同時支援 CI/CD 環境的模擬與驗證。
 
 ## 🔑 主要功能
 
@@ -45,10 +45,15 @@ KDE-cli 是一套結合 **Kubernetes 開發環境** 與 **CI/CD 部署流程** �
 
 ## 基本用法
 
-1. **建立並啟動 K8s 環境**
-   ```bash
-   kde create <cluster-name> --kind    # 或 --k3d 或 --k8s
-   ```
+1. **啟動或加入 K8s 環境**
+   - 在本地啟動 kind/k3d
+     ```bash
+     kde create <cluster-name> --kind    # 或 --k3d
+     ```
+   - 加入現有的 K8s 叢集
+     ```bash
+     kde create <cluster-name> --k8s
+     ```
 2. **新增專案（namespace）**
    ```bash
    # 將專案建立在 environment/<cluster-name>/namespaces/<project-name>，並且新增專案相關設定到 project.env
@@ -69,11 +74,15 @@ KDE-cli 是一套結合 **Kubernetes 開發環境** 與 **CI/CD 部署流程** �
 4. **執行 CI/CD 部署**
 
    - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，執行 CI/CD 時會自動注入 container 環境內
+   - (如果檔案存在) 依序觸發 `pre-build.sh -> build.sh -> post-build.sh -> pre-deploy.sh -> deploy.sh -> post-deploy.sh`，每個 shell 可以在 project.env 自訂執行環境的 docker image
+     - `pre-build.sh`: PRE_BUILD_IMAGE (預設: DEVELOP_IMAGE)
+     - `build.sh`: BUILD_IMAGE (預設: DEVELOP_IMAGE)
+     - `post-build.sh`: POST_BUILD_IMAGE (預設: DEVELOP_IMAGE)
+     - `pre-deploy.sh`: PRE_DEPLOY_IMAGE (預設: DEPLOY_IMAGE)
+     - `deploy.sh`: DEPLOY_IMAGE (預設: DEPLOY_IMAGE)
+     - `post-deploy.sh`: POST_DEPLOY_IMAGE (預設: DEPLOY_IMAGE)
 
    ```bash
-   # 依序觸發 build.sh、pre-deploy.sh、deploy.sh、post-deploy.sh（若檔案存在）
-   # build.sh 將會在 project.env 定義的 DEVELOP_IMAGE container 內執行
-   # pre-deploy.sh、deploy.sh、post-deploy.sh 將會在 project.env 定義的 DEPLOY_IMAGE container 內執行
    kde project deploy <project-name>
 
    ```
@@ -91,12 +100,12 @@ KDE-cli 是一套結合 **Kubernetes 開發環境** 與 **CI/CD 部署流程** �
 
 6. **解除部署**
 
-   - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
+   - 可以將**解除部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
+   - (如果檔案存在) 觸發 `undeploy.sh`，可以在 project.env 自訂執行環境的 docker image
+     - `undeploy.sh`: UNDEPLOY_IMAGE (預設: DEPLOY_IMAGE)
+   - ⚠️ 如果檔案不存在，預設動作為刪除 K8S 環境內與專案名稱同名的 namespace
 
    ```bash
-   # 觸發 undeploy.sh（若檔案存在）
-   # undeploy.sh 將會在 project.env 定義的 DEPLOY_IMAGE container 內執行
-   # 如果 undeploy.sh 不存在則執行 kubectl delete ns <project-name>
    kde project undeploy <project-name>
    ```
 
@@ -117,7 +126,7 @@ KDE-cli 是一套結合 **Kubernetes 開發環境** 與 **CI/CD 部署流程** �
 
 ## 進階功能
 
-- **將遠端環境流量導流到本地容器環境開發/測試 (Telepresence)**
+- **將遠端環境流量導流到本地容器環境開發/測試 ([Telepresence](https://telepresence.io/docs/quick-start))**
 
   ```bash
   kde telepresence <command>
@@ -150,11 +159,13 @@ environments/
       └─ namespaces/
           └─ <project-name>/      # 專案名稱(K8S namespace 名稱)
               ├─ project.env      # 專案設定檔(包含專案 Repo、開發/部署環境 image 設定，可增加自訂環境變數)
-              ├─ build.sh         # CI 執行腳本，會在 DEVELOP_IMAGE 啟動的容器中執行 (optional)
-              ├─ pre-deploy.sh    # CD 前置腳本，會在 DEPLOY_IMAGE 啟動的容器中執行 (optional)
-              ├─ deploy.sh        # CD 執行腳本，會在 DEPLOY_IMAGE 啟動的容器中執行 (optional)
-              ├─ post-deploy.sh   # CD 後置腳本，會在 DEPLOY_IMAGE 啟動的容器中執行 (optional)
-              ├─ undeploy.sh      # 解除部署指令，會在 DEPLOY_IMAGE 啟動的容器中執行 (optional，如果不存在，預設動作為刪除 K8S 環境內與專案名稱同名的 namespace)
+              ├─ pre-build.sh     # CI 前置腳本
+              ├─ build.sh         # CI 執行腳本
+              ├─ post-build.sh    # CI 後置腳本
+              ├─ pre-deploy.sh    # CD 前置腳本
+              ├─ deploy.sh        # CD 執行腳本
+              ├─ post-deploy.sh   # CD 後置腳本
+              ├─ undeploy.sh      # 解除部署腳本
               ├─ [repo]/          # 專案 git repo
               ├─ [pvc dir]/       # PVC 掛載的資料夾 (StroageClass: local-path)
               └─ ...
@@ -164,6 +175,12 @@ kde.env      # kde 開發環境使用的 docker image
 kde.sh       # 主腳本，連動 scripts/* 內的子指令 (安裝到 /usr/local/lib)
 scripts/     # 各項指令的實作 (安裝到 /usr/local/lib)
 ```
+
+## 免責聲明
+
+KDE-cli 整合了多個第三方工具與服務，其中部分服務（如 Ngrok, Cloudflare Tunnel, Telepresence）為商業公司所維護，並提供免費增值（Freemium）方案。
+
+本工具僅作為自動化操作的框架，協助使用者更方便地啟用這些服務。所有使用者應自行了解並遵守這些第三方服務各自的服務條款與授權模式。
 
 ## 相關連結
 
