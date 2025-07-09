@@ -1,6 +1,6 @@
 # KDE-cli (Kubernetes Development Environment)
 
-一個以開發者為核心的基礎架構自動化框架，協助快速打造本地 Kubernetes 開發流程，同時支援 CI/CD 環境的模擬與驗證。
+一個以開發者為核心的基礎架構自動化框架，協助快速打造本地 Kubernetes 開發流程，同時支援 CI/CD 環境的模擬與驗證，並可將開發環境設定保存、同步到各個地方。
 
 ## 🔑 主要功能
 
