@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
 # 設定 KDE 根目錄路徑
@@ -24,7 +26,7 @@ fi
 
 # 設定 KDE 的 debug 模式
 if [[ -n ${KDE_DEBUG} && ${KDE_DEBUG} != "false" ]]; then
-    set -exo pipefail
+    set -x
 fi
 
 # 設定預設 kde 預設 image 環境變數
