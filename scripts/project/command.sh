@@ -13,7 +13,9 @@ show_help() {
     echo "  link            連結專案"
     echo "  fetch           透過 git url 抓取專案"
     echo "  pull            透過 project.env 內的 git repo 設定重新抓取專案"
-    echo "  deploy          部署專案"
+    echo "  build           建置專案"
+    echo "  deploy          建置 & 部署專案"
+    echo "  deploy-only     不執行建置，只部署專案"
     echo "  undeploy        卸載專案"
     echo "  redeploy        重新部署專案"
     echo "  tail            查看 pod 的 log，預設查看最後 100 行"
@@ -94,7 +96,16 @@ case "${COMMAND}" in
         fi
         pull_project ${PROJECT_NAME}
         ;;
+    build)
+        check_project_name ${PROJECT_NAME}
+        build_project ${PROJECT_NAME}
+        ;;
     deploy)
+        check_project_name ${PROJECT_NAME}
+        build_project ${PROJECT_NAME}
+        deploy_project ${PROJECT_NAME}
+        ;;
+    deploy-only)
         check_project_name ${PROJECT_NAME}
         deploy_project ${PROJECT_NAME}
         ;;
@@ -105,6 +116,7 @@ case "${COMMAND}" in
     redeploy)
         check_project_name ${PROJECT_NAME}
         undeploy_project ${PROJECT_NAME}
+        build_project ${PROJECT_NAME}
         deploy_project ${PROJECT_NAME}
         ;;
     tail)

@@ -188,30 +188,48 @@ create_link() {
     ln -s ${DIR_PATH} ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${DIR_NAME}
 }
 
-deploy_project() {
+build_project() {
     PROJECT_NAME=$1
+    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     pull_if_project_not_exist ${PROJECT_NAME}
-    source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/pre-build.sh ]]; then
+    source ${PROJECT_PATH}/project.env
+
+    if [[ -f ${PROJECT_PATH}/pre-build.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./pre-build.sh
     fi
-    if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/build.sh ]]; then
+    if [[ -f ${PROJECT_PATH}/build.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${BUILD_IMAGE:-${DEVELOP_IMAGE}} ./build.sh
     fi
-    if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/post-build.sh ]]; then
+    if [[ -f ${PROJECT_PATH}/post-build.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${POST_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./post-build.sh
     fi
-    if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/pre-deploy.sh ]]; then
+
+    if [[ -f ${PROJECT_PATH}/pre-build.sh || -f ${PROJECT_PATH}/build.sh || -f ${PROJECT_PATH}/post-build.sh ]]; then
+        echo "專案 ${PROJECT_NAME} 已建置完成"
+    fi
+}
+
+deploy_project() {
+    PROJECT_NAME=$1
+    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+
+    pull_if_project_not_exist ${PROJECT_NAME}
+    source ${PROJECT_PATH}/project.env
+    
+    if [[ -f ${PROJECT_PATH}/pre-deploy.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./pre-deploy.sh
     fi
-    if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/deploy.sh ]]; then
+    if [[ -f ${PROJECT_PATH}/deploy.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./deploy.sh
     fi
-    if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/post-deploy.sh ]]; then
+    if [[ -f ${PROJECT_PATH}/post-deploy.sh ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${POST_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./post-deploy.sh
     fi
-    echo "專案 ${PROJECT_NAME} 已部署完成"
+
+    if [[ -f ${PROJECT_PATH}/pre-deploy.sh || -f ${PROJECT_PATH}/deploy.sh || -f ${PROJECT_PATH}/post-deploy.sh ]]; then
+        echo "專案 ${PROJECT_NAME} 已部署完成"
+    fi
 }
 
 undeploy_project() {
