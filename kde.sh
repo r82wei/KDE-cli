@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -exo pipefail
+
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
 # 設定 KDE 根目錄路徑
