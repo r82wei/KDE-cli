@@ -1,9 +1,5 @@
 #!/bin/bash
 
-if [[ -n ${KDE_DEBUG} && ${KDE_DEBUG} != "false" ]]; then
-    set -exo pipefail
-fi
-
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
 # 設定 KDE 根目錄路徑
@@ -19,12 +15,19 @@ source ${KDE_SCRIPTS_PATH}/utils/environment/k8s.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/kind.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 
-# 設定預設 kde 預設 image 環境變數
+# 新增或載入 kde.env 環境變數設定檔
 if [[ ! -f ${KDE_PATH}/kde.env ]]; then
     touch ${KDE_PATH}/kde.env
 else
     source ${KDE_PATH}/kde.env
 fi
+
+# 設定 KDE 的 debug 模式
+if [[ -n ${KDE_DEBUG} && ${KDE_DEBUG} != "false" ]]; then
+    set -exo pipefail
+fi
+
+# 設定預設 kde 預設 image 環境變數
 if [[ -z ${KIND_IMAGE} ]]; then
     export KIND_IMAGE=r82wei/kind:v0.27.0
     echo "KIND_IMAGE=${KIND_IMAGE}" >> ${KDE_PATH}/kde.env
