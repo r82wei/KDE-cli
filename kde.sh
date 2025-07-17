@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -exo pipefail
+if [[ -n ${KDE_DEBUG} && ${KDE_DEBUG} != "false" ]]; then
+    set -exo pipefail
+fi
 
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
