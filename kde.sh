@@ -59,7 +59,7 @@ if [[ -z ${K9S_IMAGE} ]]; then
     echo "K9S_IMAGE=${K9S_IMAGE}" >> ${KDE_PATH}/kde.env
 fi
 if [[ -z ${TELEPRESENCE_IMAGE} ]]; then
-    export TELEPRESENCE_IMAGE=r82wei/telepresence:1.0.4
+    export TELEPRESENCE_IMAGE=r82wei/telepresence:1.0.5
     echo "TELEPRESENCE_IMAGE=${TELEPRESENCE_IMAGE}" >> ${KDE_PATH}/kde.env
 fi
 
