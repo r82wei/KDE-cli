@@ -2,6 +2,9 @@
 
 #### Core Features
 
+- [ ] 版本控制機制
+  - [ ] 需要紀錄目前 cli 版本到 kde.env 內
+  - [ ] 如果 kde.env 內的版本跟目前使用的 cli 版本不同，需要做 migration
 - [x] ls (列出 k8s 環境)
 - [x] start/create (啟動/新增 k8s 環境)
   - [x] kind (使用 kind 啟動 K8S)

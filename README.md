@@ -4,32 +4,160 @@
 
 ## 🔑 主要功能
 
-- ⚙️ `多種 K8s 環境支持`
+- ⚙️ `快速啟動本地 K8s 或連接遠端 K8s`
   - [kind](https://kind.sigs.k8s.io/): Docker 中的 Kubernetes 集群 (預設)
   - [k3d](https://k3d.io/stable/): 輕量級 K3s 集群
-  - 外部 K8s: 連接現有的 Kubernetes 集群
+  - 遠端 K8s: 連接現有的 Kubernetes 集群
+- 🚀 `簡易且彈性的 CI/CD`
+  - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等自動化部署腳本，並且可以透過 project.env 自訂 pipeline 環境變數
+  - 支援所有 CD 工具(可自訂 Deploy 環境 image)
+  - 一鍵部署，快速驗證部署腳本及設定
+- 🧑🏻‍💻 `即時開發`
+  - 快速啟動容器化開發環境 (各專案可自訂開發和部署的 image，可選擇使用任意語言開發、任意工具部署)
+  - 透過 [Telepresence](https://telepresence.io/docs/quick-start) 流量攔截與代理，讓開發者可以用本地容器環境取代遠端 K8s 上的服務，加速開發與測試，不需每次變更都需要等待 CI/CD
+  - 透過 k8s yaml 部署到本地環境，只需建立 PVC，即可掛載本地專案原始碼資料夾到 Pod 內進行 Live Reload 開發（目前只支援本地 K8s 環境）
+- 🖥️ `監控和管理工具`
+  - [k9s](https://k9scli.io/): 終端 Kubernetes 管理界面，方便在 IDE 開發除錯
+  - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard): Web UI 管理界面
 - 📦 `IaC 化的環境設定`
   - 開發環境設定檔可透過 git 版本化
   - 團隊同步的標準化開發環境
-- 🧑🏻‍💻 `即時開發`
-  - 快速啟動容器化開發環境 (各專案可自訂開發和部署的 image)
-  - 透過 [Telepresence](https://telepresence.io/docs/quick-start) 流量攔截與代理，讓開發者可以用本地容器環境取代遠端 K8s 上的服務，加速開發與測試，不需每次變更都需要等待 CI/CD
-  - 透過 k8s yaml 部署到本地環境，只需建立 PVC，即可掛載本地專案原始碼資料夾到 Pod 內進行開發，模擬實際執行環境（僅支援 Kind、K3d 環境）
-- 🚀 `簡易且彈性的 CI/CD`
-  - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等自動化部署腳本，可以透過 project.env 自訂 pipeline 環境變數
-  - 支援所有 CD 工具(可自訂 Deploy 環境 image)
-  - 快速驗證 CI/CD pipeline
-- 📊 `監控和管理工具`
-  - [k9s](https://k9scli.io/): 終端 Kubernetes 管理界面，方便在 IDE 開發除錯
-  - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard): Web UI 管理界面
-- 🌐 `公開服務`
-  - Ngrok 整合: 將本地服務暴露到外網
-  - Cloudflare Tunnel: 通過 Cloudflare 建立安全隧道
-  - Port Forward: 將 K8s 服務/Pod 端口轉發到本地
+- 🌐 `快速公開服務`
+  - [Ngrok](https://ngrok.com/): 將本地服務快速開放到外網進行測試
+  - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/): 通過 Cloudflare 建立安全隧道，快速對外開放服務進行測試
+  - Port Forward: 將 K8s Service/Pod 的 Port 轉發到本地
 - 🐳 `完全容器化`
   - 所有操作都在 Docker 容器中執行
   - 隔離的開發環境，支持多個專案同時開發
-  - 只需安裝 Docker 就可以複製一致的開發環境
+  - 只需安裝 Docker 就可以建立一致的開發環境
+
+## 為什麼選 KDE-cli？
+
+- 你是 Developer，想快速啟動本地測試環境？✅
+- 你是 QA，要驗證某個特定 Commit 的行為？✅
+- 你是 Infra/DevOps，要在 GitLab CI 前先模擬部署？✅
+- 你想要減少開發環境與正式環境的差異？✅
+- 你希望用一個 Shell 工具就搞定？✅
+
+👉 KDE-cli 不是為了取代這些工具，而是希望「簡化並整合這些工作流程」，讓開發者能夠在本地的命令列環境裡完成大部分開發與部署驗證流程。
+
+## Workflow
+
+```mermaid
+flowchart TD
+    subgraph Ops["DevOps/Infra"]
+        A[建立 Workspace 環境]
+        A1[建立本地K8s環境]
+        A2[連接現有K8s]
+        B[設定專案]
+        B1[從 Git 抓取現有專案]
+        B2[建立新的本地專案]
+        C1[撰寫部署設定 yaml]
+        C2[撰寫 CI/CD shell build.sh/deploy.sh/undeploy.sh]
+        D[一鍵部署服務到 K8S]
+        E[CI/CD 開發與除錯]
+        DevOps_Monitor[K9s / K8S Dashboard]
+        M[公開服務]
+        M1[port-forwarding]
+        M2[Cloudflare Tunnel]
+        M3[ngrok]
+        G[將 Workspace 環境儲存至Git]
+    end
+
+    subgraph Developer["Developer"]
+        H[從 Git 抓取 Workspace 環境]
+        DEV_START_K8S[啟動K8S / 設定 kubeconfig]
+        I1[一鍵部署服務到 K8S]
+        I2[遠端除錯]
+        I3[進入本地容器開發環境]
+        J1[程式開發/除錯]
+        J2[程式開發/除錯]
+        J3[程式開發/除錯]
+        Dev_Monitor[K9s / K8S Dashboard]
+        F[公開服務]
+        F1[Cloudflare Tunnel]
+        F2[ngrok]
+        L[Telepresence]
+        L1[連線到遠端的 K8s]
+        N[擷取流量到本地容器開發環境]
+        O[公開服務]
+        O1[port-forwarding]
+        O2[Cloudflare Tunnel]
+        O3[ngrok]
+
+    end
+
+    subgraph QA["QA"]
+        QA_git_pull[從 Git 抓取 Workspace 環境]
+        QA_start_k8s[啟動K8S / 設定 kubeconfig]
+        QA_deploy[一鍵部署服務到 K8S]
+        QA_monitor[K9s / K8S Dashboard]
+        QA_test[測試]
+        QA_expose[公開服務]
+        QA_port_forwarding[port-forwarding]
+        QA_cloudflare_tunnel[Cloudflare Tunnel]
+        QA_ngrok[ngrok]
+
+    end
+
+    %% DevOps/Infra
+    A --> A1
+    A --> A2
+    A1 --> B
+    A2 --> B
+    B --> B1
+    B --> B2
+    B1 --> C1
+    B2 --> C1
+    C1 --> C2
+    C2 --> D
+    D --> DevOps_Monitor
+    DevOps_Monitor --> E
+    E --> G
+    %% 公開服務
+    DevOps_Monitor -.-> M
+    M -.-> M1
+    M -.-> M2
+    M -.-> M3
+
+    %% Developer
+    G --> H
+    H --> DEV_START_K8S
+    %% K8S 開發環境
+    DEV_START_K8S --> I1
+    I1 --> Dev_Monitor
+    Dev_Monitor --> J1
+    Dev_Monitor -.-> O
+    O -.-> O1
+    O -.-> O2
+    O -.-> O3
+    %% 遠端除錯
+    H --> I2
+    I2 -->  L
+    L --> L1
+    L1 --> N
+    N --> J3
+    %% 本地容器開發環境
+    H --> I3
+    I3 --> J2
+    J2 -.-> F
+    F -.-> F1
+    F -.-> F2
+
+    %% QA
+    G --> QA_git_pull
+    QA_git_pull --> QA_start_k8s
+    QA_start_k8s --> QA_deploy
+    QA_deploy --> QA_monitor
+    QA_monitor -.-> QA_expose
+    QA_monitor --> QA_test
+    QA_expose -.-> QA_port_forwarding
+    QA_expose -.-> QA_cloudflare_tunnel
+    QA_expose -.-> QA_ngrok
+
+
+
+```
 
 ## 安裝
 
@@ -41,9 +169,8 @@
    cd KDE-cli
    sudo ./install.sh
    ```
-   安裝完成後，可在任意目錄透過 `kde` 指令操作。
 
-## 基本用法
+## 快速開始
 
 1. **啟動或加入 K8s 環境**
    - 在本地啟動 kind/k3d
@@ -59,9 +186,9 @@
    # 將專案建立在 environment/<cluster-name>/namespaces/<project-name>，並且新增專案相關設定到 project.env
    kde project create <project-name>
    ```
-3. **快速啟動開發/部署環境**
+3. **進入本地容器開發環境**
 
-   - 可以將**開發**/**部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
+   - 可以將需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
 
    ```bash
    # 透過 project.env 自訂的 Docker image(DEVELOP_IMAGE) 啟動開發執行環境
@@ -126,7 +253,7 @@
 
 ## 進階功能
 
-- **將遠端環境流量導流到本地容器環境開發/測試 ([Telepresence](https://telepresence.io/docs/quick-start))**
+- **遠端除錯 ([Telepresence](https://telepresence.io/docs/quick-start))**
 
   ```bash
   kde telepresence <command>
@@ -151,7 +278,7 @@
   kde cloudflare-tunnel <domain> <target>
   ```
 
-## 目錄結構概念
+## 檔案結構
 
 ```
 environments/
