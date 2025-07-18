@@ -42,11 +42,14 @@ echo "---"
 
 # --- 主程式邏輯 ---
 
+# 透過 kubeconfig 取得目前連線的 apiserver 的 IP，並且加上 /24 的子網路遮罩，避免因為 traffic-manager 推測的 subnet 與 apiserver 的 subnet 相同，導致連線失敗
+K8S_APISERVER_IP=$(kubectl config view -o jsonpath='{.clusters[?(@.name=="'$(kubectl config view -o jsonpath='{.contexts[?(@.name=="'$(kubectl config current-context)'")].context.cluster}')'")].cluster.server}' | awk -F'//' '{print $2}' | awk -F':' '{print $1}' | awk -F'.' '{print $1"."$2".0.0"}')/24
+
 echo ">>> Entrypoint 啟動"
 if [[ -n $TELEPRESENCE_ALSO_PROXY_CIDR ]]; then
-    telepresence connect -n $TELEPRESENCE_CONNECT_NAMESPACE --also-proxy $TELEPRESENCE_ALSO_PROXY_CIDR
+    telepresence connect --never-proxy ${K8S_APISERVER_IP} -n $TELEPRESENCE_CONNECT_NAMESPACE --also-proxy $TELEPRESENCE_ALSO_PROXY_CIDR
 else
-    telepresence connect -n $TELEPRESENCE_CONNECT_NAMESPACE
+    telepresence connect --never-proxy ${K8S_APISERVER_IP} -n $TELEPRESENCE_CONNECT_NAMESPACE
 fi
 
 # 設定 resolv.conf 使用 kube-dns 的 IP
