@@ -49,9 +49,9 @@ else
     telepresence connect -n $TELEPRESENCE_CONNECT_NAMESPACE
 fi
 
-echo "nameserver $(telepresence status | grep VIF | awk -F'[: ]+' '{print $4}')" >> /etc/resolv.conf
+# 設定 resolv.conf 使用 kube-dns 的 IP
+echo "nameserver $(kubectl get svc -n kube-system kube-dns -o jsonpath='{.spec.clusterIP}')" > /etc/resolv.conf
 echo "search .svc.cluster.local .cluster.local" >> /etc/resolv.conf
-
 
 # 如果 telepresence connect 失敗，則輸出日誌並退出
 if [ $? -ne 0 ]; then
