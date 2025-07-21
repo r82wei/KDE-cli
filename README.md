@@ -283,7 +283,7 @@ kde.sh                    # 主腳本，連動 scripts/* 內的子指令 (安裝
 install.sh                # 安裝腳本
 uninstall.sh              # 解除安裝腳本
 dockerfiles/
-  └─ <docker images>/       # build docker image 相關檔案
+  └─ <docker images>/       # kde-cli 使用的 docker image 相關檔案
 scripts/                  # 各項指令的實作 (安裝到 /usr/local/lib)
   └─ <commands>/            # kde cli 指令邏輯
   └─ utils/                 # kde cli 功能函式
