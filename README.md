@@ -35,55 +35,52 @@
 
 - 你是 Developer，想快速啟動本地測試環境？✅
 - 你是 QA，要驗證某個特定 Commit 的行為？✅
-- 你是 Infra/DevOps，要在 GitLab CI 前先模擬部署？✅
+- 你是 Ops/Infra/DevOps，要在撰寫 CI/CD 前先模擬部署？✅
 - 你想要減少開發環境與正式環境的差異？✅
 - 你希望用一個 Shell 工具就搞定？✅
 
-👉 KDE-cli 不是為了取代這些工具，而是希望「簡化並整合這些工作流程」，讓開發者能夠在本地的命令列環境裡完成大部分開發與部署驗證流程。
+👉 KDE-cli 希望做到「簡化並整合這些工作流程」，讓使用者能夠在本地的命令列環境裡完成大部分開發、測試與部署驗證流程，並且能把環境版本化。
 
 ## Workflow
 
 ```mermaid
 flowchart TD
-    subgraph Ops["DevOps/Infra"]
-        A[建立 Workspace 環境]
-        A1[建立本地K8s環境]
-        A2[連接現有K8s]
-        B[設定專案]
-        B1[從 Git 抓取現有專案]
-        B2[建立新的本地專案]
-        C1[撰寫部署設定 yaml]
-        C2[撰寫 CI/CD shell build.sh/deploy.sh/undeploy.sh]
-        D[一鍵部署服務到 K8S]
-        E[CI/CD 開發與除錯]
-        DevOps_Monitor[K9s / K8S Dashboard]
-        M[公開服務]
-        M1[port-forwarding]
-        M2[Cloudflare Tunnel]
-        M3[ngrok]
-        G[將 Workspace 環境儲存至Git]
+    subgraph Ops["Ops/DevOps/Infra"]
+        Ops_create_workspace[建立 Workspace 環境]
+        Ops_create_local_k8s[建立本地K8s環境]
+        Ops_add_remote_k8s[連接現有K8s]
+        Ops_create_project[設定專案]
+        Ops_pull_repo[從 Git 抓取現有專案]
+        Ops_create_local_repo[建立新的本地專案]
+        Ops_k8s_yaml[撰寫部署 K8s yaml]
+        Ops_shell_script[撰寫 CI/CD shell build.sh/deploy.sh/undeploy.sh]
+        Ops_deploy[一鍵部署服務到 K8S]
+        Ops_cicd[CI/CD 開發與除錯]
+        Ops_Monitor[K9s / K8S Dashboard]
+        Ops_expose[公開服務]
+        Ops_port_forwarding[port-forwarding]
+        Ops_cloudflare_tunnel[Cloudflare Tunnel]
+        Ops_ngrok[ngrok]
+        Ops_git_push[將 Workspace 環境儲存至Git]
     end
 
     subgraph Developer["Developer"]
-        H[從 Git 抓取 Workspace 環境]
-        DEV_START_K8S[啟動K8S / 設定 kubeconfig]
-        I1[一鍵部署服務到 K8S]
-        I2[遠端除錯]
-        I3[進入本地容器開發環境]
-        J1[程式開發/除錯]
-        J2[程式開發/除錯]
-        J3[程式開發/除錯]
-        Dev_Monitor[K9s / K8S Dashboard]
-        F[公開服務]
-        F1[Cloudflare Tunnel]
-        F2[ngrok]
-        L[Telepresence]
-        L1[連線到遠端的 K8s]
-        N[擷取流量到本地容器開發環境]
-        O[公開服務]
-        O1[port-forwarding]
-        O2[Cloudflare Tunnel]
-        O3[ngrok]
+        Dev_git_pull[從 Git 抓取 Workspace 環境]
+        Dev_start_k8s[啟動K8S / 設定 kubeconfig]
+        Dev_deploy[一鍵部署服務到 K8S]
+        Dev_remote_debug[遠端除錯]
+        Dev_local_env[本地容器開發環境]
+        Dev_debug_1[程式開發/除錯]
+        Dev_debug_2[程式開發/除錯]
+        Dev_debug_3[程式開發/除錯]
+        Dev_monitor[K9s / K8S Dashboard]
+        Dev_expose[公開服務]
+        Dev_cloudflare_tunnel[Cloudflare Tunnel]
+        Dev_ngrok[ngrok]
+        Dev_port_forwarding[port-forwarding]
+        Dev_telepresence[Telepresence]
+        Dev_connect_remote_k8s[連線到遠端的 K8s]
+        Dev_telepresence_remote_pod[擷取流量到本地容器開發環境]
 
     end
 
@@ -101,56 +98,55 @@ flowchart TD
     end
 
     %% DevOps/Infra
-    A --> A1
-    A --> A2
-    A1 --> B
-    A2 --> B
-    B --> B1
-    B --> B2
-    B1 --> C1
-    B2 --> C1
-    C1 --> C2
-    C2 --> D
-    D --> DevOps_Monitor
-    DevOps_Monitor --> E
-    E --> G
+    Ops_create_workspace--> Ops_create_local_k8s
+    Ops_create_workspace--> Ops_add_remote_k8s
+    Ops_create_local_k8s --> Ops_create_project
+    Ops_add_remote_k8s --> Ops_create_project
+    Ops_create_project --> Ops_pull_repo
+    Ops_create_project --> Ops_create_local_repo
+    Ops_pull_repo --> Ops_k8s_yaml
+    Ops_create_local_repo --> Ops_k8s_yaml
+    Ops_k8s_yaml --> Ops_shell_script
+    Ops_shell_script --> Ops_deploy
+    Ops_deploy --> Ops_Monitor
+    Ops_Monitor --> Ops_cicd
+    Ops_cicd --> Ops_git_push
     %% 公開服務
-    DevOps_Monitor -.-> M
-    M -.-> M1
-    M -.-> M2
-    M -.-> M3
+    Ops_deploy -.-> Ops_expose
+    Ops_expose -.-> Ops_port_forwarding
+    Ops_expose -.-> Ops_cloudflare_tunnel
+    Ops_expose -.-> Ops_ngrok
 
     %% Developer
-    G --> H
-    H --> DEV_START_K8S
+    Ops_git_push --> Dev_git_pull
+    Dev_git_pull --> Dev_start_k8s
     %% K8S 開發環境
-    DEV_START_K8S --> I1
-    I1 --> Dev_Monitor
-    Dev_Monitor --> J1
-    Dev_Monitor -.-> O
-    O -.-> O1
-    O -.-> O2
-    O -.-> O3
+    Dev_start_k8s --> Dev_deploy
+    Dev_deploy --> Dev_monitor
+    Dev_deploy -.-> Dev_expose
+    Dev_monitor --> Dev_debug_1
     %% 遠端除錯
-    H --> I2
-    I2 -->  L
-    L --> L1
-    L1 --> N
-    N --> J3
+    Dev_git_pull --> Dev_remote_debug
+    Dev_remote_debug -->  Dev_telepresence
+    Dev_telepresence --> Dev_connect_remote_k8s
+    Dev_connect_remote_k8s --> Dev_telepresence_remote_pod
+    Dev_telepresence_remote_pod --> Dev_debug_3
     %% 本地容器開發環境
-    H --> I3
-    I3 --> J2
-    J2 -.-> F
-    F -.-> F1
-    F -.-> F2
+    Dev_git_pull --> Dev_local_env
+    Dev_local_env --> Dev_debug_2
+    Dev_local_env -.-> Dev_expose
+    %% 公開服務
+    Dev_expose -.-> Dev_cloudflare_tunnel
+    Dev_expose -.-> Dev_ngrok
+    Dev_expose -.-> Dev_port_forwarding
 
     %% QA
-    G --> QA_git_pull
+    Ops_git_push --> QA_git_pull
     QA_git_pull --> QA_start_k8s
     QA_start_k8s --> QA_deploy
     QA_deploy --> QA_monitor
-    QA_monitor -.-> QA_expose
     QA_monitor --> QA_test
+    QA_deploy -.-> QA_expose
     QA_expose -.-> QA_port_forwarding
     QA_expose -.-> QA_cloudflare_tunnel
     QA_expose -.-> QA_ngrok
@@ -280,27 +276,45 @@ flowchart TD
 
 ## 檔案結構
 
+### kde-cli
+
+```
+kde.sh                    # 主腳本，連動 scripts/* 內的子指令 (安裝到 /usr/local/lib)
+install.sh                # 安裝腳本
+uninstall.sh              # 解除安裝腳本
+dockerfiles/
+  └─ <docker images>/       # build docker image 相關檔案
+scripts/                  # 各項指令的實作 (安裝到 /usr/local/lib)
+  └─ <commands>/            # kde cli 指令邏輯
+  └─ utils/                 # kde cli 功能函式
+```
+
+### kde-cli Artifacts (可版本化的環境設定)
+
 ```
 environments/
   └─ <cluster-name>/      # K8S 環境
-      └─ namespaces/
-          └─ <project-name>/      # 專案名稱(K8S namespace 名稱)
-              ├─ project.env      # 專案設定檔(包含專案 Repo、開發/部署環境 image 設定，可增加自訂環境變數)
-              ├─ pre-build.sh     # CI 前置腳本
-              ├─ build.sh         # CI 執行腳本
-              ├─ post-build.sh    # CI 後置腳本
-              ├─ pre-deploy.sh    # CD 前置腳本
-              ├─ deploy.sh        # CD 執行腳本
-              ├─ post-deploy.sh   # CD 後置腳本
-              ├─ undeploy.sh      # 解除部署腳本
-              ├─ [repo]/          # 專案 git repo
-              ├─ [pvc dir]/       # PVC 掛載的資料夾 (StroageClass: local-path)
-              └─ ...
-
-current.env  # 當前使用的 K8s 環境
-kde.env      # kde 開發環境使用的 docker image
-kde.sh       # 主腳本，連動 scripts/* 內的子指令 (安裝到 /usr/local/lib)
-scripts/     # 各項指令的實作 (安裝到 /usr/local/lib)
+    └─ kubeconfig/          # k8s kubeconfig 所在資料夾 (建議加入 .gitignore)
+    └─ pki/                 # kind cluster cert 所在資料夾 (建議加入 .gitignore)
+    └─ kind-config.yaml     # kind 的設定檔 (建議加入 .gitignore)
+    └─ k3d-config.yaml      # k3d 的設定檔 (建議加入 .gitignore)
+    └─ .env                 # 此環境的本地的設定檔 (建議加入 .gitignore)
+    └─ k8s.env              # 此環境的公用的設定檔
+    └─ namespaces/
+      └─ <project-name>/    # 專案名稱(K8S namespace 名稱)
+        ├─ project.env        # 專案設定檔(包含專案 Repo、開發/部署環境 image 設定，可增加自訂環境變數)
+        ├─ pre-build.sh       # CI 前置腳本
+        ├─ build.sh           # CI 執行腳本
+        ├─ post-build.sh      # CI 後置腳本
+        ├─ pre-deploy.sh      # CD 前置腳本
+        ├─ deploy.sh          # CD 執行腳本
+        ├─ post-deploy.sh     # CD 後置腳本
+        ├─ undeploy.sh        # 解除部署腳本
+        ├─ [repo]/            # 專案 git repo
+        ├─ [pvc dir]/         # PVC 掛載的資料夾 (StroageClass: local-path)
+        └─ ...
+current.env  # 當前使用的 K8s 環境 (建議加入 .gitignore)
+kde.env      # kde-cli 使用的 docker image (建議加入 .gitignore)
 ```
 
 ## 免責聲明
