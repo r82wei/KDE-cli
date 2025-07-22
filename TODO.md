@@ -5,6 +5,8 @@
 - [ ] 版本控制機制
   - [ ] 需要紀錄目前 cli 版本到 kde.env 內
   - [ ] 如果 kde.env 內的版本跟目前使用的 cli 版本不同，需要做 migration
+- [ ] 新增 docs 指令，產生 AI agent 可以看的文件，讓 workspace 可以透過 AI agent 產生部署相關指令以及邊開發邊測試
+- [ ] 從現有的 project 開新分支環境 (git worktree)
 - [x] ls (列出 k8s 環境)
 - [x] start/create (啟動/新增 k8s 環境)
   - [x] kind (使用 kind 啟動 K8S)
@@ -58,3 +60,40 @@
 - [ ] AKS by terraform
 - [ ] EKS by terraform
 - [ ] LKE by terraform
+
+#### KDE CLI 互動式指令，需要修改成不互動也可以直接帶參數，並且在 .cursor/rules/ 說明原本選項要怎麼查詢
+
+##### 1. 環境管理相關
+
+- kde start <env_name> - 如果未提供環境名稱，會詢問：
+  - 請輸入環境名稱
+- 環境初始化時會詢問：
+  - 請輸入 K8S api server port (預設: 6443)
+  - 請輸入 K8S ingress nginx port (預設: 80)
+- kde start <env_name> k8s - 外部 K8s 環境會詢問：
+  - 請輸入 kubeconfig 路徑
+
+##### 2. 專案管理相關
+
+- kde project create <project_name> - 會詢問：
+  - Is this project a git repo? (y/n)
+  - 請輸入專案開發(建置)環境 Image
+  - 請輸入專案部署環境 Image
+- kde project fetch <project_name> - 會詢問：
+  - 請輸入 git repo HTTPS URL
+  - 請輸入分支名稱(default: main)
+- kde project link <project_name> - 會詢問：
+  - 請輸入資料夾路徑
+- kde project ingress <project_name> - 會詢問：
+  - 請輸入 ingress 的 domain
+
+##### 3. 端口轉發相關
+
+- kde expose - 互動式選擇會詢問：
+  - 輸入選項編號 (選擇 Service/Pod)
+  - 請輸入本地 port
+
+##### 4. 其他互動式功能
+
+- 專案存在時的確認：
+  - 專案已存在，是否要刪除？(y/n)
