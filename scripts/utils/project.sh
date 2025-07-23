@@ -136,7 +136,7 @@ pull_if_project_not_exist() {
     load_project_env ${PROJECT_NAME}
 
     if [[ $(is_project_repo_exist ${PROJECT_NAME}) == "false" ]]; then
-        pull_project ${PROJECT_NAME}
+        pull_project_repo ${PROJECT_NAME}
     fi
 }
 
