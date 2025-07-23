@@ -1,6 +1,6 @@
 # KDE-cli (Kubernetes Development Environment)
 
-一個以 kubernetes 為核心的基礎架構自動化框架，協助快速打造本地 Kubernetes 開發流程，同時支援 CI/CD 環境的模擬與驗證，並可將開發環境設定保存、同步到各個地方。
+一個以 kubernetes 為核心的基礎架構自動化框架，協助快速打造本地 Kubernetes 開發流程，同時支援 CI/CD 環境的模擬與驗證，並可將環境保存、同步到各個地方。
 
 ## 🔑 主要功能
 
@@ -273,7 +273,7 @@ flowchart LR
    - 可以將**解除部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
    - (如果檔案存在) 觸發 `undeploy.sh`，可以在 project.env 自訂執行環境的 docker image
      - `undeploy.sh`: UNDEPLOY_IMAGE (預設: DEPLOY_IMAGE)
-   - ⚠️ 如果檔案不存在，預設動作為刪除 K8S 環境內與專案名稱同名的 namespace
+   - ⚠️ 如果 `undeploy.sh` 不存在，預設動作為刪除 K8S 環境內與專案名稱同名的 namespace
 
    ```bash
    kde project undeploy <project-name>
