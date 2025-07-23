@@ -94,7 +94,7 @@ case "${COMMAND}" in
                 esac
             done
         fi
-        pull_project ${PROJECT_NAME}
+        pull_project_repo ${PROJECT_NAME}
         ;;
     build)
         check_project_name ${PROJECT_NAME}
