@@ -133,6 +133,8 @@ pull_project_repo() {
 pull_if_project_not_exist() {
     PROJECT_NAME=$1
 
+    load_project_env ${PROJECT_NAME}
+
     if [[ $(is_project_repo_exist ${PROJECT_NAME}) == "false" ]]; then
         pull_project ${PROJECT_NAME}
     fi
