@@ -37,7 +37,7 @@ pull_projects() {
         # 詢問使用者是否要下載 git repo
         read -p "是否要下載 ${PROJECT_NAME} 的 git repo？(y/n): " DOWNLOAD_GIT_REPO 
         if [[ ${DOWNLOAD_GIT_REPO} == "y" ]]; then
-            pull_project ${PROJECT_NAME}
+            pull_project_repo ${PROJECT_NAME}
         fi
     done
 }

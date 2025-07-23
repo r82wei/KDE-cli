@@ -20,6 +20,16 @@ is_project_exist() {
     fi
 }
 
+is_project_repo_exist() {
+    PROJECT_NAME=$1
+
+    if [[ ! -d ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/$(git_repo_name ${GIT_REPO_URL}) ]]; then
+        echo "false"
+    else
+        echo "true"
+    fi
+}
+
 is_project_env_exist() {
     if [[ ! -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env ]]; then
         echo "false"
@@ -97,10 +107,10 @@ fetch_project() {
     PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     download_git_repo ${PROJECT_NAME} ${PROJECT_GIT_REPO_URL} ${PROJECT_GIT_REPO_BRANCH} ${PROJECT_REPO_PATH}
-    pull_project ${PROJECT_NAME}
+    pull_project_repo ${PROJECT_NAME}
 }
 
-pull_project() {
+pull_project_repo() {
     PROJECT_NAME=$1
 
     if [[ $(is_project_env_exist ${PROJECT_NAME}) == "false" ]]; then
@@ -123,7 +133,7 @@ pull_project() {
 pull_if_project_not_exist() {
     PROJECT_NAME=$1
 
-    if [[ $(is_project_exist ${PROJECT_NAME}) == "false" ]]; then
+    if [[ $(is_project_repo_exist ${PROJECT_NAME}) == "false" ]]; then
         pull_project ${PROJECT_NAME}
     fi
 }
