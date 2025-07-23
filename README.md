@@ -1,21 +1,21 @@
 # KDE-cli (Kubernetes Development Environment)
 
-一個以開發者為核心的基礎架構自動化框架，協助快速打造本地 Kubernetes 開發流程，同時支援 CI/CD 環境的模擬與驗證，並可將開發環境設定保存、同步到各個地方。
+一個以 kubernetes 為核心的基礎架構自動化框架，協助快速打造本地 Kubernetes 開發流程，同時支援 CI/CD 環境的模擬與驗證，並可將開發環境設定保存、同步到各個地方。
 
 ## 🔑 主要功能
 
 - ⚙️ `快速啟動本地 K8s 或連接遠端 K8s`
   - [kind](https://kind.sigs.k8s.io/): Docker 中的 Kubernetes 集群 (預設)
   - [k3d](https://k3d.io/stable/): 輕量級 K3s 集群
-  - 遠端 K8s: 連接現有的 Kubernetes 集群
+  - 遠端 K8s: 透過 kubeconfig 連接現有的 Kubernetes 集群
 - 🚀 `簡易且彈性的 CI/CD`
-  - 提供 `build.sh`/`deploy.sh`/`undeploy.sh` 等自動化部署腳本，並且可以透過 project.env 自訂 pipeline 環境變數
-  - 支援所有 CD 工具(可自訂 Deploy 環境 image)
-  - 一鍵部署，快速驗證部署腳本及設定
+  - 自訂 shell 部署腳本，並且可以透過 project.env 設定執行時需要的環境變數
+  - 可自訂部署環境的 docker image，支援任何部署工具
+  - 一鍵部署，快速驗證部署腳本及環境設定
 - 🧑🏻‍💻 `即時開發`
-  - 快速啟動容器化開發環境 (各專案可自訂開發和部署的 image，可選擇使用任意語言開發、任意工具部署)
-  - 透過 [Telepresence](https://telepresence.io/docs/quick-start) 流量攔截與代理，讓開發者可以用本地容器環境取代遠端 K8s 上的服務，加速開發與測試，不需每次變更都需要等待 CI/CD
-  - 透過 k8s yaml 部署到本地環境，只需建立 PVC，即可掛載本地專案原始碼資料夾到 Pod 內進行 Live Reload 開發（目前只支援本地 K8s 環境）
+  - 掛載本地原始碼到 Pod，把本地 K8s 部署的服務轉為可 hot-reload 的本地開發環境
+  - 遠端流量代理開發(使用 [Telepresence](https://telepresence.io/docs/quick-start))
+  - 快速啟動容器化開發環境，透過自訂 docker image，支援任意語言開發環境
 - 🖥️ `監控和管理工具`
   - [k9s](https://k9scli.io/): 終端 Kubernetes 管理界面，方便在 IDE 開發除錯
   - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard): Web UI 管理界面
@@ -33,18 +33,62 @@
 
 ## 為什麼選 KDE-cli？
 
-- 你是 Developer，想快速啟動本地測試環境？✅
-- 你是 QA，要驗證某個特定 Commit 的行為？✅
+- 你是 Developer，想快速啟動本地開發環境？✅
+- 你是 Developer，想用本地開發環境代理遠端 K8S 上面的 Pod 除錯？✅
 - 你是 Ops/Infra/DevOps，要在撰寫 CI/CD 前先模擬部署？✅
+- 你是 QA，要驗證某個特定 Commit 的行為？✅
+- 你希望團隊使用相同的開發/測試環境？✅
 - 你想要減少開發環境與正式環境的差異？✅
 - 你希望用一個 Shell 工具就搞定？✅
 
 👉 KDE-cli 希望做到「簡化並整合這些工作流程」，讓使用者能夠在本地的命令列環境裡完成大部分開發、測試與部署驗證流程，並且能把環境版本化。
 
-## Workflow
+## 使用流程
 
 ```mermaid
-flowchart TD
+flowchart LR
+    create_workspace[建立 Workspace 環境]
+    create_local_k8s[建立本地K8s環境]
+    add_remote_k8s[連接現有K8s]
+    create_project[設定專案]
+    pull_repo[從 Git 抓取現有專案]
+    create_local_repo[建立新的本地專案]
+    k8s_yaml[撰寫部署 K8s yaml]
+    shell_script["撰寫 CI/CD shell (build.sh/deploy.sh/undeploy.sh)"]
+    deploy[一鍵部署服務到 K8S]
+    debug["開發與除錯(CI/CD、程式)"]
+    monitor[K9s / K8S Dashboard]
+    expose[公開服務]
+    port_forwarding[port-forwarding]
+    cloudflare_tunnel[Cloudflare Tunnel]
+    ngrok[ngrok]
+    git_push[將 Workspace 環境儲存至Git]
+
+    create_workspace--> create_local_k8s
+    create_workspace--> add_remote_k8s
+    create_local_k8s --> create_project
+    add_remote_k8s --> create_project
+    create_project --> pull_repo
+    create_project --> create_local_repo
+    pull_repo --> k8s_yaml
+    create_local_repo --> k8s_yaml
+    k8s_yaml --> shell_script
+    shell_script --> deploy
+    deploy --> monitor
+    monitor --> debug
+    debug --> git_push
+    %% 公開服務
+    deploy -.-> expose
+    expose -.-> port_forwarding
+    expose -.-> cloudflare_tunnel
+    expose -.-> ngrok
+
+```
+
+## 工作流程
+
+```mermaid
+flowchart LR
     subgraph Ops["Ops/DevOps/Infra"]
         Ops_create_workspace[建立 Workspace 環境]
         Ops_create_local_k8s[建立本地K8s環境]
@@ -196,14 +240,17 @@ flowchart TD
 
 4. **執行 CI/CD 部署**
 
-   - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，執行 CI/CD 時會自動注入 container 環境內
-   - (如果檔案存在) 依序觸發 `pre-build.sh -> build.sh -> post-build.sh -> pre-deploy.sh -> deploy.sh -> post-deploy.sh`，每個 shell 可以在 project.env 自訂執行環境的 docker image
-     - `pre-build.sh`: PRE_BUILD_IMAGE (預設: DEVELOP_IMAGE)
-     - `build.sh`: BUILD_IMAGE (預設: DEVELOP_IMAGE)
-     - `post-build.sh`: POST_BUILD_IMAGE (預設: DEVELOP_IMAGE)
-     - `pre-deploy.sh`: PRE_DEPLOY_IMAGE (預設: DEPLOY_IMAGE)
-     - `deploy.sh`: DEPLOY_IMAGE (預設: DEPLOY_IMAGE)
-     - `post-deploy.sh`: POST_DEPLOY_IMAGE (預設: DEPLOY_IMAGE)
+   - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，執行部署時會自動注入 container 環境內
+   - 如果檔案存在，將會依序執行專案下的 shell 腳本，每個 shell 可以在 project.env 自訂執行環境的 docker image
+
+     | 執行順序 | 腳本           | 預設 Image    | 自訂 Image 環境變數 (project.env) |
+     | -------- | -------------- | ------------- | --------------------------------- |
+     | 1        | pre-build.sh   | DEVELOP_IMAGE | PRE_BUILD_IMAGE                   |
+     | 2        | build.sh       | DEVELOP_IMAGE | BUILD_IMAGE                       |
+     | 3        | post-build.sh  | DEVELOP_IMAGE | POST_BUILD_IMAGE                  |
+     | 4        | pre-deploy.sh  | DEPLOY_IMAGE  | PRE_DEPLOY_IMAGE                  |
+     | 5        | deploy.sh      | DEPLOY_IMAGE  | DEPLOY_IMAGE                      |
+     | 6        | post-deploy.sh | DEPLOY_IMAGE  | POST_DEPLOY_IMAGE                 |
 
    ```bash
    kde project deploy <project-name>
@@ -250,6 +297,8 @@ flowchart TD
 ## 進階功能
 
 - **遠端除錯 ([Telepresence](https://telepresence.io/docs/quick-start))**
+
+  - ⚠️ 不建議直接代理正式環境的服務，使用者應自行評估風險
 
   ```bash
   kde telepresence <command>
