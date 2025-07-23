@@ -130,7 +130,7 @@ pull_project_repo() {
     download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${PROJECT_REPO_PATH}/$(git_repo_name ${GIT_REPO_URL})
 }
 
-pull_if_project_not_exist() {
+pull_if_project_repo_not_exist() {
     PROJECT_NAME=$1
 
     load_project_env ${PROJECT_NAME}
@@ -204,7 +204,7 @@ build_project() {
     PROJECT_NAME=$1
     PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
-    pull_if_project_not_exist ${PROJECT_NAME}
+    pull_if_project_repo_not_exist ${PROJECT_NAME}
     source ${PROJECT_PATH}/project.env
 
     if [[ -f ${PROJECT_PATH}/pre-build.sh ]]; then
@@ -226,7 +226,7 @@ deploy_project() {
     PROJECT_NAME=$1
     PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
-    pull_if_project_not_exist ${PROJECT_NAME}
+    pull_if_project_repo_not_exist ${PROJECT_NAME}
     source ${PROJECT_PATH}/project.env
     
     if [[ -f ${PROJECT_PATH}/pre-deploy.sh ]]; then
