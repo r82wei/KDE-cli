@@ -281,6 +281,7 @@ is_port_valid() {
     fi
 }
 
+# kde-cli 使用
 # 在 deploy-env 容器中執行指令（使用 TTY 模式執行命令）
 exec_script_in_deploy_env() {
     docker run --rm -it \
@@ -291,6 +292,7 @@ exec_script_in_deploy_env() {
     bash -c "$1"
 }
 
+# kde-cli 使用
 # 在 deploy-env 容器中執行指令，並且回傳結果（不使用 TTY 模式執行命令）
 exec_script_in_deploy_env_without_tty() {
     KUBECONFIG=${ENVIROMENTS_PATH}/${ENV_NAME}/${KUBE_CONFIG_DIR}/config
@@ -305,30 +307,26 @@ exec_script_in_deploy_env_without_tty() {
     echo "${output}"
 }
 
+# projects exec 使用
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes 的資料夾掛載進去 (使用 TTY 模式執行命令)
 exec_bash_in_deploy_env_with_projects() {
-    HOME_IN_CONTAINER=/home/${USER}
-    
-    touch ${HOME}/.netrc
-    
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
     --group-add $(getent group docker | cut -d: -f3) \
-    -e HOME=${HOME_IN_CONTAINER} \
     -e KUBECONFIG=/.kube/config \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    -v ${HOME}/.docker:/${HOME_IN_CONTAINER}/.docker \
-    -v ${HOME}/.netrc:/${HOME_IN_CONTAINER}/.netrc \
     -v ${KUBECONFIG}:/.kube/config \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
     ${KDE_DEPLOY_ENV_IMAGE} \
     bash
 }
 
+# project exec 、build、deploy 使用
+# 進入 deploy-env 容器中的 Bash 環境(expose port)，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
 exec_script_in_container_with_project_and_port() {
     PROJECT_NAME=$1
     DOCKER_IMAGE=$2
@@ -337,27 +335,34 @@ exec_script_in_container_with_project_and_port() {
     export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
-    HOME_IN_CONTAINER=/home/${USER}
 
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
 
-    touch ${HOME}/.netrc
+    # 自動 export 所有 env 變數
+    set -a
+    . ${KDE_ENV_FILE}
+    . ${ENVIROMENTS_PATH}/${CUR_ENV}/k8s.env
+    . ${ENVIROMENTS_PATH}/${CUR_ENV}/.env
+    . ${PROJECT_ENV_FILE_TMP}
+    set +a
+    # 將 KDE_MOUNT_* 環境變數轉換為 docker volume 參數
+    set +e
+    DOCKER_VOLUMES=$(env | grep '^KDE_MOUNT_' | cut -d= -f2- | sed 's/^/-v /' | xargs)
+    set -e
     
     docker run --rm -it \
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
-    --env-file ${PROJECT_ENV_FILE_TMP} \
-    -e HOME=${HOME_IN_CONTAINER} \
-    -e KUBECONFIG=/.kube/config \
     -p ${PORT}:${PORT} \
+    --env-file ${PROJECT_ENV_FILE_TMP} \
+    -e KUBECONFIG=/.kube/config \
+    -v ${KUBECONFIG}:/.kube/config \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    -v ${HOME}/.docker:/.home/.docker \
-    -v ${HOME}/.netrc:/.home/.netrc \
-    -v ${KUBECONFIG}:/.kube/config \
+    ${DOCKER_VOLUMES} \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
@@ -367,6 +372,7 @@ exec_script_in_container_with_project_and_port() {
     fi
 }
 
+# project exec 、build、deploy 使用
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
 exec_script_in_container_with_project() {
     PROJECT_NAME=$1
@@ -375,11 +381,20 @@ exec_script_in_container_with_project() {
     export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
-    HOME_IN_CONTAINER=/home/${USER}
 
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
 
-    touch ${HOME}/.netrc
+    # 自動 export 所有 env 變數
+    set -a
+    . ${KDE_ENV_FILE}
+    . ${ENVIROMENTS_PATH}/${CUR_ENV}/k8s.env
+    . ${ENVIROMENTS_PATH}/${CUR_ENV}/.env
+    . ${PROJECT_ENV_FILE_TMP}
+    set +a
+    # 將 KDE_MOUNT_* 環境變數轉換為 docker volume 參數
+    set +e
+    DOCKER_VOLUMES=$(env | grep '^KDE_MOUNT_' | cut -d= -f2- | sed 's/^/-v /' | xargs)
+    set -e
     
     docker run --rm -it \
     --user $UID:$(id -g) \
@@ -387,14 +402,12 @@ exec_script_in_container_with_project() {
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $(getent group docker | cut -d: -f3) \
     --env-file ${PROJECT_ENV_FILE_TMP} \
-    -e HOME=${HOME_IN_CONTAINER} \
     -e KUBECONFIG=/.kube/config \
+    -v ${KUBECONFIG}:/.kube/config \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    -v ${HOME}/.docker:/${HOME_IN_CONTAINER}/.docker \
-    -v ${HOME}/.netrc:/${HOME_IN_CONTAINER}/.netrc \
-    -v ${KUBECONFIG}:/.kube/config \
+    ${DOCKER_VOLUMES} \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
