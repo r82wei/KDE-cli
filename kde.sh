@@ -102,6 +102,7 @@ show_help() {
     echo "  load-image <image> [env_name]                       載入 docker image 到 k8s 環境"
     echo "  k9s [-p port]                                       進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port"
     echo "  dashboard [-p port] [--insecure]                    進入 k8s Web UI Dashboard"
+    echo "  headlamp [-p port]                                  進入 headlamp Dashboard"
     echo "  expose                                              將 service/pod port forward 到本地指定的 port"
     echo "  exec                                                進入 k8s node container 環境"
     echo "  reset                                               重置 kde 環境，清除全部 environments 和 projects 資料夾"
@@ -173,6 +174,10 @@ case "$1" in
     dashboard)
         shift  # 移除 "dashboard" 指令
         source ${KDE_SCRIPTS_PATH}/dashboard/command.sh
+        ;;
+    headlamp)
+        shift  # 移除 "headlamp" 指令
+        source ${KDE_SCRIPTS_PATH}/headlamp/command.sh
         ;;
     project|proj|namespace|ns)
         shift  # 移除 "project"  指令
