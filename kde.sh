@@ -12,16 +12,18 @@ export ENVIROMENTS_PATH=${KDE_PATH}/environments
 export KUBE_CONFIG_DIR=kubeconfig
 # 設定 VOLUMES_DIR
 export VOLUMES_DIR=namespaces
+# 設定 kde env 檔案路徑
+export KDE_ENV_FILE=${KDE_PATH}/kde.env
 
 source ${KDE_SCRIPTS_PATH}/utils/environment/k8s.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/kind.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 
 # 新增或載入 kde.env 環境變數設定檔
-if [[ ! -f ${KDE_PATH}/kde.env ]]; then
-    touch ${KDE_PATH}/kde.env
+if [[ ! -f ${KDE_ENV_FILE} ]]; then
+    touch ${KDE_ENV_FILE}
 else
-    source ${KDE_PATH}/kde.env
+    source ${KDE_ENV_FILE}
 fi
 
 # 設定 KDE 的 debug 模式
@@ -32,35 +34,35 @@ fi
 # 設定預設 kde 預設 image 環境變數
 if [[ -z ${KIND_IMAGE} ]]; then
     export KIND_IMAGE=r82wei/kind:v0.27.0
-    echo "KIND_IMAGE=${KIND_IMAGE}" >> ${KDE_PATH}/kde.env
+    echo "KIND_IMAGE=${KIND_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${K3D_IMAGE} ]]; then
     export K3D_IMAGE=r82wei/k3d:v5.8.3
-    echo "K3D_IMAGE=${K3D_IMAGE}" >> ${KDE_PATH}/kde.env
+    echo "K3D_IMAGE=${K3D_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${KDE_DEPLOY_ENV_IMAGE} ]]; then
     export KDE_DEPLOY_ENV_IMAGE=r82wei/deploy-env:1.0.0
-    echo "KDE_DEPLOY_ENV_IMAGE=${KDE_DEPLOY_ENV_IMAGE}" >> ${KDE_PATH}/kde.env
+    echo "KDE_DEPLOY_ENV_IMAGE=${KDE_DEPLOY_ENV_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${NGROK_PROXY_IMAGE} ]]; then
     export NGROK_PROXY_IMAGE=r82wei/ngrok-proxy:1.0.0
-    echo "NGROK_PROXY_IMAGE=${NGROK_PROXY_IMAGE}" >> ${KDE_PATH}/kde.env
+    echo "NGROK_PROXY_IMAGE=${NGROK_PROXY_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} ]]; then
     export CLOUDFLARE_TUNNEL_PROXY_IMAGE=r82wei/cloudflare-tunnel-proxy:1.0.0
-    echo "CLOUDFLARE_TUNNEL_PROXY_IMAGE=${CLOUDFLARE_TUNNEL_PROXY_IMAGE}" >> ${KDE_PATH}/kde.env
+    echo "CLOUDFLARE_TUNNEL_PROXY_IMAGE=${CLOUDFLARE_TUNNEL_PROXY_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${K8S_UI_DASHBOARD_IMAGE} ]]; then
     export K8S_UI_DASHBOARD_IMAGE=kubernetesui/dashboard:v2.7.0
-    echo "K8S_UI_DASHBOARD_IMAGE=${K8S_UI_DASHBOARD_IMAGE}" >> ${KDE_PATH}/kde.env
+    echo "K8S_UI_DASHBOARD_IMAGE=${K8S_UI_DASHBOARD_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${K9S_IMAGE} ]]; then
     export K9S_IMAGE=quay.io/derailed/k9s
-    echo "K9S_IMAGE=${K9S_IMAGE}" >> ${KDE_PATH}/kde.env
+    echo "K9S_IMAGE=${K9S_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${TELEPRESENCE_IMAGE} ]]; then
     export TELEPRESENCE_IMAGE=r82wei/telepresence:1.0.5
-    echo "TELEPRESENCE_IMAGE=${TELEPRESENCE_IMAGE}" >> ${KDE_PATH}/kde.env
+    echo "TELEPRESENCE_IMAGE=${TELEPRESENCE_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 
 
