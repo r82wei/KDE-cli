@@ -397,7 +397,6 @@ exec_script_in_container_with_project() {
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
 
     # 自動 export 所有 env 變數
-    KDE_MOUNT=""
     set -a
     . ${KDE_ENV_FILE}
     . ${ENVIROMENTS_PATH}/${CUR_ENV}/k8s.env
