@@ -18,6 +18,7 @@
   - 快速啟動容器化開發環境，透過自訂 docker image，支援任意語言開發環境
 - 🖥️ `監控和管理工具`
   - [k9s](https://k9scli.io/): 終端 Kubernetes 管理界面，方便在 IDE 開發除錯
+  - [Headlamp](https://headlamp.dev/): 使用者友善的 Kubernetes Web UI
   - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard): Web UI 管理界面
 - 📦 `IaC 化的環境設定`
   - 開發環境設定檔可透過 git 版本化
@@ -57,7 +58,7 @@ flowchart LR
     shell_script["撰寫 CI/CD shell (build.sh/deploy.sh/undeploy.sh)"]
     deploy[一鍵部署服務到 K8S]
     debug["開發與除錯(CI/CD、程式)"]
-    monitor[K9s / K8S Dashboard]
+    monitor[K9s / Headlamp / K8S Dashboard]
     expose[公開服務]
     port_forwarding[port-forwarding]
     cloudflare_tunnel[Cloudflare Tunnel]
@@ -100,7 +101,7 @@ flowchart LR
         Ops_shell_script[撰寫 CI/CD shell build.sh/deploy.sh/undeploy.sh]
         Ops_deploy[一鍵部署服務到 K8S]
         Ops_cicd[CI/CD 開發與除錯]
-        Ops_Monitor[K9s / K8S Dashboard]
+        Ops_Monitor[K9s / Headlamp / K8S Dashboard]
         Ops_expose[公開服務]
         Ops_port_forwarding[port-forwarding]
         Ops_cloudflare_tunnel[Cloudflare Tunnel]
@@ -117,7 +118,7 @@ flowchart LR
         Dev_debug_1[程式開發/除錯]
         Dev_debug_2[程式開發/除錯]
         Dev_debug_3[程式開發/除錯]
-        Dev_monitor[K9s / K8S Dashboard]
+        Dev_monitor[K9s / Headlamp / K8S Dashboard]
         Dev_expose[公開服務]
         Dev_cloudflare_tunnel[Cloudflare Tunnel]
         Dev_ngrok[ngrok]
@@ -132,7 +133,7 @@ flowchart LR
         QA_git_pull[從 Git 抓取 Workspace 環境]
         QA_start_k8s[啟動K8S / 設定 kubeconfig]
         QA_deploy[一鍵部署服務到 K8S]
-        QA_monitor[K9s / K8S Dashboard]
+        QA_monitor[K9s / Headlamp / K8S Dashboard]
         QA_test[測試]
         QA_expose[公開服務]
         QA_port_forwarding[port-forwarding]
@@ -264,6 +265,9 @@ flowchart LR
    # 如果指定 --port 30000-30020，就可以使用 K9S 的 Port forwarding 功能將 port 30000-30020 對應到本地
    kde k9s [--port]
 
+   # Headlamp (Kubernetes Web UI)
+   kde headlamp [--port]
+
    # Web UI，可加上 `--insecure` 跳過登入
    kde dashboard [--port] [--insecure]
    ```
@@ -378,6 +382,7 @@ KDE-cli 整合了多個第三方工具與服務，其中部分服務（如 Ngrok
 - [kind](https://kind.sigs.k8s.io/)
 - [k9s](https://k9scli.io/)
 - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard)
+- [Headlamp](https://headlamp.dev/)
 - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
 - [Ngrok](https://ngrok.com/)
 - [Telepresence](https://telepresence.io/docs/quick-start)
