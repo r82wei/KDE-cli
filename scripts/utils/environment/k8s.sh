@@ -336,6 +336,8 @@ exec_script_in_container_with_project_and_port() {
     PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
 
+    touch ${HOME}/.netrc
+
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
 
     # 自動 export 所有 env 變數
@@ -362,6 +364,8 @@ exec_script_in_container_with_project_and_port() {
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
+    -v ${HOME}/.docker:/${HOME}/.docker \
+    -v ${HOME}/.netrc:/${HOME}/.netrc \
     ${DOCKER_VOLUMES} \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
@@ -381,6 +385,8 @@ exec_script_in_container_with_project() {
     export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
+
+    touch ${HOME}/.netrc
 
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
 
@@ -407,6 +413,8 @@ exec_script_in_container_with_project() {
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
+    -v ${HOME}/.docker:/${HOME}/.docker \
+    -v ${HOME}/.netrc:/${HOME}/.netrc \
     ${DOCKER_VOLUMES} \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
