@@ -86,6 +86,7 @@ create_telepresence_session_container() {
     --cap-add SYS_ADMIN \
     --security-opt apparmor:unconfined \
     --network ${DOCKER_NETWORK} \
+    -e TELEPRESENCE_MANAGER_NAMESPACE=${TELEPRESENCE_MANAGER_NAMESPACE:-ambassador} \
     -e TELEPRESENCE_CONNECT_NAMESPACE=${NAMESPACE} \
     -e TELEPRESENCE_ALSO_PROXY_CIDR=${TELEPRESENCE_ALSO_PROXY_CIDR} \
     -v ${KUBECONFIG}:/root/.kube/config:ro \
