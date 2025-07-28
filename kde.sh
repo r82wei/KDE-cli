@@ -21,7 +21,13 @@ source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 
 # 新增或載入 kde.env 環境變數設定檔
 if [[ ! -f ${KDE_ENV_FILE} ]]; then
-    touch ${KDE_ENV_FILE}
+    read -p "KDE 設定檔尚未初始化，是否要初始化？(y/n): " init_kde_env
+    if [[ ${init_kde_env} == "y" ]]; then
+        touch ${KDE_ENV_FILE}
+        echo "KDE 設定檔初始化完成"
+    else
+        exit 1
+    fi
 else
     source ${KDE_ENV_FILE}
 fi
@@ -61,7 +67,7 @@ if [[ -z ${K9S_IMAGE} ]]; then
     echo "K9S_IMAGE=${K9S_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${TELEPRESENCE_IMAGE} ]]; then
-    export TELEPRESENCE_IMAGE=r82wei/telepresence:1.0.5
+    export TELEPRESENCE_IMAGE=r82wei/telepresence:1.0.6
     echo "TELEPRESENCE_IMAGE=${TELEPRESENCE_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 
