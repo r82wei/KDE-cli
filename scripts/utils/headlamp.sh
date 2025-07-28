@@ -66,6 +66,7 @@ start_headlamp() {
     docker run --rm -it \
       -p ${PORT}:4466 \
       -v ${KUBECONFIG}:/home/headlamp/.kube/config \
+      --network ${DOCKER_NETWORK} \
       ghcr.io/headlamp-k8s/headlamp:latest /headlamp/headlamp-server -html-static-dir /headlamp/frontend -plugins-dir=/headlamp/plugins
         
 }
