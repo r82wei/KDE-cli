@@ -1,16 +1,16 @@
 #!/bin/bash
 
 cloudflare_login() {
-    if [ ! -d ${KDE_PATH}/cloudflared ]; then
-        mkdir -p ${KDE_PATH}/cloudflared
-        touch ${KDE_PATH}/cloudflared/cert.pem
-        chmod -R 777 ${KDE_PATH}/cloudflared
+    if [ ! -d ${KDE_PATH}/.cloudflared ]; then
+        mkdir -p ${KDE_PATH}/.cloudflared
+        touch ${KDE_PATH}/.cloudflared/cert.pem
+        chmod -R 777 ${KDE_PATH}/.cloudflared
         docker run -it --rm \
             --name cloudflared \
-            -v ${KDE_PATH}/cloudflared:/home/nonroot/.cloudflared \
+            -v ${KDE_PATH}/.cloudflared:/home/nonroot/.cloudflared \
             ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} \
             "cloudflared --no-autoupdate login"
-        chmod -R 755 ${KDE_PATH}/cloudflared/cert.pem
+        chmod -R 755 ${KDE_PATH}/.cloudflared/cert.pem
     else
         echo "Cloudflare login already exists"
     fi
@@ -26,7 +26,7 @@ cloudflare_set_dns() {
     docker run -it --rm \
         --name cloudflared \
         -e TUNNEL_ORIGIN_CERT=/etc/cloudflared/cert.pem \
-        -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
+        -v ${KDE_PATH}/.cloudflared:/etc/cloudflared \
         ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} \
         "cloudflared --no-autoupdate tunnel route dns --overwrite-dns ${DOMAIN} ${DOMAIN}"
     echo "DNS for ${DOMAIN} with tunnel ID ${TUNNEL_ID} set"
@@ -37,7 +37,7 @@ cloudflare_get_tunnel_id() {
 
     TUNNEL_ID=$(docker run -it --rm \
         -e TUNNEL_ORIGIN_CERT=/etc/cloudflared/cert.pem \
-        -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
+        -v ${KDE_PATH}/.cloudflared:/etc/cloudflared \
         ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} \
         "cloudflared --no-autoupdate tunnel list -n ${DOMAIN}" | grep ${DOMAIN} | awk '{print $1}')
     echo ${TUNNEL_ID}
@@ -58,11 +58,11 @@ cloudflare_create_tunnel() {
         --name cloudflared \
         -e TUNNEL_ORIGIN_CERT=/etc/cloudflared/cert.pem \
         -e TUNNEL_CRED_FILE=/etc/cloudflared/${FILE_NAME}.json \
-        -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
+        -v ${KDE_PATH}/.cloudflared:/etc/cloudflared \
         ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} \
        "cloudflared --no-autoupdate tunnel create ${DOMAIN}"
 
-    chmod 755 ${KDE_PATH}/cloudflared/${FILE_NAME}.json
+    chmod 755 ${KDE_PATH}/.cloudflared/${FILE_NAME}.json
 
     # 取得 tunnel id
     TUNNEL_ID=$(cloudflare_get_tunnel_id ${DOMAIN})
@@ -72,7 +72,7 @@ cloudflare_create_tunnel() {
     cloudflare_set_dns ${DOMAIN} ${TUNNEL_ID}
 
     echo "Creating config for tunnel ${DOMAIN} and target URL ${TARGET_URL}"
-    cat > ${KDE_PATH}/cloudflared/${FILE_NAME}.yml << EOF
+    cat > ${KDE_PATH}/.cloudflared/${FILE_NAME}.yml << EOF
 tunnel: "${DOMAIN}"
 credentials-file: /etc/cloudflared/${FILE_NAME}.json
 ingress:
@@ -91,7 +91,7 @@ cloudflare_start_tunnel() {
     docker run -it --rm \
         --name cloudflared-tunnel-${DOMAIN/\*/all} \
         --network ${DOCKER_NETWORK} \
-        -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
+        -v ${KDE_PATH}/.cloudflared:/etc/cloudflared \
         ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} \
         "cloudflared --no-autoupdate tunnel --config /etc/cloudflared/${FILE_NAME}.yml run ${DOMAIN}"
     echo "Tunnel ${DOMAIN} stopped"
@@ -109,12 +109,12 @@ cloudflare_delete_tunnel() {
     FILE_NAME=${DOMAIN/\*/all}
     
     echo "Deleting tunnel ${DOMAIN}"
-    rm -f ${KDE_PATH}/cloudflared/${FILE_NAME}.json
-    rm -f ${KDE_PATH}/cloudflared/${FILE_NAME}.yml
+    rm -f ${KDE_PATH}/.cloudflared/${FILE_NAME}.json
+    rm -f ${KDE_PATH}/.cloudflared/${FILE_NAME}.yml
     docker run -it --rm \
         --name cloudflared \
         -e TUNNEL_ORIGIN_CERT=/etc/cloudflared/cert.pem \
-        -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
+        -v ${KDE_PATH}/.cloudflared:/etc/cloudflared \
         ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} \
         "cloudflared --no-autoupdate tunnel delete ${DOMAIN}"
     echo "Tunnel ${DOMAIN} deleted"
@@ -146,7 +146,7 @@ cloudflare_tunnel_service() {
         --network ${DOCKER_NETWORK} \
         --add-host ${SERVICE}:127.0.0.1 \
         -v ${KUBECONFIG}:/home/nonroot/.kube/config \
-        -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
+        -v ${KDE_PATH}/.cloudflared:/etc/cloudflared \
         ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} \
         "${SCRIPT}"
 }
@@ -172,7 +172,7 @@ cloudflare_tunnel_pod() {
         --network ${DOCKER_NETWORK} \
         --add-host ${POD}.${NAMESPACE}:127.0.0.1 \
         -v ${KUBECONFIG}:/home/nonroot/.kube/config \
-        -v ${KDE_PATH}/cloudflared:/etc/cloudflared \
+        -v ${KDE_PATH}/.cloudflared:/etc/cloudflared \
         ${CLOUDFLARE_TUNNEL_PROXY_IMAGE} \
         "${SCRIPT}"
 }
