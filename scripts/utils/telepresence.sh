@@ -146,6 +146,14 @@ exec_script_in_container_with_project() {
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
     export ENVIRONMENT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}
     HOME_IN_CONTAINER=/home/${USER}
+    # 預設不加 --group-add
+    GROUP_ADD_OPT=""
+
+    # 判斷系統是否有 getent（Linux）及 docker group
+    if command -v getent >/dev/null 2>&1 && getent group docker >/dev/null 2>&1; then
+        DOCKER_GID=$(getent group docker | cut -d: -f3)
+        GROUP_ADD_OPT="--group-add $DOCKER_GID"
+    fi
 
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
 
@@ -155,7 +163,7 @@ exec_script_in_container_with_project() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
-    --group-add $(getent group docker | cut -d: -f3) \
+    ${GROUP_ADD_OPT} \
     --env-file ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}/${WORKLOAD}.env \
     --env-file ${PROJECT_ENV_FILE_TMP} \
     -e HOME=${HOME_IN_CONTAINER} \
