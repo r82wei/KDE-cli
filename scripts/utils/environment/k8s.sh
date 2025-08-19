@@ -314,7 +314,7 @@ exec_bash_in_deploy_env_with_projects() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
-    --group-add $(getent group docker | cut -d: -f3) \
+    --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
     -e KUBECONFIG=/.kube/config \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
@@ -354,7 +354,7 @@ exec_script_in_container_with_project_and_port() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
-    --group-add $(getent group docker | cut -d: -f3) \
+    --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
     -p ${PORT}:${PORT} \
     --env-file ${PROJECT_ENV_FILE_TMP} \
     -e KUBECONFIG=/.kube/config \
@@ -400,7 +400,7 @@ exec_script_in_container_with_project() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
-    --group-add $(getent group docker | cut -d: -f3) \
+    --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
     --env-file ${PROJECT_ENV_FILE_TMP} \
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
