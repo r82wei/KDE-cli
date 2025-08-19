@@ -4,18 +4,15 @@ start_code_server() {
     PORT=$1
     DAEMON=$2
 
-    mkdir -p ${KDE_PATH}/.code-server/config
-    mkdir -p ${KDE_PATH}/.code-server/data
+    mkdir -p ${KDE_PATH}/.code-server
     if [[ "${DAEMON}" == "true" ]]; then
         docker run -it -d \
         --name code-server \
         --workdir ${KDE_PATH} \
         --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
-        --user-data-dir /home/coder/data \
         -p ${PORT}:8080 \
         -e "PASSWORD=${PASSWORD}" \
-        -v "${KDE_PATH}/.code-server/config:/home/coder/.config/code-server" \
-        -v "${KDE_PATH}/.code-server/data:/home/coder/data" \
+        -v "${KDE_PATH}/.code-server:/home/coder" \
         -v "${KDE_PATH}:${KDE_PATH}" \
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -u "$(id -u):$(id -g)" \
@@ -29,8 +26,7 @@ start_code_server() {
         --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
         -p ${PORT}:8080 \
         -e "PASSWORD=${PASSWORD}" \
-        -v "${KDE_PATH}/.code-server/config:/home/coder/.config/code-server" \
-        -v "${KDE_PATH}/.code-server/data:/home/coder/data" \
+        -v "${KDE_PATH}/.code-server:/home/coder" \
         -v "${KDE_PATH}:${KDE_PATH}" \
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -u "$(id -u):$(id -g)" \
