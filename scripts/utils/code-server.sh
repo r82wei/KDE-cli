@@ -20,7 +20,7 @@ start_code_server() {
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -u "$(id -u):$(id -g)" \
         -e "DOCKER_USER=$USER" \
-        docker.io/r82wei/kde-code-server:v1.0.0-rc.1-20250819130954 \
+        ${CODE_SERVER_IMAGE} \
         ${KDE_PATH}
     else
         docker run -it --rm \
@@ -35,7 +35,7 @@ start_code_server() {
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -u "$(id -u):$(id -g)" \
         -e "DOCKER_USER=$USER" \
-        docker.io/r82wei/kde-code-server:v1.0.0-rc.1-20250819130954 \
+        ${CODE_SERVER_IMAGE} \
         ${KDE_PATH}
     fi
 }

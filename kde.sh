@@ -70,6 +70,10 @@ if [[ -z ${TELEPRESENCE_IMAGE} ]]; then
     export TELEPRESENCE_IMAGE=r82wei/telepresence:1.0.6
     echo "TELEPRESENCE_IMAGE=${TELEPRESENCE_IMAGE}" >> ${KDE_ENV_FILE}
 fi
+if [[ -z ${CODE_SERVER_IMAGE} ]]; then
+    export CODE_SERVER_IMAGE=docker.io/r82wei/kde-code-server:v1.0.0-rc.1-20250819130954
+    echo "CODE_SERVER_IMAGE=${CODE_SERVER_IMAGE}" >> ${KDE_ENV_FILE}
+fi
 
 
 # 設定 ngrok 的環境變數
@@ -117,6 +121,7 @@ show_help() {
     echo "  ngrok                                               啟動 ngrok"
     echo "  cloudflare-tunnel <domain> <target>                 透過 Cloudflare Tunnel 建立連線"
     echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
+    echo "  code-server [-d] [-p port]                          在目前路徑下啟動 code-server，可使用 -d 參數在背景執行，可使用 -p 參數指定 code-server 的 port"
 }
 
 
@@ -208,6 +213,10 @@ case "$1" in
     telepresence)
         shift  # 移除 "telepresence" 指令
         source ${KDE_SCRIPTS_PATH}/telepresence/command.sh
+        ;;
+    code-server)
+        shift  # 移除 "code-server" 指令
+        source ${KDE_SCRIPTS_PATH}/code-server/command.sh
         ;;
     *)
         show_help
