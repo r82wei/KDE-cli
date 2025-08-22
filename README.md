@@ -1,6 +1,6 @@
 # KDE-cli (Kubernetes Development Environment)
 
-一個以 kubernetes 為核心的基礎架構自動化框架，協助快速打造本地 Kubernetes 開發流程，同時支援 CI/CD 環境的模擬與驗證，並可將環境保存、同步到各個地方。
+一個以 Kubernetes 為核心的 Internal Developer Platform (IDP)，協助快速打造本地 Kubernetes 開發環境，同時支援 CI/CD 環境的模擬與驗證，並且將相同部署流程一鍵部署到不同的遠端 Kubernetes。
 
 ## 🔑 主要功能
 
@@ -8,21 +8,19 @@
   - [kind](https://kind.sigs.k8s.io/): Docker 中的 Kubernetes 集群 (預設)
   - [k3d](https://k3d.io/stable/): 輕量級 K3s 集群
   - 遠端 K8s: 透過 kubeconfig 連接現有的 Kubernetes 集群
+- 🧑🏻‍💻 `即時開發`
+  - 一鍵啟動 VS Code Web UI，隨時隨地透過瀏覽器開發 (使用 [code-server](https://github.com/coder/code-server)，可搭配 [Ngrok](https://ngrok.com/)、[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) 進行 https 加密連線)
+  - 本地 K8s 透過 pv 掛載原始碼到 Pod，進行 hot-reload 即時開發 (使用 [local-path-provisioner
+    ](https://github.com/rancher/local-path-provisioner))
+  - 遠端 K8s 透過流量轉發到本地容器化開發環境，進行開發除錯(使用 [Telepresence](https://telepresence.io/docs/quick-start))
 - 🚀 `簡易且彈性的 CI/CD`
   - 自訂 shell 部署腳本，並且可以透過 project.env 設定執行時需要的環境變數
   - 可自訂部署環境的 docker image，支援任何部署工具
-  - 一鍵部署，快速驗證部署腳本及環境設定
-- 🧑🏻‍💻 `即時開發`
-  - 掛載本地原始碼到 Pod，把本地 K8s 部署的服務轉為可 hot-reload 的本地開發環境
-  - 遠端流量代理開發(使用 [Telepresence](https://telepresence.io/docs/quick-start))
-  - 快速啟動容器化開發環境，透過自訂 docker image，支援任意語言開發環境
+  - 一鍵部署，快速驗證部署腳本及部署到任何 K8s 環境
 - 🖥️ `監控和管理工具`
   - [k9s](https://k9scli.io/): 終端 Kubernetes 管理界面，方便在 IDE 開發除錯
   - [Headlamp](https://headlamp.dev/): 使用者友善的 Kubernetes Web UI
   - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard): Web UI 管理界面
-- 📦 `IaC 化的環境設定`
-  - 開發環境設定檔可透過 git 版本化
-  - 團隊同步的標準化開發環境
 - 🌐 `快速公開服務`
   - [Ngrok](https://ngrok.com/): 將本地服務快速開放到外網進行測試
   - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/): 通過 Cloudflare 建立安全隧道，快速對外開放服務進行測試
@@ -31,12 +29,15 @@
   - 所有操作都在 Docker 容器中執行
   - 隔離的開發環境，支持多個專案同時開發
   - 只需安裝 Docker 就可以建立一致的開發環境
+- 📦 `IaC 化的環境設定`
+  - 開發環境設定檔可透過 git 版本化
+  - 團隊同步的標準化開發環境
 
 ## 為什麼選 KDE-cli？
 
 - 你是 Developer，想快速啟動本地開發環境？✅
 - 你是 Developer，想用本地開發環境代理遠端 K8S 上面的 Pod 除錯？✅
-- 你是 Ops/Infra/DevOps，要在撰寫 CI/CD 前先模擬部署？✅
+- 你是 Ops/Infra/DevOps，要在執行 CI/CD 前先模擬部署？✅
 - 你是 QA，要驗證某個特定 Commit 的行為？✅
 - 你希望團隊使用相同的開發/測試環境？✅
 - 你想要減少開發環境與正式環境的差異？✅
@@ -218,7 +219,7 @@ flowchart LR
      ```bash
      kde create <cluster-name> --kind    # 或 --k3d
      ```
-   - 加入現有的 K8s 叢集
+   - 加入現有的 K8s 叢集一杯
      ```bash
      kde create <cluster-name> --k8s
      ```
@@ -299,6 +300,16 @@ flowchart LR
    ```
 
 ## 進階功能
+
+- **啟動 VS Code Web UI ([code-server](https://github.com/coder/code-server))**
+
+  - options
+    - -d : 背景執行
+    - -p : 指定 Port (預設 8080)
+
+  ```bash
+  kde code-server [options]
+  ```
 
 - **遠端除錯 ([Telepresence](https://telepresence.io/docs/quick-start))**
 
@@ -386,3 +397,4 @@ KDE-cli 整合了多個第三方工具與服務，其中部分服務（如 Ngrok
 - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
 - [Ngrok](https://ngrok.com/)
 - [Telepresence](https://telepresence.io/docs/quick-start)
+- [code-server](https://github.com/coder/code-server)
