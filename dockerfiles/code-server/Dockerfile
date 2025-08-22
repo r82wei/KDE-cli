@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gnupg \
     git \
+    gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
 # Add the Docker repository to Apt sources (Debian base image)

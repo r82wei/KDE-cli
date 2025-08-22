@@ -71,7 +71,7 @@ if [[ -z ${TELEPRESENCE_IMAGE} ]]; then
     echo "TELEPRESENCE_IMAGE=${TELEPRESENCE_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${CODE_SERVER_IMAGE} ]]; then
-    export CODE_SERVER_IMAGE=docker.io/r82wei/kde-code-server:v1.0.0-rc.1-20250819130954
+    export CODE_SERVER_IMAGE=docker.io/r82wei/kde-code-server:v1.0.0-rc.1-20250822
     echo "CODE_SERVER_IMAGE=${CODE_SERVER_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 
