@@ -383,8 +383,6 @@ kde.env      # kde-cli 使用的 docker image (建議加入 .gitignore)
 
 ## 免責聲明
 
-KDE-cli 整合了多個第三方工具與服務，其中部分服務（如 Ngrok, Cloudflare Tunnel, Telepresence）為商業公司所維護，並提供免費增值（Freemium）方案。
-
 本工具僅作為自動化操作的框架，協助使用者更方便地啟用這些服務。所有使用者應自行了解並遵守這些第三方服務各自的服務條款與授權模式。
 
 ## 相關連結
