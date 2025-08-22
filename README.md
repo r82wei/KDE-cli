@@ -278,6 +278,7 @@ This tool serves only as an automation framework to help users enable these serv
 
 - [k3d](https://k3d.io/stable/)
 - [kind](https://kind.sigs.k8s.io/)
+- [local-path-provisioner](https://github.com/rancher/local-path-provisioner)
 - [k9s](https://k9scli.io/)
 - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard)
 - [Headlamp](https://headlamp.dev/)
