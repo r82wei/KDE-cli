@@ -1,0 +1,4 @@
+release.sh
+build.sh
+*.md
+version.env
