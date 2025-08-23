@@ -1,7 +1,8 @@
 #!/bin/bash
 
 set -eo pipefail
-
+# 設定 KDE 版本
+export KDE_VERSION=v1.0.0-rc.2
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
 # 設定 KDE 根目錄路徑
@@ -123,11 +124,15 @@ show_help() {
     echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
     echo "  code-server [-d] [-p port]                          在目前路徑下啟動 code-server，可使用 -d 參數在背景執行，可使用 -p 參數指定 code-server 的 port"
     echo "  alias <name> [path]                                 建立 alias 指令，透過 tmux 快速啟動 session 到指定路徑的目錄 (需要安裝 tmux)"
+    echo "  version                                             顯示 KDE 版本"
 }
 
 
 # 根據第一個參數來選擇不同的處理流程
 case "$1" in
+    version)
+        echo "${KDE_VERSION}"
+        ;;
     alias)
         shift  # 移除 "alias" 指令
         source ${KDE_SCRIPTS_PATH}/alias/command.sh
