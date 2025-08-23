@@ -12,8 +12,8 @@ docker run -it --rm \
     -w ${PROJECT_PATH} \
     -v ${PROJECT_PATH}:${PROJECT_PATH} \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -e PUID=$UID \
-    -e PGID=$GID \
+    -e PUID=$(id -u) \
+    -e PGID=$(id -g) \
     -e USER_NAME=$USER \
     r82wei/kde-cli:latest \
     bash
