@@ -93,13 +93,26 @@ flowchart LR
 ## Installation
 
 1. **Prepare Docker**
+
    - You must first install [Docker](https://docs.docker.com/engine/install/).
+
 2. **Install KDE-cli**
-   ```bash
-   git clone https://github.com/r82wei/KDE-cli.git
-   cd KDE-cli
-   sudo ./install.sh
-   ```
+
+   - **Option 1: Quick Start with Docker**
+
+     ```bash
+     bash <(curl -fsSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/run.sh)
+     ```
+
+     This command will start a Docker container with KDE-cli pre-installed and ready to use.
+
+   - **Option 2: Local Installation on Linux/Mac**
+     ```bash
+     git clone https://github.com/r82wei/KDE-cli.git
+     cd KDE-cli
+     sudo ./install.sh
+     ```
+     This will install KDE-cli directly on your system.
 
 ## Quick Start
 

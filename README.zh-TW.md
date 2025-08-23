@@ -96,6 +96,11 @@ flowchart LR
 1. **準備 Docker**
    - 必須先安裝 [Docker](https://docs.docker.com/engine/install/)。
 2. **安裝 KDE-cli**
+   - 透過 Docker 啟動可執行 kde-cli 的環境
+     ```
+      bash <(curl -fsSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/run.sh)
+     ```
+   - 透過 Git 安裝在 Linux/Mac
    ```bash
    git clone https://github.com/r82wei/KDE-cli.git
    cd KDE-cli
