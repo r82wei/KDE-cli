@@ -1,7 +1,5 @@
 #!/bin/bash
 
-KDE_CLI_VERSION=v1.0.0-rc.2
-
 # 若外部已設定 PROJECT_PATH，略過互動；否則從 TTY 讀
 if [[ -z "${PROJECT_PATH:-}" ]]; then
   read -e -p "Enter the project path (Default: ${PWD}): " PROJECT_PATH
@@ -17,5 +15,5 @@ docker run -it --rm \
     -e PUID=$UID \
     -e PGID=$GID \
     -e USER_NAME=$USER \
-    r82wei/kde-cli:${KDE_CLI_VERSION} \
+    r82wei/kde-cli:latest \
     bash
