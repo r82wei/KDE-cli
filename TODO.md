@@ -2,9 +2,10 @@
 
 #### Core Features
 
-- [ ] 版本控制機制
-  - [ ] 需要紀錄目前 cli 版本到 kde.env 內
-  - [ ] 如果 kde.env 內的版本跟目前使用的 cli 版本不同，需要做 migration
+- [ ] 實作 github action，當 release 的時候，自動 build image (kde-cli、code-server)
+- [ ] 實作 watch dir 自動 deploy 機制
+- [ ] dockerfile 改成 distroless image
+- [x] 版本機制
 - [ ] 新增 docs 指令，產生 AI agent 可以看的文件，讓 workspace 可以透過 AI agent 產生部署相關指令以及邊開發邊測試
 - [ ] 從現有的 project 開新分支環境 (git worktree)
 - [x] ls (列出 k8s 環境)
