@@ -79,8 +79,8 @@ create_project() {
 
     exit_if_project_exist ${PROJECT_NAME}
     mkdir -p ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-    read -p "Is this project a git repo? (y/n): " IS_GIT_REPO
-    if [[ ${IS_GIT_REPO} == "y" ]]; then
+    read -p "Is this project a git remote repo? (y/n): " IS_GIT_REMOTE_REPO
+    if [[ ${IS_GIT_REMOTE_REPO} == "y" ]]; then
         set_git_repo ${PROJECT_NAME}
         source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
         REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/$(git_repo_name ${GIT_REPO_URL})
