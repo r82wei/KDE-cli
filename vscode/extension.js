@@ -11,7 +11,7 @@ function getOutputChannel() {
   return outputChannel;
 }
 
-function runInLoginTerminal(command, title = "KDE") {
+function runInNewTerminal(command, title = "KDE") {
   const oc = getOutputChannel();
   oc.appendLine("");
   oc.appendLine(`[terminal:new] ${title}`);
@@ -23,7 +23,15 @@ function runInLoginTerminal(command, title = "KDE") {
     shellArgs: ["-l"],
   });
   terminal.show();
-  terminal.sendText(command);
+  // 指令結束後自動離開 shell，關閉終端機
+  terminal.sendText(`${command}; exit`);
+  return terminal;
+}
+
+function closeTerminal(terminal) {
+  if (terminal) {
+    terminal.dispose();
+  }
 }
 
 function getWorkspacePath() {
@@ -184,6 +192,10 @@ function activate(context) {
       oc.appendLine(`[invoke] kde.startEnv ${item?.envName ?? "<undefined>"}`);
       runInTerminal(`kde start ${item.envName}`);
     }),
+    vscode.commands.registerCommand("kde.stopEnv", (item) => {
+      oc.appendLine(`[invoke] kde.stopEnv ${item?.envName ?? "<undefined>"}`);
+      runInTerminal(`kde stop ${item.envName}`);
+    }),
     vscode.commands.registerCommand("kde.useEnv", (item) => {
       oc.appendLine(`[invoke] kde.useEnv ${item?.envName ?? "<undefined>"}`);
       runInTerminal(`kde use ${item.envName}`);
@@ -211,10 +223,11 @@ function activate(context) {
         return;
       }
       vscode.window.showInformationMessage(`啟動 K9s：${envName}`);
-      runInLoginTerminal(
+      let terminal = runInNewTerminal(
         `kde use ${envName} && kde k9s`,
         `KDE: k9s (${envName})`
       );
+      // closeTerminal(terminal);
     }),
     vscode.commands.registerCommand("kde.headlamp", async (item) => {
       let envName = item && item.envName;
@@ -238,9 +251,36 @@ function activate(context) {
         return;
       }
       vscode.window.showInformationMessage(`啟動 Headlamp：${envName}`);
-      runInLoginTerminal(
+      runInNewTerminal(
         `kde use ${envName} && kde headlamp`,
         `KDE: headlamp (${envName})`
+      );
+    }),
+    vscode.commands.registerCommand("kde.expose", async (item) => {
+      let envName = item && item.envName;
+      if (!envName && treeView.selection && treeView.selection[0]) {
+        envName = treeView.selection[0].envName;
+      }
+      oc.appendLine(`[invoke] kde.expose ${envName || "<undefined>"}`);
+      if (!envName) {
+        try {
+          const output = await execCommand("kde ls");
+          const envs = output.split(/\r?\n/).filter(Boolean);
+          envName = await vscode.window.showQuickPick(envs, {
+            placeHolder: "選擇要 Port Forward 的環境",
+          });
+        } catch (e) {
+          vscode.window.showErrorMessage(`讀取環境清單失敗：${e}`);
+          return;
+        }
+      }
+      if (!envName) {
+        return;
+      }
+      vscode.window.showInformationMessage(`啟動 Port Forward：${envName}`);
+      runInNewTerminal(
+        `kde use ${envName} && kde expose`,
+        `KDE: port forward (${envName})`
       );
     }),
     vscode.commands.registerCommand("kde.project.deploy", (item) =>
@@ -256,6 +296,18 @@ function activate(context) {
     vscode.commands.registerCommand("kde.project.redeploy", (item) =>
       runInTerminal(
         `kde use ${item.envName} && kde project redeploy ${item.projectName}`
+      )
+    ),
+    vscode.commands.registerCommand("kde.project.exec-develop-env", (item) =>
+      runInNewTerminal(
+        `kde use ${item.envName} && kde project exec ${item.projectName} develop`,
+        `KDE: exec develop env (${item.projectName})`
+      )
+    ),
+    vscode.commands.registerCommand("kde.project.exec-deploy-env", (item) =>
+      runInNewTerminal(
+        `kde use ${item.envName} && kde project exec ${item.projectName} deploy`,
+        `KDE: exec deploy env (${item.projectName})`
       )
     )
   );

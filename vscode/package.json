@@ -11,12 +11,16 @@
   "activationEvents": [
     "onView:kdeEnvView",
     "onCommand:kde.startEnv",
+    "onCommand:kde.stopEnv",
     "onCommand:kde.useEnv",
     "onCommand:kde.k9s",
     "onCommand:kde.headlamp",
+    "onCommand:kde.expose",
     "onCommand:kde.project.deploy",
     "onCommand:kde.project.undeploy",
-    "onCommand:kde.project.redeploy"
+    "onCommand:kde.project.redeploy",
+    "onCommand:kde.project.exec-develop-env",
+    "onCommand:kde.project.exec-deploy-env"
   ],
   "contributes": {
     "views": {
@@ -34,6 +38,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "kde.stopEnv",
+        "title": "Stop",
+        "icon": "$(stop)"
+      },
+      {
         "command": "kde.useEnv",
         "title": "Use",
         "icon": "$(check)"
@@ -49,19 +58,34 @@
         "icon": "$(globe)"
       },
       {
+        "command": "kde.expose",
+        "title": "Port Forward",
+        "icon": "$(radio-tower)"
+      },
+      {
         "command": "kde.project.deploy",
         "title": "Deploy",
-        "icon": "$(cloud-upload)"
+        "icon": "$(debug-start)"
       },
       {
         "command": "kde.project.undeploy",
         "title": "Undeploy",
-        "icon": "$(trash)"
+        "icon": "$(debug-stop)"
       },
       {
         "command": "kde.project.redeploy",
         "title": "Redeploy",
-        "icon": "$(refresh)"
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "kde.project.exec-develop-env",
+        "title": "Exec Develop Env",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "kde.project.exec-deploy-env",
+        "title": "Exec Deploy Env",
+        "icon": "$(terminal)"
       }
     ],
     "menus": {
@@ -72,12 +96,22 @@
           "group": "inline"
         },
         {
+          "command": "kde.stopEnv",
+          "when": "view == kdeEnvView && viewItem == environment",
+          "group": "inline"
+        },
+        {
           "command": "kde.useEnv",
           "when": "view == kdeEnvView && viewItem == environment",
           "group": "inline"
         },
         {
           "command": "kde.k9s",
+          "when": "view == kdeEnvView && viewItem == environment",
+          "group": "inline"
+        },
+        {
+          "command": "kde.expose",
           "when": "view == kdeEnvView && viewItem == environment",
           "group": "inline"
         },
@@ -98,6 +132,16 @@
         },
         {
           "command": "kde.project.redeploy",
+          "when": "view == kdeEnvView && viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "kde.project.exec-develop-env",
+          "when": "view == kdeEnvView && viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "kde.project.exec-deploy-env",
           "when": "view == kdeEnvView && viewItem == project",
           "group": "inline"
         }
