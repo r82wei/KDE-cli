@@ -1,0 +1,110 @@
+{
+  "name": "kde-helper",
+  "displayName": "KDE Helper",
+  "description": "VS Code extension to manage KDE environments and projects.",
+  "version": "0.0.1",
+  "publisher": "kde-cli",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onView:kdeEnvView",
+    "onCommand:kde.startEnv",
+    "onCommand:kde.useEnv",
+    "onCommand:kde.k9s",
+    "onCommand:kde.headlamp",
+    "onCommand:kde.project.deploy",
+    "onCommand:kde.project.undeploy",
+    "onCommand:kde.project.redeploy"
+  ],
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "kdeEnvView",
+          "name": "KDE Environments"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "kde.startEnv",
+        "title": "Start",
+        "icon": "$(play)"
+      },
+      {
+        "command": "kde.useEnv",
+        "title": "Use",
+        "icon": "$(check)"
+      },
+      {
+        "command": "kde.k9s",
+        "title": "K9s",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "kde.headlamp",
+        "title": "Headlamp",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "kde.project.deploy",
+        "title": "Deploy",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "kde.project.undeploy",
+        "title": "Undeploy",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "kde.project.redeploy",
+        "title": "Redeploy",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "kde.startEnv",
+          "when": "view == kdeEnvView && viewItem == environment",
+          "group": "inline"
+        },
+        {
+          "command": "kde.useEnv",
+          "when": "view == kdeEnvView && viewItem == environment",
+          "group": "inline"
+        },
+        {
+          "command": "kde.k9s",
+          "when": "view == kdeEnvView && viewItem == environment",
+          "group": "inline"
+        },
+        {
+          "command": "kde.headlamp",
+          "when": "view == kdeEnvView && viewItem == environment",
+          "group": "inline"
+        },
+        {
+          "command": "kde.project.deploy",
+          "when": "view == kdeEnvView && viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "kde.project.undeploy",
+          "when": "view == kdeEnvView && viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "kde.project.redeploy",
+          "when": "view == kdeEnvView && viewItem == project",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "test": "echo \"No tests\""
+  }
+}
