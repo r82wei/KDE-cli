@@ -28,12 +28,6 @@ function runInNewTerminal(command, title = "KDE") {
   return terminal;
 }
 
-function closeTerminal(terminal) {
-  if (terminal) {
-    terminal.dispose();
-  }
-}
-
 function getWorkspacePath() {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
 }
@@ -227,7 +221,6 @@ function activate(context) {
         `kde use ${envName} && kde k9s`,
         `KDE: k9s (${envName})`
       );
-      // closeTerminal(terminal);
     }),
     vscode.commands.registerCommand("kde.headlamp", async (item) => {
       let envName = item && item.envName;
