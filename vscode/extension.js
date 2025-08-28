@@ -11,6 +11,71 @@ function getOutputChannel() {
   return outputChannel;
 }
 
+function getWorkspacePath() {
+  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+}
+
+function getCurrentEnv() {
+  try {
+    const content = fs.readFileSync(
+      path.join(getWorkspacePath(), "current.env"),
+      "utf8"
+    );
+    const match = content.match(/CUR_ENV=(.*)/);
+    return match ? match[1].trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isKDEInit() {
+  return fs.existsSync(path.join(getWorkspacePath(), "kde.env"));
+}
+
+// 透過 kde status 取得環境狀態，並回傳一個物件，物件的 key 是環境名稱，value 是環境狀態
+async function getEnvironmentStatus() {
+  const oc = getOutputChannel();
+  const output = await execCommand("kde status json");
+  const envs = JSON.parse(output);
+  const status = {};
+  for (const env of envs) {
+    status[env.environment] = env.status;
+  }
+  oc.appendLine(`[status] ${JSON.stringify(status)}`);
+  return status;
+}
+
+async function runAsTask(command, taskName = "KDE") {
+  return new Promise((resolve, reject) => {
+    const task = new vscode.Task(
+      { type: "shell" },
+      vscode.TaskScope.Workspace,
+      taskName,
+      "kde",
+      new vscode.ShellExecution(command)
+    );
+    // 想要顯示在 Terminal 視窗
+    task.presentationOptions = {
+      reveal: vscode.TaskRevealKind.Silent,
+      panel: vscode.TaskPanelKind.Shared,
+      clear: false,
+      showReuseMessage: false,
+    };
+
+    const endDisposable = vscode.tasks.onDidEndTaskProcess((e) => {
+      if (e.execution.task === task) {
+        endDisposable.dispose();
+        resolve(e.exitCode); // 0 表成功
+      }
+    });
+
+    vscode.tasks.executeTask(task).then(undefined, (err) => {
+      endDisposable.dispose();
+      reject(err);
+    });
+  });
+}
+
 function runInNewTerminal(command, title = "KDE") {
   const oc = getOutputChannel();
   oc.appendLine("");
@@ -26,10 +91,6 @@ function runInNewTerminal(command, title = "KDE") {
   // 指令結束後自動離開 shell，關閉終端機
   terminal.sendText(`${command}; exit`);
   return terminal;
-}
-
-function getWorkspacePath() {
-  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
 }
 
 function runInTerminal(command) {
@@ -72,33 +133,124 @@ function execCommand(command) {
   });
 }
 
-function getCurrentEnv() {
-  try {
-    const content = fs.readFileSync(
-      path.join(getWorkspacePath(), "current.env"),
-      "utf8"
+// 顯示環境狀態的圖示
+function iconForEnv(status) {
+  switch (status) {
+    case "RUNNING":
+      return new vscode.ThemeIcon(
+        "circle-filled",
+        new vscode.ThemeColor("testing.iconPassed")
+      );
+    case "UNREADY":
+      // 空心圓 + 淡色
+      return new vscode.ThemeIcon(
+        "circle-outline",
+        new vscode.ThemeColor("disabledForeground")
+      );
+    case "error":
+      return new vscode.ThemeIcon(
+        "circle-filled",
+        new vscode.ThemeColor("testing.iconFailed")
+      );
+  }
+}
+
+async function addEnvironmentFlow(item) {
+  const oc = getOutputChannel();
+  oc.appendLine(`[invoke] kde.createEnv ${item?.envName ?? "<undefined>"}`);
+  const exitCode = await runAsTask(`kde create ${item.envName}`);
+  if (exitCode === 0) {
+    provider.refresh();
+  } else {
+    vscode.window.showErrorMessage(
+      `Task create env failed with exit code ${exit}`
     );
-    const match = content.match(/CUR_ENV=(.*)/);
-    return match ? match[1].trim() : undefined;
-  } catch {
-    return undefined;
+  }
+}
+
+async function createEnvironmentFlow() {
+  const ws = getWorkspacePath();
+  if (!ws) return;
+
+  // 1) 環境名稱
+  const envName = await vscode.window.showInputBox({
+    prompt: "請輸入要建立的環境名稱",
+    placeHolder: "例如：dev、staging、prod",
+    validateInput: (val) =>
+      !/^[a-zA-Z0-9-_]+$/.test(val) ? "環境名稱只能包含字母、數字、-、_" : null,
+  });
+  if (!envName) return;
+
+  // 2) 環境類型
+  const pick =
+    (await vscode.window.showQuickPick) <
+    { label: string, val: EnvType } >
+    ([
+      { label: "kind（本地 Docker 內的 K8s）", val: "kind" },
+      { label: "k3d（輕量 K3s on Docker）", val: "k3d" },
+      { label: "k8s（連接現有 K8s 叢集）", val: "k8s" },
+    ],
+    { title: "選擇環境類型", placeHolder: "kind / k3d / k8s" });
+  if (!pick) return;
+
+  // 3) 類型特定參數（針對 k8s）
+  let extraArgs = "";
+  if (pick.val === "k8s") {
+    const file = await vscode.window.showOpenDialog({
+      title: "選擇 kubeconfig 檔",
+      canSelectMany: false,
+      // filters: { 'kubeconfig': ['yaml', 'yml'] }
+    });
+    if (!file) return;
+  }
+
+  // 4) 建立 + 切換
+  try {
+    // 依你的 kde-cli 參數調整：這裡假設支援 --type
+    let exitCode;
+    switch (pick.val) {
+      case "kind":
+        exitCode = await runAsTask(`kde create ${item.envName} kind`);
+        break;
+      case "k3d":
+        exitCode = await runAsTask(`kde create ${item.envName} k3d`);
+        break;
+      case "k8s":
+        exitCode = await runAsTask(
+          `kde create ${item.envName} k8s ${file[0].fsPath}`
+        );
+        break;
+    }
+    if (exitCode === 0) {
+      provider.refresh();
+      vscode.window.showInformationMessage(
+        `已建立環境：${envName}（${pick.val}）`
+      );
+    } else {
+      vscode.window.showErrorMessage(
+        `Task create env failed with exit code ${exit}`
+      );
+    }
+    vscode.commands.executeCommand("kde.refresh");
+  } catch (e) {
+    vscode.window.showErrorMessage(`建立環境失敗：${e.message ?? e}`);
   }
 }
 
 class EnvironmentItem extends vscode.TreeItem {
-  constructor(name, isCurrent) {
-    super(
-      `${name}${isCurrent ? " (使用中)" : ""}`,
-      vscode.TreeItemCollapsibleState.Collapsed
-    );
+  constructor(name, status) {
+    super(`K8S - ${name}`, vscode.TreeItemCollapsibleState.Collapsed);
+    const oc = getOutputChannel();
+    oc.appendLine(`[EnvironmentItem] ${name} ${status}`);
     this.contextValue = "environment";
     this.envName = name;
+    this.iconPath = iconForEnv(status || "UNREADY");
   }
 }
 
 class ProjectItem extends vscode.TreeItem {
   constructor(envName, name) {
-    super(name, vscode.TreeItemCollapsibleState.None);
+    super(`${name}`, vscode.TreeItemCollapsibleState.None);
     this.contextValue = "project";
     this.envName = envName;
     this.projectName = name;
@@ -120,10 +272,12 @@ class KDETreeProvider {
     const oc = getOutputChannel();
     if (!element) {
       try {
+        const status = await getEnvironmentStatus();
         const output = await execCommand("kde ls");
         const envs = output.split(/\r?\n/).filter(Boolean);
-        const current = getCurrentEnv();
-        return envs.map((e) => new EnvironmentItem(e, e === current));
+        oc.appendLine(`[getChildren] ${JSON.stringify(envs)}`);
+        oc.appendLine(`[status] ${JSON.stringify(status)}`);
+        return envs.map((e) => new EnvironmentItem(e, status[e]));
       } catch {
         return [];
       }
@@ -137,30 +291,17 @@ class KDETreeProvider {
           title: `載入專案 (${element.envName})`,
         },
         async () => {
-          // 先嘗試使用可能存在的 --env 旗標，不行則退回先切換環境再列出
           try {
-            oc.appendLine(`[getChildren] ${element.envName} --env`);
-            const output = await execCommand(
-              `kde project ls --env ${element.envName}`
-            );
+            oc.appendLine(`[getChildren] ${element.envName} --use`);
+            await execCommand(`kde use ${element.envName}`);
+            const output = await execCommand(`kde project ls`);
             const names = output.split(/\r?\n/).filter(Boolean);
             return names.map((name) => new ProjectItem(element.envName, name));
-          } catch (err1) {
-            try {
-              oc.appendLine(`[getChildren] ${element.envName} --use`);
-              const output = await execCommand(
-                `kde use ${element.envName} && kde project ls`
-              );
-              const names = output.split(/\r?\n/).filter(Boolean);
-              return names.map(
-                (name) => new ProjectItem(element.envName, name)
-              );
-            } catch (err2) {
-              vscode.window.showErrorMessage(
-                `無法載入專案 (${element.envName})：${err2}`
-              );
-              return [];
-            }
+          } catch (err2) {
+            vscode.window.showErrorMessage(
+              `無法載入專案 (${element.envName})：${err2}`
+            );
+            return [];
           }
         }
       );
@@ -182,18 +323,19 @@ function activate(context) {
   });
   context.subscriptions.push(
     treeView,
-    vscode.commands.registerCommand("kde.startEnv", (item) => {
-      oc.appendLine(`[invoke] kde.startEnv ${item?.envName ?? "<undefined>"}`);
-      runInTerminal(`kde start ${item.envName}`);
-    }),
-    vscode.commands.registerCommand("kde.stopEnv", (item) => {
+    vscode.commands.registerCommand("kde.addEnv", addEnvironmentFlow),
+    vscode.commands.registerCommand("kde.refresh", provider.refresh),
+    vscode.commands.registerCommand("kde.createEnv", createEnvironmentFlow),
+    vscode.commands.registerCommand("kde.stopEnv", async (item) => {
       oc.appendLine(`[invoke] kde.stopEnv ${item?.envName ?? "<undefined>"}`);
-      runInTerminal(`kde stop ${item.envName}`);
-    }),
-    vscode.commands.registerCommand("kde.useEnv", (item) => {
-      oc.appendLine(`[invoke] kde.useEnv ${item?.envName ?? "<undefined>"}`);
-      runInTerminal(`kde use ${item.envName}`);
-      provider.refresh();
+      const exitCode = await runAsTask(`kde stop ${item.envName}`);
+      if (exitCode === 0) {
+        provider.refresh();
+      } else {
+        vscode.window.showErrorMessage(
+          `Task stop env failed with exit code ${exitCode}`
+        );
+      }
     }),
     vscode.commands.registerCommand("kde.k9s", async (item) => {
       let envName = item && item.envName;
@@ -291,6 +433,12 @@ function activate(context) {
         `kde use ${item.envName} && kde project redeploy ${item.projectName}`
       )
     ),
+    vscode.commands.registerCommand("kde.project.logs", async (item) => {
+      runInNewTerminal(
+        `kde use ${item.envName} && kde project tail ${item.projectName}`,
+        `KDE: logs (${item.projectName})`
+      );
+    }),
     vscode.commands.registerCommand("kde.project.exec-develop-env", (item) =>
       runInNewTerminal(
         `kde use ${item.envName} && kde project exec ${item.projectName} develop`,
@@ -301,6 +449,12 @@ function activate(context) {
       runInNewTerminal(
         `kde use ${item.envName} && kde project exec ${item.projectName} deploy`,
         `KDE: exec deploy env (${item.projectName})`
+      )
+    ),
+    vscode.commands.registerCommand("kde.project.telepresenceReplace", (item) =>
+      runInNewTerminal(
+        `kde use ${item.envName} && kde telepresence replace ${item.projectName}`,
+        `KDE: telepresence replace (${item.projectName})`
       )
     )
   );
