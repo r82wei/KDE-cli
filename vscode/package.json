@@ -1,7 +1,7 @@
 {
-  "name": "kde-helper",
-  "displayName": "KDE Helper",
-  "description": "VS Code extension to manage KDE environments and projects.",
+  "name": "K8s Dev Environments",
+  "displayName": "K8s Dev Environments",
+  "description": "VS Code extension to develop with K8S environments by KDE-cli.",
   "version": "0.0.1",
   "publisher": "kde-cli",
   "engines": {
