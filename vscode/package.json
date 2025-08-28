@@ -17,6 +17,7 @@
     "onCommand:kde.k9s",
     "onCommand:kde.headlamp",
     "onCommand:kde.expose",
+    "onCommand:kde.createProject",
     "onCommand:kde.project.deploy",
     "onCommand:kde.project.undeploy",
     "onCommand:kde.project.redeploy",
@@ -54,6 +55,11 @@
         "command": "kde.stopEnv",
         "title": "Stop",
         "icon": "$(debug-stop)"
+      },
+      {
+        "command": "kde.createProject",
+        "title": "Create Project",
+        "icon": "$(add)"
       },
       {
         "command": "kde.k9s",
@@ -144,6 +150,11 @@
           "command": "kde.headlamp",
           "when": "view == kdeEnvView && viewItem == environment",
           "group": "inline@5"
+        },
+        {
+          "command": "kde.createProject",
+          "when": "view == kdeEnvView && viewItem == environment",
+          "group": "inline@6"
         },
         {
           "command": "kde.project.deploy",

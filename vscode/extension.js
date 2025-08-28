@@ -249,6 +249,22 @@ async function addEnvironmentFlow(item) {
   }
 }
 
+async function createProjectFlow(item) {
+  const oc = getOutputChannel();
+  oc.appendLine(`[invoke] kde.createProject ${item?.envName ?? "<undefined>"}`);
+  // 跳出輸入框，輸入專案名稱
+  const projectName = await vscode.window.showInputBox({
+    prompt: "請輸入要建立的專案名稱",
+    placeHolder: "例如：my-project",
+  });
+  if (!projectName) return;
+  oc.appendLine(`[createProjectFlow] ${projectName}`);
+  const exitCode = await runAsTask(`kde project create ${projectName}`);
+  if (exitCode === 0) {
+    vscode.commands.executeCommand("kde.refresh");
+  }
+}
+
 class EnvironmentItem extends vscode.TreeItem {
   constructor(name, status) {
     super(`K8S - ${name}`, vscode.TreeItemCollapsibleState.Collapsed);
@@ -432,6 +448,7 @@ function activate(context) {
         `KDE: port forward (${envName})`
       );
     }),
+    vscode.commands.registerCommand("kde.createProject", createProjectFlow),
     vscode.commands.registerCommand("kde.project.deploy", (item) =>
       runInTerminal(
         `kde use ${item.envName} && kde project deploy ${item.projectName}`
