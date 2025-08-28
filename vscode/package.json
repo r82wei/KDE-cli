@@ -98,12 +98,12 @@
       },
       {
         "command": "kde.project.exec-develop-env",
-        "title": "Exec Develop Env",
+        "title": "Develop Env",
         "icon": "$(terminal)"
       },
       {
         "command": "kde.project.exec-deploy-env",
-        "title": "Exec Deploy Env",
+        "title": "Deploy Env",
         "icon": "$(terminal)"
       },
       {

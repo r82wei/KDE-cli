@@ -3,7 +3,7 @@ const cp = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
-let provider;
+const COMPLETED_MESSAGE = "Please enter any key to continue...";
 let outputChannel;
 function getOutputChannel() {
   if (!outputChannel) {
@@ -159,7 +159,9 @@ function iconForEnv(status) {
 async function createEnvironmentFlow(item) {
   const oc = getOutputChannel();
   oc.appendLine(`[invoke] kde.createEnv ${item?.envName ?? "<undefined>"}`);
-  const exitCode = await runAsTask(`kde create ${item.envName}`);
+  const exitCode = await runAsTask(
+    `kde create ${item.envName} && echo "${COMPLETED_MESSAGE}"`
+  );
   if (exitCode === 0) {
     vscode.commands.executeCommand("kde.refresh");
   } else {
@@ -216,19 +218,19 @@ async function addEnvironmentFlow(item) {
     switch (pick.val) {
       case "kind":
         exitCode = await runAsTask(
-          `kde create ${envName} kind`,
+          `kde create ${envName} kind && echo "${COMPLETED_MESSAGE}"`,
           `KDE: create env ${envName}`
         );
         break;
       case "k3d":
         exitCode = await runAsTask(
-          `kde create ${envName} k3d`,
+          `kde create ${envName} k3d && echo "${COMPLETED_MESSAGE}"`,
           `KDE: create env ${envName}`
         );
         break;
       case "k8s":
         exitCode = await runAsTask(
-          `kde create ${envName} k8s ${kubeconfigPath}`,
+          `kde create ${envName} k8s ${kubeconfigPath} && echo "${COMPLETED_MESSAGE}"`,
           `KDE: create env ${envName}`
         );
         break;
@@ -259,7 +261,9 @@ async function createProjectFlow(item) {
   });
   if (!projectName) return;
   oc.appendLine(`[createProjectFlow] ${projectName}`);
-  const exitCode = await runAsTask(`kde project create ${projectName}`);
+  const exitCode = await runAsTask(
+    `kde project create ${projectName} && echo "${COMPLETED_MESSAGE}"`
+  );
   if (exitCode === 0) {
     vscode.commands.executeCommand("kde.refresh");
   }
@@ -357,7 +361,7 @@ function activate(context) {
     vscode.commands.registerCommand("kde.stopEnv", async (item) => {
       oc.appendLine(`[invoke] kde.stopEnv ${item?.envName ?? "<undefined>"}`);
       const exitCode = await runAsTask(
-        `kde stop ${item.envName} && echo "Stopped"`
+        `kde stop ${item.envName} && echo "${COMPLETED_MESSAGE}"`
       );
       if (exitCode === 0) {
         provider.refresh();
