@@ -27,11 +27,20 @@
     "onCommand:kde.project.telepresenceReplace"
   ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kde",
+          "title": "KDE",
+          "icon": "media/kde.svg"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "kde": [
         {
           "id": "kdeEnvView",
-          "name": "KDE Environments"
+          "name": "K8s Dev Environments"
         }
       ]
     },
