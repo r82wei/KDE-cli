@@ -361,7 +361,7 @@ function activate(context) {
     vscode.commands.registerCommand("kde.stopEnv", async (item) => {
       oc.appendLine(`[invoke] kde.stopEnv ${item?.envName ?? "<undefined>"}`);
       const exitCode = await runAsTask(
-        `kde stop ${item.envName} && echo "${COMPLETED_MESSAGE}"`
+        `kde use ${item.envName} && kde stop ${item.envName} && echo "${COMPLETED_MESSAGE}"`
       );
       if (exitCode === 0) {
         provider.refresh();
