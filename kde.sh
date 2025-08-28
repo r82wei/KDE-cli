@@ -6,10 +6,17 @@ set -eo pipefail
 export KDE_VERSION=v1.0.0-rc.2
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
-# 設定 KDE 根目錄路徑
+# 設定 KDE 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
 export KDE_PATH=$PWD
+while [[ ! -f ${KDE_PATH}/kde.env && ${KDE_PATH} != "/" ]]; do
+    KDE_PATH=$(dirname ${KDE_PATH})
+done
+if [[ ! -f ${KDE_PATH}/kde.env ]]; then
+    export KDE_PATH=$PWD
+fi
 # 設定環境目錄路徑(enviroments)
 export ENVIROMENTS_PATH=${KDE_PATH}/environments
+
 # 設定 KUBE_CONFIG_DIR
 export KUBE_CONFIG_DIR=kubeconfig
 # 設定 VOLUMES_DIR
@@ -22,6 +29,7 @@ show_help() {
     echo "usage: kde <command>"
     echo ""
     echo "command:"
+    echo "  init                                                初始化 kde 環境"
     echo "  list, ls                                            列出 k8s 環境"
     echo "  start <env_name> [kind|k3d|k8s]                     建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 k3d 啟動 k3d，可使用參數 k8s 啟動外部 K8S)"
     echo "  create <env_name> [kind|k3d|k8s]                    建立/啟動 k8s 環境 (預設使用 kind，可使用參數 k3d 建立 k3d，可使用參數 k8s 建立外部 K8S)"
@@ -56,6 +64,10 @@ fi
 
 # 不需要環境初始化就可以執行的指令
 case "$1" in
+    --init|init)
+        touch ${KDE_ENV_FILE}
+        exit 0
+        ;;
     -v|version|--version)
         echo "${KDE_VERSION}"
         exit 0
@@ -85,7 +97,8 @@ source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 
 # 新增或載入 kde.env 環境變數設定檔
 if [[ ! -f ${KDE_ENV_FILE} ]]; then
-    touch ${KDE_ENV_FILE}
+    echo "kde.env 不存在，請先執行 kde init 初始化環境"
+    exit 1
 else
     source ${KDE_ENV_FILE}
 fi
