@@ -282,10 +282,20 @@ class EnvironmentItem extends vscode.TreeItem {
 
 class ProjectItem extends vscode.TreeItem {
   constructor(envName, name) {
-    super(`${name}`, vscode.TreeItemCollapsibleState.None);
+    super(`${name}`, vscode.TreeItemCollapsibleState.Collapsed);
     this.contextValue = "project";
     this.envName = envName;
     this.projectName = name;
+  }
+}
+
+class PodItem extends vscode.TreeItem {
+  constructor(envName, projectName, podName) {
+    super(`${podName}`, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = "pod";
+    this.envName = envName;
+    this.projectName = projectName;
+    this.podName = podName;
   }
 }
 
@@ -332,6 +342,31 @@ class KDETreeProvider {
           } catch (err2) {
             vscode.window.showErrorMessage(
               `無法載入專案 (${element.envName})：${err2}`
+            );
+            return [];
+          }
+        }
+      );
+    }
+    if (element instanceof ProjectItem) {
+      return vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Window,
+          title: `載入 Pods (${element.projectName})`,
+        },
+        async () => {
+          try {
+            await execCommand(`kde use ${element.envName}`);
+            const output = await execCommand(
+              `kde project pod ${element.projectName}`
+            );
+            const pods = output.split(/\r?\n/).filter(Boolean);
+            return pods.map(
+              (pod) => new PodItem(element.envName, element.projectName, pod)
+            );
+          } catch (err3) {
+            vscode.window.showErrorMessage(
+              `無法載入 Pods (${element.projectName})：${err3}`
             );
             return [];
           }
@@ -491,7 +526,36 @@ function activate(context) {
         `kde use ${item.envName} && kde telepresence replace ${item.projectName}`,
         `KDE: telepresence replace (${item.projectName})`
       )
-    )
+    ),
+    vscode.commands.registerCommand("kde.pod.logs", async (item) => {
+      // 提示使用者輸入 tail 的行數
+      const lines = await vscode.window.showInputBox({
+        prompt: "請輸入要顯示的 log 行數",
+        placeHolder: "例如：100",
+      });
+      if (!lines) return;
+      runInNewTerminal(
+        `kde use ${item.envName} && kde project tail ${item.projectName} ${item.podName} ${lines}`,
+        `KDE: pod logs (${item.projectName}/${item.podName})`
+      );
+    }),
+    vscode.commands.registerCommand("kde.pod.portForward", async (item) => {
+      // 提示使用者輸入 port
+      const localPort = await vscode.window.showInputBox({
+        prompt: "請輸入要 port forward 的 local port",
+        placeHolder: "例如：8080",
+      });
+      if (!localPort) return;
+      const targetPort = await vscode.window.showInputBox({
+        prompt: "請輸入要 port forward 的 target port",
+        placeHolder: "例如：8080",
+      });
+      if (!targetPort) return;
+      runInNewTerminal(
+        `kde use ${item.envName} && kde expose ${item.projectName} pod ${item.podName} ${localPort} ${targetPort}`,
+        `KDE: pod port-forward ${localPort} (${item.projectName}/${item.podName})`
+      );
+    })
   );
 
   // TreeView debug logs

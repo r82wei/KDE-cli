@@ -24,7 +24,9 @@
     "onCommand:kde.project.logs",
     "onCommand:kde.project.exec-develop-env",
     "onCommand:kde.project.exec-deploy-env",
-    "onCommand:kde.project.telepresenceReplace"
+    "onCommand:kde.project.telepresenceReplace",
+    "onCommand:kde.pod.logs",
+    "onCommand:kde.pod.portForward"
   ],
   "contributes": {
     "viewsContainers": {
@@ -119,6 +121,16 @@
         "command": "kde.project.telepresenceReplace",
         "title": "Telepresence Replace",
         "icon": "$(sync)"
+      },
+      {
+        "command": "kde.pod.logs",
+        "title": "Pod Logs",
+        "icon": "$(debug-line-by-line)"
+      },
+      {
+        "command": "kde.pod.portForward",
+        "title": "Pod Port Forward",
+        "icon": "$(radio-tower)"
       }
     ],
     "menus": {
@@ -199,6 +211,16 @@
           "command": "kde.project.telepresenceReplace",
           "when": "view == kdeEnvView && viewItem == project",
           "group": "inline@7"
+        },
+        {
+          "command": "kde.pod.logs",
+          "when": "view == kdeEnvView && viewItem == pod",
+          "group": "inline@1"
+        },
+        {
+          "command": "kde.pod.portForward",
+          "when": "view == kdeEnvView && viewItem == pod",
+          "group": "inline@2"
         }
       ]
     }
