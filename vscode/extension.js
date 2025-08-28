@@ -305,8 +305,8 @@ class KDETreeProvider {
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
   }
 
-  refresh() {
-    this._onDidChangeTreeData.fire();
+  refresh(element) {
+    this._onDidChangeTreeData.fire(element);
   }
 
   async getChildren(element) {
@@ -488,26 +488,38 @@ function activate(context) {
       );
     }),
     vscode.commands.registerCommand("kde.createProject", createProjectFlow),
-    vscode.commands.registerCommand("kde.project.deploy", (item) =>
-      runInTerminal(
-        `kde use ${item.envName} && kde project deploy ${item.projectName}`
-      )
-    ),
-    vscode.commands.registerCommand("kde.project.undeploy", (item) =>
-      runInTerminal(
-        `kde use ${item.envName} && kde project undeploy ${item.projectName}`
-      )
-    ),
-    vscode.commands.registerCommand("kde.project.redeploy", (item) =>
-      runInTerminal(
-        `kde use ${item.envName} && kde project redeploy ${item.projectName}`
-      )
-    ),
-    vscode.commands.registerCommand("kde.project.logs", async (item) => {
-      runInNewTerminal(
-        `kde use ${item.envName} && kde project tail ${item.projectName}`,
-        `KDE: logs (${item.projectName})`
+    vscode.commands.registerCommand("kde.project.deploy", async (item) => {
+      const exitCode = await runAsTask(
+        `kde use ${item.envName} && kde project deploy ${item.projectName} && echo "${COMPLETED_MESSAGE}"`,
+        `KDE: deploy (${item.projectName})`
       );
+      if (exitCode === 0) {
+        provider.refresh(item);
+      } else {
+        vscode.window.showErrorMessage(`Deploy 失敗（exit=${exitCode}）`);
+      }
+    }),
+    vscode.commands.registerCommand("kde.project.undeploy", async (item) => {
+      const exitCode = await runAsTask(
+        `kde use ${item.envName} && kde project undeploy ${item.projectName} && echo "${COMPLETED_MESSAGE}"`,
+        `KDE: undeploy (${item.projectName})`
+      );
+      if (exitCode === 0) {
+        provider.refresh(item);
+      } else {
+        vscode.window.showErrorMessage(`Undeploy 失敗（exit=${exitCode}）`);
+      }
+    }),
+    vscode.commands.registerCommand("kde.project.redeploy", async (item) => {
+      const exitCode = await runAsTask(
+        `kde use ${item.envName} && kde project redeploy ${item.projectName} && echo "${COMPLETED_MESSAGE}"`,
+        `KDE: redeploy (${item.projectName})`
+      );
+      if (exitCode === 0) {
+        provider.refresh(item);
+      } else {
+        vscode.window.showErrorMessage(`Redeploy 失敗（exit=${exitCode}）`);
+      }
     }),
     vscode.commands.registerCommand("kde.project.exec-develop-env", (item) =>
       runInNewTerminal(
