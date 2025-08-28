@@ -139,6 +139,16 @@ case "${COMMAND}" in
             echo "$pod"
         done
         ;;
+    pod-exec)
+        if [[ -z "${PROJECT_NAME}" ]]; then
+            check_project_name ${PROJECT_NAME}
+        fi
+        TARGET_POD=$3
+        if [[ -z "${TARGET_POD}" ]]; then
+            select_pod ${PROJECT_NAME}
+        fi
+        exec_pod ${PROJECT_NAME} ${TARGET_POD}
+        ;;
     remove|rm)
         check_project_name ${PROJECT_NAME}
         remove_project ${PROJECT_NAME}

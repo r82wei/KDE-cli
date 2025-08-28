@@ -732,3 +732,11 @@ tail_pod_logs() {
 
     exec_script_in_deploy_env "kubectl -n ${NAMESPACE} logs --tail ${TAIL_COUNT} -f ${POD}"
 }
+
+exec_pod() {
+    NAMESPACE=$1
+    POD=$2
+
+
+    exec_script_in_deploy_env "kubectl -n ${NAMESPACE} exec -it ${POD} -- bash || kubectl -n ${NAMESPACE} exec -it ${POD} -- sh"
+}
