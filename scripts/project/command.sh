@@ -125,6 +125,15 @@ case "${COMMAND}" in
         TAIL_COUNT=$3
         tail_pod_logs ${PROJECT_NAME} ${TARGET_POD} ${TAIL_COUNT}
         ;;
+    pod)
+        if [[ -z "${PROJECT_NAME}" ]]; then
+            check_project_name ${PROJECT_NAME}
+        fi
+        pods=($(get_pods ${PROJECT_NAME}))
+        for pod in "${pods[@]}"; do
+            echo "$pod"
+        done
+        ;;
     remove|rm)
         check_project_name ${PROJECT_NAME}
         remove_project ${PROJECT_NAME}
