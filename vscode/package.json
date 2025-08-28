@@ -119,17 +119,17 @@
       },
       {
         "command": "kde.pod.logs",
-        "title": "Pod Logs",
+        "title": "Logs",
         "icon": "$(debug-line-by-line)"
       },
       {
         "command": "kde.pod.portForward",
-        "title": "Pod Port Forward",
+        "title": "Port Forward",
         "icon": "$(radio-tower)"
       },
       {
         "command": "kde.pod.exec",
-        "title": "Pod Exec",
+        "title": "Exec",
         "icon": "$(terminal)"
       }
     ],
