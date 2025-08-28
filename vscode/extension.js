@@ -163,7 +163,7 @@ async function createEnvironmentFlow(item) {
     `kde create ${item.envName} && echo "${COMPLETED_MESSAGE}"`
   );
   if (exitCode === 0) {
-    vscode.commands.executeCommand("kde.refresh");
+    provider.refresh(item);
   } else {
     vscode.window.showErrorMessage(
       `Task create env failed with exit code ${exitCode}`
@@ -236,7 +236,6 @@ async function addEnvironmentFlow(item) {
         break;
     }
     if (exitCode === 0) {
-      provider.refresh();
       vscode.window.showInformationMessage(
         `已建立環境：${envName}（${pick.val}）`
       );
@@ -245,7 +244,6 @@ async function addEnvironmentFlow(item) {
         `Task create env failed with exit code ${exit}`
       );
     }
-    vscode.commands.executeCommand("kde.refresh");
   } catch (e) {
     vscode.window.showErrorMessage(`建立環境失敗：${e.message ?? e}`);
   }
@@ -265,7 +263,7 @@ async function createProjectFlow(item) {
     `kde project create ${projectName} && echo "${COMPLETED_MESSAGE}"`
   );
   if (exitCode === 0) {
-    vscode.commands.executeCommand("kde.refresh");
+    provider.refresh(item);
   }
 }
 
@@ -399,7 +397,7 @@ function activate(context) {
         `kde use ${item.envName} && kde stop ${item.envName} && echo "${COMPLETED_MESSAGE}"`
       );
       if (exitCode === 0) {
-        provider.refresh();
+        provider.refresh(item);
       } else {
         vscode.window.showErrorMessage(
           `Task stop env failed with exit code ${exitCode}`
