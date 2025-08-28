@@ -90,17 +90,12 @@ create_telepresence_session_container() {
     -e TELEPRESENCE_CONNECT_NAMESPACE=${NAMESPACE} \
     -e TELEPRESENCE_ALSO_PROXY_CIDR=${TELEPRESENCE_ALSO_PROXY_CIDR} \
     -v ${KUBECONFIG}:/root/.kube/config:ro \
+    -v ${ENVIRONMENT_PATH}/.telepresence/logs:/root/.cache/telepresence/logs \
     -v ${ENVIRONMENT_PATH}/.telepresence/mounts/local/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/mounts/local/${NAMESPACE} \
     -v ${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE}:${ENVIRONMENT_PATH}/.telepresence/env-files/${NAMESPACE} \
     ${TELEPRESENCE_IMAGE}
 
-    # 提示使用者可以另開視窗執行：docker logs -f kde-telepresence-session-${CUR_ENV}-${NAMESPACE} 來查看連線過程
-    echo "如果要看連線過程，可以另開終端機視窗執行："
-    echo "docker logs -f kde-telepresence-session-${CUR_ENV}-${NAMESPACE}"
-
-    # 提示使用者可以另開視窗執行連線 debug 資訊
-    echo "如果要看詳細的連線資訊，可以另開終端機視窗執行："
-    echo "docker exec -it kde-telepresence-session-${CUR_ENV}-${NAMESPACE} bash -c "tail -f -n 100 ~/.cache/telepresence/logs/connector.log""
+    echo "如果要看詳細的連線資訊，可以到 .telepresence/logs 查看"
 
     # 使用 docker logs 判斷 telepresence 是否啟動成功
     count=0
@@ -108,7 +103,7 @@ create_telepresence_session_container() {
         echo "telepresence 連線中..."
         sleep 1
         count=$((count + 1))
-        if [[ ${count} -gt 30 ]]; then
+        if [[ ${count} -gt 300 ]]; then
             echo "telepresence 連線失敗"
             stop_telepresence_session_container ${NAMESPACE}
             exit 1

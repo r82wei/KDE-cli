@@ -2,12 +2,21 @@
 
 set -eo pipefail
 
+# 設定 KDE 版本
+export KDE_VERSION=v1.0.0-rc.2
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
-# 設定 KDE 根目錄路徑
+# 設定 KDE 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
 export KDE_PATH=$PWD
+while [[ ! -f ${KDE_PATH}/kde.env && ${KDE_PATH} != "/" ]]; do
+    KDE_PATH=$(dirname ${KDE_PATH})
+done
+if [[ ! -f ${KDE_PATH}/kde.env ]]; then
+    export KDE_PATH=$PWD
+fi
 # 設定環境目錄路徑(enviroments)
 export ENVIROMENTS_PATH=${KDE_PATH}/environments
+
 # 設定 KUBE_CONFIG_DIR
 export KUBE_CONFIG_DIR=kubeconfig
 # 設定 VOLUMES_DIR
@@ -15,19 +24,81 @@ export VOLUMES_DIR=namespaces
 # 設定 kde env 檔案路徑
 export KDE_ENV_FILE=${KDE_PATH}/kde.env
 
+# 定義顯示說明的函數
+show_help() {
+    echo "usage: kde <command>"
+    echo ""
+    echo "command:"
+    echo "  init                                                初始化 kde 環境"
+    echo "  list, ls                                            列出 k8s 環境"
+    echo "  start <env_name> [kind|k3d|k8s]                     建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 k3d 啟動 k3d，可使用參數 k8s 啟動外部 K8S)"
+    echo "  create <env_name> [kind|k3d|k8s]                    建立/啟動 k8s 環境 (預設使用 kind，可使用參數 k3d 建立 k3d，可使用參數 k8s 建立外部 K8S)"
+    echo "  stop [env_name]                                     停止 k8s 環境 (預設操作 current.env 的當前使用中的 k8s 環境)"
+    echo "  restart [env_name]                                  重啟 k8s 環境 (預設操作 current.env 的當前使用中的 k8s 環境)"
+    echo "  status                                              顯示 k8s 環境狀態"
+    echo "  remove, rm                                          移除 k8s 環境"
+    echo "  current, cur                                        顯示當前使用中的 k8s 環境名稱"
+    echo "  use [env_name]                                      切換當前使用中的 k8s 環境名稱"
+    echo "  load-image <image> [env_name]                       載入 docker image 到 k8s 環境"
+    echo "  k9s [-p port]                                       進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port"
+    echo "  dashboard [-p port] [--insecure]                    進入 k8s Web UI Dashboard"
+    echo "  headlamp [-p port]                                  進入 headlamp Dashboard"
+    echo "  expose                                              將 service/pod port forward 到本地指定的 port"
+    echo "  exec                                                進入 k8s node container 環境"
+    echo "  reset                                               重置 kde 環境，清除全部 environments 和 projects 資料夾"
+    echo "  project, proj, namespace, ns                        project 管理 (可以使用 kde project -h 查看詳細說明)"
+    echo "  projects, projs                                     projects(namespaces) 專案集合管理"
+    echo "  ngrok                                               啟動 ngrok"
+    echo "  cloudflare-tunnel <domain> <target>                 透過 Cloudflare Tunnel 建立連線"
+    echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
+    echo "  code-server [-d] [-p port]                          在目前路徑下啟動 code-server，可使用 -d 參數在背景執行，可使用 -p 參數指定 code-server 的 port"
+    echo "  alias <name> [path]                                 建立 alias 指令，透過 tmux 快速啟動 session 到指定路徑的目錄 (需要安裝 tmux)"
+    echo "  version                                             顯示 KDE 版本"
+}
+
+# 如果沒有參數，則顯示說明
+if [[ $# -eq 0 ]]; then
+    show_help
+    exit 0
+fi
+
+# 不需要環境初始化就可以執行的指令
+case "$1" in
+    --init|init)
+        touch ${KDE_ENV_FILE}
+        exit 0
+        ;;
+    -v|version|--version)
+        echo "${KDE_VERSION}"
+        exit 0
+        ;;
+    ls|list)
+        if [[ -d ${ENVIROMENTS_PATH} ]]; then
+            ls ${ENVIROMENTS_PATH}
+        else
+            echo "environments 資料夾不存在"
+        fi
+        exit 0
+        ;;
+    alias)
+        shift  # 移除 "alias" 指令
+        source ${KDE_SCRIPTS_PATH}/alias/command.sh
+        exit 0
+        ;;
+    -h|help|--help)
+        show_help
+        exit 0
+        ;;
+esac
+
 source ${KDE_SCRIPTS_PATH}/utils/environment/k8s.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/kind.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 
 # 新增或載入 kde.env 環境變數設定檔
 if [[ ! -f ${KDE_ENV_FILE} ]]; then
-    read -p "KDE 設定檔尚未初始化，是否要初始化？(y/n): " init_kde_env
-    if [[ ${init_kde_env} == "y" ]]; then
-        touch ${KDE_ENV_FILE}
-        echo "KDE 設定檔初始化完成"
-    else
-        exit 1
-    fi
+    echo "kde.env 不存在，請先執行 kde init 初始化環境"
+    exit 1
 else
     source ${KDE_ENV_FILE}
 fi
@@ -70,6 +141,10 @@ if [[ -z ${TELEPRESENCE_IMAGE} ]]; then
     export TELEPRESENCE_IMAGE=r82wei/telepresence:1.0.6
     echo "TELEPRESENCE_IMAGE=${TELEPRESENCE_IMAGE}" >> ${KDE_ENV_FILE}
 fi
+if [[ -z ${CODE_SERVER_IMAGE} ]]; then
+    export CODE_SERVER_IMAGE=docker.io/r82wei/kde-code-server:latest
+    echo "CODE_SERVER_IMAGE=${CODE_SERVER_IMAGE}" >> ${KDE_ENV_FILE}
+fi
 
 
 # 設定 ngrok 的環境變數
@@ -91,40 +166,8 @@ fi
 # 載入環境變數
 load_enviroment_env ${CUR_ENV}
 
-# 定義顯示說明的函數
-show_help() {
-    echo "usage: kde <command>"
-    echo ""
-    echo "command:"
-    echo "  list, ls                                            列出 k8s 環境"
-    echo "  start <env_name> [kind|k3d|k8s]                     建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 k3d 啟動 k3d，可使用參數 k8s 啟動外部 K8S)"
-    echo "  create <env_name> [kind|k3d|k8s]                    建立/啟動 k8s 環境 (預設使用 kind，可使用參數 k3d 建立 k3d，可使用參數 k8s 建立外部 K8S)"
-    echo "  stop [env_name]                                     停止 k8s 環境 (預設操作 current.env 的當前使用中的 k8s 環境)"
-    echo "  restart [env_name]                                  重啟 k8s 環境 (預設操作 current.env 的當前使用中的 k8s 環境)"
-    echo "  status                                              顯示 k8s 環境狀態"
-    echo "  remove, rm                                          移除 k8s 環境"
-    echo "  current, cur                                        顯示當前使用中的 k8s 環境名稱"
-    echo "  use [env_name]                                      切換當前使用中的 k8s 環境名稱"
-    echo "  load-image <image> [env_name]                       載入 docker image 到 k8s 環境"
-    echo "  k9s [-p port]                                       進入 k9s dashboard, 可使用 -p 參數，設定 k9s port-forward 的 port"
-    echo "  dashboard [-p port] [--insecure]                    進入 k8s Web UI Dashboard"
-    echo "  headlamp [-p port]                                  進入 headlamp Dashboard"
-    echo "  expose                                              將 service/pod port forward 到本地指定的 port"
-    echo "  exec                                                進入 k8s node container 環境"
-    echo "  reset                                               重置 kde 環境，清除全部 environments 和 projects 資料夾"
-    echo "  project, proj, namespace, ns                        project 管理 (可以使用 kde project -h 查看詳細說明)"
-    echo "  projects, projs                                     projects(namespaces) 專案集合管理"
-    echo "  ngrok                                               啟動 ngrok"
-    echo "  cloudflare-tunnel <domain> <target>                 透過 Cloudflare Tunnel 建立連線"
-    echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
-}
-
-
 # 根據第一個參數來選擇不同的處理流程
 case "$1" in
-    ls|list)
-        ls ${ENVIROMENTS_PATH}
-        ;;
     start)
         shift  # 移除 "start" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh
@@ -208,6 +251,10 @@ case "$1" in
     telepresence)
         shift  # 移除 "telepresence" 指令
         source ${KDE_SCRIPTS_PATH}/telepresence/command.sh
+        ;;
+    code-server)
+        shift  # 移除 "code-server" 指令
+        source ${KDE_SCRIPTS_PATH}/code-server/command.sh
         ;;
     *)
         show_help

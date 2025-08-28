@@ -224,8 +224,11 @@ create_external_k8s_env() {
 }
 
 init_external_k8s() {
+    KUBECONFIG_PATH=${1:-${KUBECONFIG_PATH}}
     # 設定 KUBECONFIG 路徑
-    read -e -p "請輸入 kubeconfig 路徑: " KUBECONFIG_PATH
+    if [[ -z "${KUBECONFIG_PATH}" ]]; then
+        read -e -p "請輸入 kubeconfig 路徑: " KUBECONFIG_PATH
+    fi
     KUBECONFIG_PATH="${KUBECONFIG_PATH/#\~/$HOME}"
     cp ${KUBECONFIG_PATH} ${ENV_PATH}/${KUBE_CONFIG_DIR}/config
 
@@ -314,7 +317,7 @@ exec_bash_in_deploy_env_with_projects() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR} \
-    --group-add $(getent group docker | cut -d: -f3) \
+    --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
     -e KUBECONFIG=/.kube/config \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/group:/etc/group:ro \
@@ -356,7 +359,7 @@ exec_script_in_container_with_project_and_port() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
-    --group-add $(getent group docker | cut -d: -f3) \
+    --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
     -p ${PORT}:${PORT} \
     --env-file ${PROJECT_ENV_FILE_TMP} \
     -e KUBECONFIG=/.kube/config \
@@ -406,7 +409,7 @@ exec_script_in_container_with_project() {
     --user $UID:$(id -g) \
     --net ${DOCKER_NETWORK} \
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
-    --group-add $(getent group docker | cut -d: -f3) \
+    --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
     --env-file ${PROJECT_ENV_FILE_TMP} \
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
@@ -736,4 +739,12 @@ tail_pod_logs() {
     TAIL_COUNT=${3:-100}
 
     exec_script_in_deploy_env "kubectl -n ${NAMESPACE} logs --tail ${TAIL_COUNT} -f ${POD}"
+}
+
+exec_pod() {
+    NAMESPACE=$1
+    POD=$2
+
+
+    exec_script_in_deploy_env "kubectl -n ${NAMESPACE} exec -it ${POD} -- bash || kubectl -n ${NAMESPACE} exec -it ${POD} -- sh"
 }
