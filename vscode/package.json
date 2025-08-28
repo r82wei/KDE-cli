@@ -21,7 +21,6 @@
     "onCommand:kde.project.deploy",
     "onCommand:kde.project.undeploy",
     "onCommand:kde.project.redeploy",
-    "onCommand:kde.project.logs",
     "onCommand:kde.project.exec-develop-env",
     "onCommand:kde.project.exec-deploy-env",
     "onCommand:kde.project.telepresenceReplace",
@@ -101,11 +100,6 @@
         "command": "kde.project.redeploy",
         "title": "Redeploy",
         "icon": "$(debug-restart)"
-      },
-      {
-        "command": "kde.project.logs",
-        "title": "Logs",
-        "icon": "$(debug-line-by-line)"
       },
       {
         "command": "kde.project.exec-develop-env",
@@ -193,24 +187,19 @@
           "group": "inline@3"
         },
         {
-          "command": "kde.project.logs",
+          "command": "kde.project.exec-develop-env",
           "when": "view == kdeEnvView && viewItem == project",
           "group": "inline@4"
         },
         {
-          "command": "kde.project.exec-develop-env",
+          "command": "kde.project.exec-deploy-env",
           "when": "view == kdeEnvView && viewItem == project",
           "group": "inline@5"
         },
         {
-          "command": "kde.project.exec-deploy-env",
-          "when": "view == kdeEnvView && viewItem == project",
-          "group": "inline@6"
-        },
-        {
           "command": "kde.project.telepresenceReplace",
           "when": "view == kdeEnvView && viewItem == project",
-          "group": "inline@7"
+          "group": "inline@6"
         },
         {
           "command": "kde.pod.logs",
