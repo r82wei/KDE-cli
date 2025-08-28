@@ -3,6 +3,7 @@ const cp = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
+let provider;
 let outputChannel;
 function getOutputChannel() {
   if (!outputChannel) {
@@ -48,7 +49,7 @@ async function getEnvironmentStatus() {
 async function runAsTask(command, taskName = "KDE") {
   return new Promise((resolve, reject) => {
     const task = new vscode.Task(
-      { type: "shell" },
+      { type: "process" },
       vscode.TaskScope.Workspace,
       taskName,
       "kde",
@@ -56,7 +57,7 @@ async function runAsTask(command, taskName = "KDE") {
     );
     // 想要顯示在 Terminal 視窗
     task.presentationOptions = {
-      reveal: vscode.TaskRevealKind.Silent,
+      reveal: vscode.TaskRevealKind.Always,
       panel: vscode.TaskPanelKind.Shared,
       clear: false,
       showReuseMessage: false,
@@ -155,20 +156,21 @@ function iconForEnv(status) {
   }
 }
 
-async function addEnvironmentFlow(item) {
+async function createEnvironmentFlow(item) {
   const oc = getOutputChannel();
   oc.appendLine(`[invoke] kde.createEnv ${item?.envName ?? "<undefined>"}`);
   const exitCode = await runAsTask(`kde create ${item.envName}`);
   if (exitCode === 0) {
-    provider.refresh();
+    vscode.commands.executeCommand("kde.refresh");
   } else {
     vscode.window.showErrorMessage(
-      `Task create env failed with exit code ${exit}`
+      `Task create env failed with exit code ${exitCode}`
     );
   }
 }
 
-async function createEnvironmentFlow() {
+async function addEnvironmentFlow(item) {
+  const oc = getOutputChannel();
   const ws = getWorkspacePath();
   if (!ws) return;
 
@@ -179,22 +181,23 @@ async function createEnvironmentFlow() {
     validateInput: (val) =>
       !/^[a-zA-Z0-9-_]+$/.test(val) ? "環境名稱只能包含字母、數字、-、_" : null,
   });
+  oc.appendLine(`[addEnvironmentFlow] ${envName}`);
   if (!envName) return;
 
   // 2) 環境類型
-  const pick =
-    (await vscode.window.showQuickPick) <
-    { label: string, val: EnvType } >
-    ([
+  const pick = await vscode.window.showQuickPick(
+    [
       { label: "kind（本地 Docker 內的 K8s）", val: "kind" },
       { label: "k3d（輕量 K3s on Docker）", val: "k3d" },
       { label: "k8s（連接現有 K8s 叢集）", val: "k8s" },
     ],
-    { title: "選擇環境類型", placeHolder: "kind / k3d / k8s" });
+    { title: "選擇環境類型", placeHolder: "kind / k3d / k8s" }
+  );
   if (!pick) return;
+  oc.appendLine(`[addEnvironmentFlow] ${pick.val}`);
 
   // 3) 類型特定參數（針對 k8s）
-  let extraArgs = "";
+  let kubeconfigPath = "";
   if (pick.val === "k8s") {
     const file = await vscode.window.showOpenDialog({
       title: "選擇 kubeconfig 檔",
@@ -202,6 +205,8 @@ async function createEnvironmentFlow() {
       // filters: { 'kubeconfig': ['yaml', 'yml'] }
     });
     if (!file) return;
+    kubeconfigPath = file[0].fsPath;
+    oc.appendLine(`[addEnvironmentFlow] ${kubeconfigPath}`);
   }
 
   // 4) 建立 + 切換
@@ -210,14 +215,21 @@ async function createEnvironmentFlow() {
     let exitCode;
     switch (pick.val) {
       case "kind":
-        exitCode = await runAsTask(`kde create ${item.envName} kind`);
+        exitCode = await runAsTask(
+          `kde create ${envName} kind`,
+          `KDE: create env ${envName}`
+        );
         break;
       case "k3d":
-        exitCode = await runAsTask(`kde create ${item.envName} k3d`);
+        exitCode = await runAsTask(
+          `kde create ${envName} k3d`,
+          `KDE: create env ${envName}`
+        );
         break;
       case "k8s":
         exitCode = await runAsTask(
-          `kde create ${item.envName} k8s ${file[0].fsPath}`
+          `kde create ${envName} k8s ${kubeconfigPath}`,
+          `KDE: create env ${envName}`
         );
         break;
     }
@@ -317,18 +329,20 @@ class KDETreeProvider {
 function activate(context) {
   const oc = getOutputChannel();
   oc.appendLine("KDE Helper activated");
-  const provider = new KDETreeProvider();
+  provider = new KDETreeProvider();
   const treeView = vscode.window.createTreeView("kdeEnvView", {
     treeDataProvider: provider,
   });
   context.subscriptions.push(
     treeView,
     vscode.commands.registerCommand("kde.addEnv", addEnvironmentFlow),
-    vscode.commands.registerCommand("kde.refresh", provider.refresh),
+    vscode.commands.registerCommand("kde.refresh", () => provider.refresh()),
     vscode.commands.registerCommand("kde.createEnv", createEnvironmentFlow),
     vscode.commands.registerCommand("kde.stopEnv", async (item) => {
       oc.appendLine(`[invoke] kde.stopEnv ${item?.envName ?? "<undefined>"}`);
-      const exitCode = await runAsTask(`kde stop ${item.envName}`);
+      const exitCode = await runAsTask(
+        `kde stop ${item.envName} && echo "Stopped"`
+      );
       if (exitCode === 0) {
         provider.refresh();
       } else {
@@ -473,6 +487,9 @@ function activate(context) {
   oc.appendLine(`[activate] ${context.subscriptions.length} subscriptions`);
 }
 
-function deactivate() {}
+function deactivate() {
+  provider = null;
+  outputChannel = null;
+}
 
 module.exports = { activate, deactivate };

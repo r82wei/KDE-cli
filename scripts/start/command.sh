@@ -73,7 +73,7 @@ if [[ $(is_env_init ${CUR_ENV}) == "false" ]]; then
             init_kind_config
             ;;
         k8s)
-            init_external_k8s
+            init_external_k8s $3
             ;;
     esac
 fi

@@ -224,8 +224,11 @@ create_external_k8s_env() {
 }
 
 init_external_k8s() {
+    KUBECONFIG_PATH=${1:-${KUBECONFIG_PATH}}
     # 設定 KUBECONFIG 路徑
-    read -e -p "請輸入 kubeconfig 路徑: " KUBECONFIG_PATH
+    if [[ -z "${KUBECONFIG_PATH}" ]]; then
+        read -e -p "請輸入 kubeconfig 路徑: " KUBECONFIG_PATH
+    fi
     KUBECONFIG_PATH="${KUBECONFIG_PATH/#\~/$HOME}"
     cp ${KUBECONFIG_PATH} ${ENV_PATH}/${KUBE_CONFIG_DIR}/config
 

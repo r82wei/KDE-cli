@@ -10,17 +10,20 @@
   "main": "./extension.js",
   "activationEvents": [
     "onView:kdeEnvView",
-    "onCommand:kde.startEnv",
+    "onCommand:kde.addEnv",
+    "onCommand:kde.refresh",
+    "onCommand:kde.createEnv",
     "onCommand:kde.stopEnv",
-    "onCommand:kde.useEnv",
     "onCommand:kde.k9s",
     "onCommand:kde.headlamp",
     "onCommand:kde.expose",
     "onCommand:kde.project.deploy",
     "onCommand:kde.project.undeploy",
     "onCommand:kde.project.redeploy",
+    "onCommand:kde.project.logs",
     "onCommand:kde.project.exec-develop-env",
-    "onCommand:kde.project.exec-deploy-env"
+    "onCommand:kde.project.exec-deploy-env",
+    "onCommand:kde.project.telepresenceReplace"
   ],
   "contributes": {
     "views": {
@@ -33,24 +36,29 @@
     },
     "commands": [
       {
-        "command": "kde.startEnv",
-        "title": "Start",
-        "icon": "$(play)"
+        "command": "kde.addEnv",
+        "title": "Add",
+        "icon": "$(add)"
+      },
+      {
+        "command": "kde.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "kde.createEnv",
+        "title": "Create",
+        "icon": "$(debug-start)"
       },
       {
         "command": "kde.stopEnv",
         "title": "Stop",
-        "icon": "$(stop)"
-      },
-      {
-        "command": "kde.useEnv",
-        "title": "Use",
-        "icon": "$(check)"
+        "icon": "$(debug-stop)"
       },
       {
         "command": "kde.k9s",
         "title": "K9s",
-        "icon": "$(terminal)"
+        "icon": "$(dashboard)"
       },
       {
         "command": "kde.headlamp",
@@ -78,6 +86,11 @@
         "icon": "$(debug-restart)"
       },
       {
+        "command": "kde.project.logs",
+        "title": "Logs",
+        "icon": "$(debug-line-by-line)"
+      },
+      {
         "command": "kde.project.exec-develop-env",
         "title": "Exec Develop Env",
         "icon": "$(terminal)"
@@ -86,64 +99,86 @@
         "command": "kde.project.exec-deploy-env",
         "title": "Exec Deploy Env",
         "icon": "$(terminal)"
+      },
+      {
+        "command": "kde.project.telepresenceReplace",
+        "title": "Telepresence Replace",
+        "icon": "$(sync)"
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "kde.addEnv",
+          "when": "view == kdeEnvView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kde.refresh",
+          "when": "view == kdeEnvView",
+          "group": "navigation@2"
+        }
+      ],
       "view/item/context": [
         {
-          "command": "kde.startEnv",
+          "command": "kde.createEnv",
           "when": "view == kdeEnvView && viewItem == environment",
-          "group": "inline"
+          "group": "inline@1"
         },
         {
           "command": "kde.stopEnv",
           "when": "view == kdeEnvView && viewItem == environment",
-          "group": "inline"
-        },
-        {
-          "command": "kde.useEnv",
-          "when": "view == kdeEnvView && viewItem == environment",
-          "group": "inline"
+          "group": "inline@2"
         },
         {
           "command": "kde.k9s",
           "when": "view == kdeEnvView && viewItem == environment",
-          "group": "inline"
+          "group": "inline@3"
         },
         {
           "command": "kde.expose",
           "when": "view == kdeEnvView && viewItem == environment",
-          "group": "inline"
+          "group": "inline@4"
         },
         {
           "command": "kde.headlamp",
           "when": "view == kdeEnvView && viewItem == environment",
-          "group": "inline"
+          "group": "inline@5"
         },
         {
           "command": "kde.project.deploy",
           "when": "view == kdeEnvView && viewItem == project",
-          "group": "inline"
+          "group": "inline@1"
         },
         {
           "command": "kde.project.undeploy",
           "when": "view == kdeEnvView && viewItem == project",
-          "group": "inline"
+          "group": "inline@2"
         },
         {
           "command": "kde.project.redeploy",
           "when": "view == kdeEnvView && viewItem == project",
-          "group": "inline"
+          "group": "inline@3"
+        },
+        {
+          "command": "kde.project.logs",
+          "when": "view == kdeEnvView && viewItem == project",
+          "group": "inline@4"
         },
         {
           "command": "kde.project.exec-develop-env",
           "when": "view == kdeEnvView && viewItem == project",
-          "group": "inline"
+          "group": "inline@5"
         },
         {
           "command": "kde.project.exec-deploy-env",
           "when": "view == kdeEnvView && viewItem == project",
-          "group": "inline"
+          "group": "inline@6"
+        },
+        {
+          "command": "kde.project.telepresenceReplace",
+          "when": "view == kdeEnvView && viewItem == project",
+          "group": "inline@7"
         }
       ]
     }
