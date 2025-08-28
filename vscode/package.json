@@ -25,7 +25,8 @@
     "onCommand:kde.project.exec-deploy-env",
     "onCommand:kde.project.telepresenceReplace",
     "onCommand:kde.pod.logs",
-    "onCommand:kde.pod.portForward"
+    "onCommand:kde.pod.portForward",
+    "onCommand:kde.pod.exec"
   ],
   "contributes": {
     "viewsContainers": {
@@ -125,6 +126,11 @@
         "command": "kde.pod.portForward",
         "title": "Pod Port Forward",
         "icon": "$(radio-tower)"
+      },
+      {
+        "command": "kde.pod.exec",
+        "title": "Pod Exec",
+        "icon": "$(terminal)"
       }
     ],
     "menus": {
@@ -210,6 +216,11 @@
           "command": "kde.pod.portForward",
           "when": "view == kdeEnvView && viewItem == pod",
           "group": "inline@2"
+        },
+        {
+          "command": "kde.pod.exec",
+          "when": "view == kdeEnvView && viewItem == pod",
+          "group": "inline@3"
         }
       ]
     }

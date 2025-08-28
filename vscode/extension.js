@@ -546,7 +546,7 @@ function activate(context) {
       if (!lines) return;
       runInNewTerminal(
         `kde use ${item.envName} && kde project tail ${item.projectName} ${item.podName} ${lines}`,
-        `KDE: pod logs (${item.projectName}/${item.podName})`
+        `KDE: logs ${item.podName})`
       );
     }),
     vscode.commands.registerCommand("kde.pod.portForward", async (item) => {
@@ -565,7 +565,13 @@ function activate(context) {
         `kde use ${item.envName} && kde expose ${item.projectName} pod ${item.podName} ${localPort} ${targetPort}`,
         `KDE: pod port-forward ${localPort} (${item.projectName}/${item.podName})`
       );
-    })
+    }),
+    vscode.commands.registerCommand("kde.pod.exec", (item) =>
+      runInNewTerminal(
+        `kde use ${item.envName} && kde project pod-exec ${item.projectName} ${item.podName}`,
+        `KDE: exec ${item.podName})`
+      )
+    )
   );
 
   // TreeView debug logs
