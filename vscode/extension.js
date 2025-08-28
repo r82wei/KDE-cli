@@ -163,7 +163,7 @@ async function createEnvironmentFlow(item) {
     `kde create ${item.envName} && echo "${COMPLETED_MESSAGE}"`
   );
   if (exitCode === 0) {
-    provider.refresh(item);
+    provider.refresh();
   } else {
     vscode.window.showErrorMessage(
       `Task create env failed with exit code ${exitCode}`
@@ -239,6 +239,7 @@ async function addEnvironmentFlow(item) {
       vscode.window.showInformationMessage(
         `已建立環境：${envName}（${pick.val}）`
       );
+      provider.refresh();
     } else {
       vscode.window.showErrorMessage(
         `Task create env failed with exit code ${exit}`
@@ -267,9 +268,13 @@ async function createProjectFlow(item) {
   }
 }
 
+function refreshEnvironmentsFlow(item) {
+  provider.refresh();
+}
+
 class EnvironmentItem extends vscode.TreeItem {
   constructor(name, status) {
-    super(`K8S - ${name}`, vscode.TreeItemCollapsibleState.Collapsed);
+    super(`${name}`, vscode.TreeItemCollapsibleState.Collapsed);
     const oc = getOutputChannel();
     oc.appendLine(`[EnvironmentItem] ${name} ${status}`);
     this.contextValue = "environment";
@@ -389,7 +394,7 @@ function activate(context) {
   context.subscriptions.push(
     treeView,
     vscode.commands.registerCommand("kde.addEnv", addEnvironmentFlow),
-    vscode.commands.registerCommand("kde.refresh", () => provider.refresh()),
+    vscode.commands.registerCommand("kde.refresh", refreshEnvironmentsFlow),
     vscode.commands.registerCommand("kde.createEnv", createEnvironmentFlow),
     vscode.commands.registerCommand("kde.stopEnv", async (item) => {
       oc.appendLine(`[invoke] kde.stopEnv ${item?.envName ?? "<undefined>"}`);
@@ -397,7 +402,7 @@ function activate(context) {
         `kde use ${item.envName} && kde stop ${item.envName} && echo "${COMPLETED_MESSAGE}"`
       );
       if (exitCode === 0) {
-        provider.refresh(item);
+        provider.refresh();
       } else {
         vscode.window.showErrorMessage(
           `Task stop env failed with exit code ${exitCode}`
