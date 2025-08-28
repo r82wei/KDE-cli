@@ -218,19 +218,19 @@ async function addEnvironmentFlow(item) {
     switch (pick.val) {
       case "kind":
         exitCode = await runAsTask(
-          `kde create ${envName} kind && echo "${COMPLETED_MESSAGE}"`,
+          `kde init && kde create ${envName} kind && echo "${COMPLETED_MESSAGE}"`,
           `KDE: create env ${envName}`
         );
         break;
       case "k3d":
         exitCode = await runAsTask(
-          `kde create ${envName} k3d && echo "${COMPLETED_MESSAGE}"`,
+          `kde init && kde create ${envName} k3d && echo "${COMPLETED_MESSAGE}"`,
           `KDE: create env ${envName}`
         );
         break;
       case "k8s":
         exitCode = await runAsTask(
-          `kde create ${envName} k8s ${kubeconfigPath} && echo "${COMPLETED_MESSAGE}"`,
+          `kde init && kde create ${envName} k8s ${kubeconfigPath} && echo "${COMPLETED_MESSAGE}"`,
           `KDE: create env ${envName}`
         );
         break;
