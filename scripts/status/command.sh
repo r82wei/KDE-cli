@@ -20,7 +20,7 @@ for environment in $environments; do
     if [[ $status == "true" ]]; then
         case $FORMAT in
             "json")
-                JSON_STRING+="{\"status\":\"running\",\"environment\":\"$environment\"},"
+                JSON_STRING+="{\"status\":\"RUNNING\",\"environment\":\"$environment\"},"
                 ;;
             *)
                 echo -e "\033[32m[RUNNING]\033[0m\t \033[32m$environment\033[0m"
@@ -29,7 +29,7 @@ for environment in $environments; do
     else
         case $FORMAT in
             "json")
-                JSON_STRING+="{\"status\":\"unready\",\"environment\":\"$environment\"},"
+                JSON_STRING+="{\"status\":\"UNREADY\",\"environment\":\"$environment\"},"
                 ;;
             *)
                 echo -e "\033[31m[UNREADY]\033[0m\t \033[31m$environment\033[0m"
