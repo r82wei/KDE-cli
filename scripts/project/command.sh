@@ -120,9 +120,14 @@ case "${COMMAND}" in
         deploy_project ${PROJECT_NAME}
         ;;
     tail)
-        check_project_name ${PROJECT_NAME}
-        select_pod ${PROJECT_NAME}
-        TAIL_COUNT=$3
+        if [[ -z "${PROJECT_NAME}" ]]; then
+            check_project_name ${PROJECT_NAME}
+        fi
+        TARGET_POD=$3
+        if [[ -z "${TARGET_POD}" ]]; then
+            select_pod ${PROJECT_NAME}
+        fi
+        TAIL_COUNT=$4
         tail_pod_logs ${PROJECT_NAME} ${TARGET_POD} ${TAIL_COUNT}
         ;;
     pod)
