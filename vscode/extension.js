@@ -567,7 +567,7 @@ function activate(context) {
       });
       if (!targetPort) return;
       runInNewTerminal(
-        `kde use ${item.envName} && kde expose ${item.projectName} pod ${item.podName} ${localPort} ${targetPort}`,
+        `kde use ${item.envName} && kde expose ${item.projectName} pod ${item.podName} ${targetPort} ${localPort}`,
         `KDE: pod port-forward ${localPort} (${item.projectName}/${item.podName})`
       );
     }),
