@@ -7,30 +7,13 @@ const COMPLETED_MESSAGE = "Please enter any key to continue...";
 let outputChannel;
 function getOutputChannel() {
   if (!outputChannel) {
-    outputChannel = vscode.window.createOutputChannel("KDE Helper");
+    outputChannel = vscode.window.createOutputChannel("k8s-dev-environments");
   }
   return outputChannel;
 }
 
 function getWorkspacePath() {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
-}
-
-function getCurrentEnv() {
-  try {
-    const content = fs.readFileSync(
-      path.join(getWorkspacePath(), "current.env"),
-      "utf8"
-    );
-    const match = content.match(/CUR_ENV=(.*)/);
-    return match ? match[1].trim() : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function isKDEInit() {
-  return fs.existsSync(path.join(getWorkspacePath(), "kde.env"));
 }
 
 // 透過 kde status 取得環境狀態，並回傳一個物件，物件的 key 是環境名稱，value 是環境狀態
@@ -386,7 +369,7 @@ class KDETreeProvider {
 
 function activate(context) {
   const oc = getOutputChannel();
-  oc.appendLine("KDE Helper activated");
+  oc.appendLine("k8s-dev-environments activated");
   provider = new KDETreeProvider();
   const treeView = vscode.window.createTreeView("kdeEnvView", {
     treeDataProvider: provider,
@@ -567,7 +550,7 @@ function activate(context) {
       });
       if (!targetPort) return;
       runInNewTerminal(
-        `kde use ${item.envName} && kde expose ${item.projectName} pod ${item.podName} ${localPort} ${targetPort}`,
+        `kde use ${item.envName} && kde expose ${item.projectName} pod ${item.podName} ${targetPort} ${localPort}`,
         `KDE: pod port-forward ${localPort} (${item.projectName}/${item.podName})`
       );
     }),
