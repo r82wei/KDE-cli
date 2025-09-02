@@ -4,7 +4,7 @@
 
 ## KDE-cli 是什麼？
 
-一個以 Kubernetes 為核心的輕量化 CLI-based Internal Developer Platform (IDP)，協助快速打造 Kubernetes 開發環境，支援本地及遠端 Kubernetes 開發，同時支援 CI/CD 環境的模擬與驗證，並且能將相同部署流程一鍵部署到不同的遠端 Kubernetes。
+一個以 Kubernetes 為核心的輕量化 CLI-based 開發環境，協助快速打造 Kubernetes 開發環境，支援本地及遠端 Kubernetes 開發，同時支援 CI/CD 環境的模擬與驗證，並且能將相同部署流程一鍵部署到不同的遠端 Kubernetes。
 
 ## 🔑 主要功能
 
