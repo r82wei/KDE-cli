@@ -40,7 +40,12 @@ is_env_running() {
 }
 
 is_k8s_node_ready() {
-    nodes=($(exec_script_in_deploy_env_without_tty 'kubectl get nodes --no-headers -o custom-columns=":status.conditions[?(@.type==\"Ready\")].status"'))
+    # 設定 timeout (預設 2 秒)
+    NODE_READY_TIMEOUT_SETTING="timeout ${K8S_NODE_READY_TIMEOUT:-2s}"
+    # 設定 kubectl 指令
+    NODE_READY_CHECK_COMMAND='kubectl get nodes --no-headers -o custom-columns=":status.conditions[?(@.type==\"Ready\")].status"'
+    # 執行 kubectl 指令
+    nodes=($(exec_script_in_deploy_env_without_tty "$NODE_READY_TIMEOUT_SETTING $NODE_READY_CHECK_COMMAND"))
     # 如果 nodes 數量為 0 則回傳 false
     if [[ ${#nodes[@]} -eq 0 ]]; then
         echo "false"
