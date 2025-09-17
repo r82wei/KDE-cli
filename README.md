@@ -4,7 +4,7 @@
 
 ## What is KDE-cli？
 
-A lightweight CLI-based Internal Developer Platform (IDP) built around Kubernetes that helps you quickly set up Kubernetes development environments, supports both local and remote Kubernetes development, enables CI/CD simulation and verification, and can deploy the same workflow to different remote Kubernetes clusters with a single command.
+A lightweight CLI-based development environment built around Kubernetes that helps you quickly set up Kubernetes development environments, supports both local and remote Kubernetes development, enables CI/CD simulation and verification, and can deploy the same workflow to different remote Kubernetes clusters with a single command.
 
 ## 🔑 Key Features
 

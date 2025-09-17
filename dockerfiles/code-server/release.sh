@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source ./version.env
+# 取得目前 git tag 版本
+KDE_CLI_VERSION=$(git describe --tags)
 
 echo "Release kde-code-server ${KDE_CLI_VERSION} image ..."
 docker buildx build --no-cache --platform linux/amd64,linux/arm64 --push --build-arg KDE_CLI_VERSION=${KDE_CLI_VERSION} -f Dockerfile -t r82wei/kde-code-server:${KDE_CLI_VERSION} .
