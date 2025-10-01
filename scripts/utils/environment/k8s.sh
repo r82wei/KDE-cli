@@ -41,7 +41,7 @@ is_env_running() {
 
 is_k8s_node_ready() {
     # 設定 timeout (預設 2 秒)
-    NODE_READY_TIMEOUT_SETTING="timeout ${K8S_NODE_READY_TIMEOUT:-2s}"
+    NODE_READY_TIMEOUT_SETTING="timeout ${K8S_NODE_READY_TIMEOUT:-0.5s}"
     # 設定 kubectl 指令
     NODE_READY_CHECK_COMMAND='kubectl get nodes --no-headers -o custom-columns=":status.conditions[?(@.type==\"Ready\")].status"'
     # 執行 kubectl 指令
