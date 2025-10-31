@@ -3,7 +3,7 @@
 # 定義顯示說明的函數
 show_help() {
     echo "usage:"
-    echo "  kde expose [option] [namespace] [pod|service] [target port] [local port]         將 port forward 到本地端"
+    echo "  kde expose [option] [namespace] [pod|service] [(pod|service) name] [target port] [local port]         將 port forward 到本地端"
     echo ""
     echo "option:"
     echo "  -h, --help           顯示說明"
