@@ -2,6 +2,7 @@
 
 # fix local-path-storage configmap
 kubectl patch configmap local-path-config -n local-path-storage --type merge -p '{"data": {"config.json": "{\n  \"sharedFileSystemPath\": \"/opt/local-path-provisioner\"\n}"}}'
+kubectl patch configmap local-path-config -n local-path-storage --type merge -p '{"data":{"teardown":"#!/bin/sh\nset -eu\necho \"[INFO] Skipping data deletion for ${VOL_DIR}\"\ntrue"}}'
 kubectl -n local-path-storage rollout restart deployment local-path-provisioner
 kubectl wait --for=condition=ready pod -l app=local-path-provisioner -n local-path-storage --timeout=300s
 
@@ -17,7 +18,7 @@ provisioner: rancher.io/local-path
 parameters:
   archiveOnDelete: 'false'
   pathPattern: "{{ .PVC.Namespace }}/{{ .PVC.Name }}"
-reclaimPolicy: Retain
+reclaimPolicy: Delete
 volumeBindingMode: Immediate
 EOF
 
