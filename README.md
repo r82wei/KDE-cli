@@ -108,9 +108,7 @@ flowchart LR
 
    - **Option 2: Local Installation on Linux/Mac**
      ```bash
-     git clone https://github.com/r82wei/KDE-cli.git
-     cd KDE-cli
-     sudo ./install.sh
+     curl -sSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/install.sh | bash
      ```
      This will install KDE-cli directly on your system.
 
