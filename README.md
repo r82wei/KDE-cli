@@ -101,16 +101,14 @@ flowchart LR
    - **Option 1: Quick Start with Docker**
 
      ```bash
-     bash <(curl -fsSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/run.sh)
+     bash <(curl -fsSL https://code.anyong.com.tw/ay/v4/quick-start/kde-env/cli/-/raw/anyong/run.sh?ref_type=heads)
      ```
 
      This command will start a Docker container with KDE-cli pre-installed and ready to use.
 
    - **Option 2: Local Installation on Linux/Mac**
      ```bash
-     git clone https://github.com/r82wei/KDE-cli.git
-     cd KDE-cli
-     sudo ./install.sh
+     curl -sSL https://code.anyong.com.tw/ay/v4/quick-start/kde-env/cli/-/raw/anyong/install.sh?ref_type=heads | bash
      ```
      This will install KDE-cli directly on your system.
 
