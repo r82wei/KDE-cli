@@ -1,9 +1,5 @@
 #!/bin/bash
 
-git clone https://code.anyong.com.tw/ay/v4/quick-start/kde-env/cli.git
-
-cd KDE-cli
-
 source ./uninstall.sh
 
 # 安裝 kde 腳本
@@ -12,6 +8,3 @@ cp -r kde.sh /usr/local/lib/kde/
 cp -r ./scripts /usr/local/lib/kde/
 ln -s /usr/local/lib/kde/kde.sh /usr/local/bin/kde
 
-
-cd ..
-rm -rf KDE-cli

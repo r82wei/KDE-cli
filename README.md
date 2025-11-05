@@ -108,7 +108,7 @@ flowchart LR
 
    - **Option 2: Local Installation on Linux/Mac**
      ```bash
-     curl -sSL https://code.anyong.com.tw/ay/v4/quick-start/kde-env/cli/-/raw/anyong/install.sh?ref_type=heads | bash
+     sudo ./install.sh
      ```
      This will install KDE-cli directly on your system.
 
