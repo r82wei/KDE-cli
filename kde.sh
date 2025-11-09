@@ -52,6 +52,7 @@ show_help() {
     echo "  cloudflare-tunnel <domain> <target>                 透過 Cloudflare Tunnel 建立連線"
     echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
     echo "  code-server [-d] [-p port]                          在目前路徑下啟動 code-server，可使用 -d 參數在背景執行，可使用 -p 參數指定 code-server 的 port"
+    echo "  mcp-server [-p port] [--token <token>]              啟動 MCP server（HTTP/SSE），供代理遠端呼叫 kde"
     echo "  alias <name> [path]                                 建立 alias 指令，透過 tmux 快速啟動 session 到指定路徑的目錄 (需要安裝 tmux)"
     echo "  version                                             顯示 KDE 版本"
 }
@@ -255,6 +256,10 @@ case "$1" in
     code-server)
         shift  # 移除 "code-server" 指令
         source ${KDE_SCRIPTS_PATH}/code-server/command.sh
+        ;;
+    mcp-server)
+        shift  # 移除 "mcp-server" 指令
+        source ${KDE_SCRIPTS_PATH}/mcp-server/command.sh
         ;;
     *)
         show_help
