@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KDE_CLI_VERSION=v1.0.0-rc.2
+KDE_CLI_VERSION=v1.0.0-rc.4
 DATE="20250823105008"
 
 read -e -p "Enter the project path: " PROJECT_PATH

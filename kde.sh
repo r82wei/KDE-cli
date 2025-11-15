@@ -3,7 +3,7 @@
 set -eo pipefail
 
 # 設定 KDE 版本
-export KDE_VERSION=v1.0.0-rc.3
+export KDE_VERSION=v1.0.0-rc.4
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
 # 設定 KDE 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
