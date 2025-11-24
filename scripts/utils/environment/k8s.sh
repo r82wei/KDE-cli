@@ -578,6 +578,11 @@ has_any_service() {
 }
 
 select_namespace() {
+    # 如果已經有 TARGET_NAMESPACE，則直接使用
+    if [[ -n "${TARGET_NAMESPACE}" ]]; then
+        return
+    fi
+    
     # 顯示所有 namespace
     namespaces=($(get_namespaces))
     PS3="請選擇一個 Namespace（輸入編號）："
@@ -601,6 +606,10 @@ select_namespace() {
 }
 
 select_service() {
+    if [[ -n "${TARGET_SERVICE}" ]]; then
+        return
+    fi
+
     TARGET_NAMESPACE=$1
 
     # 顯示 namespace 下所有 service
@@ -636,6 +645,10 @@ select_service() {
 }
 
 select_pod() {
+    if [[ -n "${TARGET_POD}" ]]; then
+        return
+    fi
+
     TARGET_NAMESPACE=$1
 
     # 顯示 namespace 下所有 pod
@@ -673,6 +686,10 @@ select_pod() {
 }
 
 select_port() {
+    if [[ -n "${TARGET_PORT}" ]]; then
+        return
+    fi
+
     TARGET_NAMESPACE=$1
     TYPE=$2
     TARGET_RESOURCE=$3

@@ -1,6 +1,6 @@
 # dir
 environments
-cloudflared
+.cloudflared
 
 # file
 current.env
