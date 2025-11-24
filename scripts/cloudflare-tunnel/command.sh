@@ -2,54 +2,114 @@
 
 source ${KDE_SCRIPTS_PATH}/utils/cloudflare.sh
 
+
+
 # 定義顯示說明的函數
 show_help() {
     echo "usage:"
-    echo "  kde cloudflare-tunnel <domain> <target>     透過 Cloudflare Tunnel 建立連線"
-    echo ""
-    echo "domain:"
-    echo "  Cloudflare Tunnel 的自訂 domain"
+    echo "  kde cloudflare-tunnel <target> [options]     透過 Cloudflare Tunnel 建立連線"
     echo ""
     echo "target:"
-    echo "  ingress          透過 Cloudflare Tunnel 與 ingress 建立連線"
-    echo "  service          透過 Cloudflare Tunnel 與 service 建立連線"
-    echo "  pod              透過 Cloudflare Tunnel 與 pod 建立連線"
-    echo "  [url]            透過 Cloudflare Tunnel 與 url 建立連線 (e.g. http://localhost:8080)"
+    echo "  url                  透過 Cloudflare Tunnel 與 url 建立連線 (e.g. http://localhost:8080 or http://192.168.1.1)"
+    echo "  service              透過 Cloudflare Tunnel 與當前 k8s 環境的 service 建立連線"
+    echo "  pod                  透過 Cloudflare Tunnel 與當前 k8s 環境的 pod 建立連線"
+    echo ""
+    echo "options:"
+    echo "  -h, --help              Show help"
+    echo "  -q, --quick            使用隨機網址的 Cloudflare Tunnel (不需要登入 Cloudflare 帳號)"
+    echo "  -d, --domain            Cloudflare Tunnel 的自訂 domain (需要登入 Cloudflare 帳號且 Domain 有託管在 Cloudflare 上) (e.g. myapp.example.com)"
+    echo "  -u, --url               要轉發的目標 URL 位址 (e.g. http://localhost:8080 or http://192.168.1.1)"
+    echo "  -s, --service           Service 名稱"
+    echo "  --pod                   Pod 名稱"
+    echo "  -p, --port              Port 號碼"
+    echo "  -n, --network           Docker 網路 (default: 當前 K8s 環境的 Docker 網路)，也可設定為 host (即使用主機的網路)"
+
 }
 
-DOMAIN=$1
-TARGET=$2
+TARGET=$1
+OPTIONS=$2
 
-if [[ -z "${DOMAIN}" || "${DOMAIN}" == "--help" || "${DOMAIN}" == "-h" ]]; then
+if [[ -z "${TARGET}" || "$1" == "--help" || "$1" == "-h" ]]; then
     show_help
     exit 1
 fi
 
-if [[ -z "${TARGET}" ]]; then
-    TARGET="ingress"
-fi
+# 解析 options，從第二個參數開始解析，直到遇到非 option 的參數為止
+while [[ $# -gt 0 && "$2" != "" ]]; do
+    case "$2" in
+        -d|--domain)
+            DOMAIN="$3"
+            shift 2
+            ;;
+        -u|--url)
+            export TARGET_URL="$3"
+            shift 2
+            ;;
+        -s|--service)
+            TARGET_SERVICE="$3"
+            shift 2
+            ;;
+        --pod)
+            TARGET_POD="$3"
+            shift 2
+            ;;
+        -p|--port)
+            TARGET_PORT="$3"
+            shift 2
+            ;;
+        -q|--quick)
+            export QUICK_TUNNEL=true
+            shift 1
+            ;;
+        -n|--network)
+            export DOCKER_NETWORK="$3"
+            shift 2
+            ;;
+        *)
+            shift 1
+            ;;
+    esac
+done
 
 
 case "${TARGET}" in
-    "ingress")
-        exit_if_env_not_exist ${CUR_ENV}
-        cloudflare_tunnel_url ${DOMAIN} http://${K8S_CONTAINER_NAME}:30080 ${DOCKER_NETWORK}
-        ;;
     "service")
         exit_if_env_not_exist ${CUR_ENV}
         select_namespace
         select_service ${TARGET_NAMESPACE}
         select_port ${TARGET_NAMESPACE} "service" ${TARGET_SERVICE}
-        cloudflare_tunnel_service ${DOMAIN} ${TARGET_NAMESPACE} ${TARGET_SERVICE} ${TARGET_PORT}
+        if [[ -n "${QUICK_TUNNEL}" ]]; then
+            cloudflare_quick_tunnel_service ${TARGET_NAMESPACE} ${TARGET_SERVICE} ${TARGET_PORT}
+        else
+            cloudflare_tunnel_service ${DOMAIN} ${TARGET_NAMESPACE} ${TARGET_SERVICE} ${TARGET_PORT}
+        fi
         ;;
     "pod")
         exit_if_env_not_exist ${CUR_ENV}
         select_namespace
         select_pod ${TARGET_NAMESPACE}
         select_port ${TARGET_NAMESPACE} "pod" ${TARGET_POD}
-        cloudflare_tunnel_pod ${DOMAIN} ${TARGET_NAMESPACE} ${TARGET_POD} ${TARGET_PORT}
+        if [[ -n "${QUICK_TUNNEL}" ]]; then
+            cloudflare_quick_tunnel_pod ${TARGET_NAMESPACE} ${TARGET_POD} ${TARGET_PORT}
+        else
+            cloudflare_tunnel_pod ${DOMAIN} ${TARGET_NAMESPACE} ${TARGET_POD} ${TARGET_PORT}
+        fi
+        ;;
+    "url")
+        if [[ -z "${TARGET_URL}" ]]; then
+            read -p "請輸入要轉發的目標 URL 位址: " TARGET_URL
+        fi
+        if [[ -n "${QUICK_TUNNEL}" ]]; then
+            cloudflare_quick_tunnel_url ${TARGET_URL} ${DOCKER_NETWORK}
+        else
+            if [[ -z "${DOMAIN}" ]]; then
+                read -p "請輸入 Cloudflare Tunnel 的自訂 domain: " DOMAIN   
+            fi
+            cloudflare_tunnel_url ${DOMAIN} ${TARGET_URL} ${DOCKER_NETWORK}
+        fi
         ;;
     *)
-        cloudflare_tunnel_url ${DOMAIN} ${TARGET}
+        echo "錯誤的 target: ${TARGET}"
+        exit 1
         ;;
 esac
