@@ -19,10 +19,11 @@ show_help() {
     echo "  -q, --quick            使用隨機網址的 Cloudflare Tunnel (不需要登入 Cloudflare 帳號)"
     echo "  -d, --domain            Cloudflare Tunnel 的自訂 domain (需要登入 Cloudflare 帳號且 Domain 有託管在 Cloudflare 上) (e.g. myapp.example.com)"
     echo "  -u, --url               要轉發的目標 URL 位址 (e.g. http://localhost:8080 or http://192.168.1.1)"
+    echo "  -n, --namespace         Namespace 名稱"
     echo "  -s, --service           Service 名稱"
     echo "  --pod                   Pod 名稱"
     echo "  -p, --port              Port 號碼"
-    echo "  -n, --network           Docker 網路 (default: 當前 K8s 環境的 Docker 網路)，也可設定為 host (即使用主機的網路)"
+    echo "  --network           Docker 網路 (default: 當前 K8s 環境的 Docker 網路)，也可設定為 host (即使用主機的網路)"
 
 }
 
@@ -45,6 +46,10 @@ while [[ $# -gt 0 && "$2" != "" ]]; do
             export TARGET_URL="$3"
             shift 2
             ;;
+        -n|--namespace)
+            TARGET_NAMESPACE="$3"
+            shift 2
+            ;;
         -s|--service)
             TARGET_SERVICE="$3"
             shift 2
@@ -61,7 +66,7 @@ while [[ $# -gt 0 && "$2" != "" ]]; do
             export QUICK_TUNNEL=true
             shift 1
             ;;
-        -n|--network)
+        --network)
             export DOCKER_NETWORK="$3"
             shift 2
             ;;
