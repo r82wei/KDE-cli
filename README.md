@@ -235,7 +235,7 @@ flowchart LR
   kde ngrok <target>
 
   # Cloudflare Tunnel
-  kde cloudflare-tunnel <domain> <target>
+  kde cloudflare-tunnel <target> [options]
   ```
 
 ## File Structure
