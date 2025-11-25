@@ -3,7 +3,7 @@
 set -eo pipefail
 
 # 設定 KDE 版本
-export KDE_VERSION=ay-v1.0.0-rc.3
+export KDE_VERSION=ay-v1.0.0-rc.4
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
 # 設定 KDE 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
@@ -49,7 +49,7 @@ show_help() {
     echo "  project, proj, namespace, ns                        project 管理 (可以使用 kde project -h 查看詳細說明)"
     echo "  projects, projs                                     projects(namespaces) 專案集合管理"
     echo "  ngrok                                               啟動 ngrok"
-    echo "  cloudflare-tunnel <domain> <target>                 透過 Cloudflare Tunnel 建立連線"
+    echo "  cloudflare-tunnel <target> [options]               透過 Cloudflare Tunnel 建立連線 (可以使用 kde cloudflare-tunnel -h 查看詳細說明)"
     echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
     echo "  code-server [-d] [-p port]                          在目前路徑下啟動 code-server，可使用 -d 參數在背景執行，可使用 -p 參數指定 code-server 的 port"
     echo "  alias <name> [path]                                 建立 alias 指令，透過 tmux 快速啟動 session 到指定路徑的目錄 (需要安裝 tmux)"
