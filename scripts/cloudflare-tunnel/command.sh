@@ -16,7 +16,7 @@ show_help() {
     echo ""
     echo "options:"
     echo "  -h, --help              Show help"
-    echo "  -q, --quick            使用隨機網址的 Cloudflare Tunnel (不需要登入 Cloudflare 帳號)"
+    echo "  -q, --quick             使用隨機網址的 Cloudflare Tunnel (不需要登入 Cloudflare 帳號)"
     echo "  -d, --domain            Cloudflare Tunnel 的自訂 domain (需要登入 Cloudflare 帳號且 Domain 有託管在 Cloudflare 上) (e.g. myapp.example.com)"
     echo "  -u, --url               要轉發的目標 URL 位址 (e.g. http://localhost:8080 or http://192.168.1.1)"
     echo "  -n, --namespace         Namespace 名稱"
