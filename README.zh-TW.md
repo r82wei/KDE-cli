@@ -1,6 +1,6 @@
 # KDE-cli (Kubernetes Development Environment)
 
-[English](./README.md)
+「Environment-as-Code」的 Kubernetes 開發環境
 
 ## KDE-cli 是什麼？
 
@@ -279,6 +279,10 @@ kde.env      # kde-cli 使用的 docker image (建議加入 .gitignore)
 ## 免責聲明
 
 本工具僅作為自動化操作的框架，協助使用者更方便地啟用這些服務。所有使用者應自行了解並遵守這些第三方服務各自的服務條款與授權模式。
+
+## 其他語言
+
+[English](./README.md)
 
 ## 相關連結
 
