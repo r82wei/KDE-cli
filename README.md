@@ -1,6 +1,6 @@
 # KDE-cli (Kubernetes Development Environment)
 
-[中文版](./README.zh-TW.md)
+Environment-as-Code for reproducible Kubernetes development environments.
 
 ## What is KDE-cli？
 
@@ -284,6 +284,10 @@ kde.env      # Docker images for kde-cli (recommended to add to .gitignore)
 ## Disclaimer
 
 This tool serves only as an automation framework to help users enable these services more conveniently. All users should understand and comply with the terms of service and licensing models of the respective third-party services.
+
+## Language
+
+- [中文版](./README.zh-TW.md)
 
 ## Related Links
 
