@@ -346,12 +346,18 @@ exec_script_in_container_with_project_and_port() {
 
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
 
+    # 如果 .env 檔案不存在，則建立 .env 檔案
+    if [ ! -f ${PROJECT_PATH}/.env ]; then
+        touch ${PROJECT_PATH}/.env
+    fi
+
     # 自動 export 所有 env 變數
     set -a
     . ${KDE_ENV_FILE}
     . ${ENVIROMENTS_PATH}/${CUR_ENV}/k8s.env
     . ${ENVIROMENTS_PATH}/${CUR_ENV}/.env
     . ${PROJECT_ENV_FILE_TMP}
+    . ${PROJECT_PATH}/.env
     set +a
     # 將 KDE_MOUNT_* 環境變數轉換為 docker volume 參數
     set +e
@@ -391,6 +397,11 @@ exec_script_in_container_with_project() {
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
 
     envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
+    
+    # 如果 .env 檔案不存在，則建立 .env 檔案
+    if [ ! -f ${PROJECT_PATH}/.env ]; then
+        touch ${PROJECT_PATH}/.env
+    fi
 
     # 自動 export 所有 env 變數
     set -a
@@ -398,6 +409,7 @@ exec_script_in_container_with_project() {
     . ${ENVIROMENTS_PATH}/${CUR_ENV}/k8s.env
     . ${ENVIROMENTS_PATH}/${CUR_ENV}/.env
     . ${PROJECT_ENV_FILE_TMP}
+    . ${PROJECT_PATH}/.env
     set +a
     # 將 KDE_MOUNT_* 環境變數轉換為 docker volume 參數
     set +e
