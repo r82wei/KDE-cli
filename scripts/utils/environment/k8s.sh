@@ -371,6 +371,7 @@ exec_script_in_container_with_project_and_port() {
     --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
     -p ${PORT}:${PORT} \
     --env-file ${PROJECT_ENV_FILE_TMP} \
+    --env-file ${PROJECT_PATH}/.env \
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
     -v /etc/passwd:/etc/passwd:ro \
@@ -422,6 +423,7 @@ exec_script_in_container_with_project() {
     --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
     --env-file ${PROJECT_ENV_FILE_TMP} \
+    --env-file ${PROJECT_PATH}/.env \
     -e KUBECONFIG=/.kube/config \
     -v ${KUBECONFIG}:/.kube/config \
     -v /etc/passwd:/etc/passwd:ro \
