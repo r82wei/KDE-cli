@@ -95,6 +95,12 @@ start_kind() {
 
     script=$(< ${KDE_SCRIPTS_PATH}/utils/environment/kind-install-default-services.sh)
     exec_script_in_deploy_env "${script}"
+
+    if [[ -f ${ENV_PATH}/init.sh ]]; then
+        script=$(< ${ENV_PATH}/init.sh)
+        exec_script_in_deploy_env "${script}"
+    fi
+
     echo "kind 初始化已完成"
 }
 

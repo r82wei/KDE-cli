@@ -94,6 +94,12 @@ start_k3d() {
 
     script=$(< ${KDE_SCRIPTS_PATH}/utils/environment/k3d-install-default-services.sh)
     exec_script_in_deploy_env "${script}"
+
+    if [[ -f ${ENV_PATH}/init.sh ]]; then
+        script=$(< ${ENV_PATH}/init.sh)
+        exec_script_in_deploy_env "${script}"
+    fi
+
     echo "k3d 初始化已完成"
 }
 
