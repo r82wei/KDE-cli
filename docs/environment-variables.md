@@ -1,40 +1,21 @@
 # KDE K8s 環境變數詳細說明
 
-本文檔說明 KDE CLI 中與 Kubernetes 環境管理相關的環境變數，包括其用途、設定位置及使用方式。
-
-## 文檔範圍
-
-本文檔專注於 K8s 環境層級的配置，包含：
-
-- `kde.env` - KDE CLI 全域配置
-- `environments/<env_name>/k8s.env` - K8s 環境配置
-- `environments/<env_name>/.env` - K8s 環境本地配置
-
-**注意**: 專案層級的配置（如 `project.env`）請參考 [專案管理文檔](../projects/setting.md)。
+本文檔說明 KDE CLI 中所有與 Kubernetes 環境相關的環境變數，包括其用途、設定位置及使用方式。
 
 ## 目錄
 
-- [全域環境變數 (kde.env)](#全域環境變數-kdeenv)
-- [環境配置變數 (k8s.env)](#環境配置變數-k8senv)
-- [本地環境變數 (.env)](#本地環境變數-env)
+- [全域環境變數](#全域環境變數)
+- [環境配置變數](#環境配置變數)
+- [本地環境變數](#本地環境變數)
+- [專案環境變數](#專案環境變數)
 - [雲端代理環境變數](#雲端代理環境變數)
 - [內部使用變數](#內部使用變數)
 
 ---
 
-## 全域環境變數 (kde.env)
+## 全域環境變數
 
-這些變數定義在 `kde.env` 檔案中，位於 KDE CLI 根目錄，用於設定 KDE CLI 的全域配置。
-
-**檔案位置**: `${KDE_PATH}/kde.env`
-
-**用途**:
-
-- 定義 KDE CLI 使用的 Docker 映像版本
-- 設定調試模式
-- 儲存當前環境資訊
-
-**版本控制**: 建議加入版本控制，但可將個人特定設定排除
+這些變數定義在 `kde.env` 檔案中，用於設定 KDE CLI 的全域配置。
 
 ### KDE 基本配置
 
@@ -172,21 +153,9 @@
 
 ---
 
-## 環境配置變數 (k8s.env)
+## 環境配置變數
 
 這些變數定義在 `environments/<env_name>/k8s.env` 檔案中，用於設定特定 K8s 環境的配置。
-
-**檔案位置**: `${ENVIROMENTS_PATH}/<env_name>/k8s.env`
-
-**用途**:
-
-- 定義環境的基本資訊（名稱、類型）
-- 設定 K8s 容器和網路配置
-- 儲存環境的共用設定
-
-**版本控制**: 建議加入版本控制，便於團隊共用環境配置
-
-**建立時機**: 執行 `kde start <env_name>` 時自動建立
 
 ### 基本環境配置
 
@@ -248,21 +217,9 @@
 
 ---
 
-## 本地環境變數 (.env)
+## 本地環境變數
 
-這些變數定義在 `environments/<env_name>/.env` 檔案中，用於設定特定環境的本地配置。
-
-**檔案位置**: `${ENVIROMENTS_PATH}/<env_name>/.env`
-
-**用途**:
-
-- 儲存環境的本地路徑配置
-- 設定個人化的端口配置
-- 儲存環境特定的網路設定
-
-**版本控制**: **不建議**加入版本控制，因為包含個人化設定
-
-**建立時機**: 環境初始化時自動建立
+這些變數定義在 `environments/<env_name>/.env` 檔案中，用於設定特定環境的本地配置（不建議加入版本控制）。
 
 ### 路徑配置
 
@@ -308,6 +265,184 @@
   ```bash
   # 環境初始化時會詢問
   請輸入 K8S ingress nginx port (預設: 80):
+  ```
+
+---
+
+## 專案環境變數
+
+這些變數定義在 `environments/<env_name>/namespaces/<project_name>/project.env` 檔案中，用於設定專案的配置。
+
+### Git 倉庫配置
+
+#### `GIT_REPO_URL`
+
+- **說明**: Git 倉庫 URL
+- **範例**:
+  - 遠端倉庫: `https://github.com/user/repo.git`
+  - 本地專案: `./<project_name>`
+- **用途**: 定義專案的 Git 倉庫來源
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 執行 `kde project create <project_name>` 時設定
+
+#### `GIT_REPO_BRANCH`
+
+- **說明**: Git 分支名稱
+- **預設值**: `main`
+- **用途**: 定義要使用的 Git 分支
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 執行 `kde project create <project_name>` 時設定
+
+### 容器映像配置
+
+#### `DEVELOP_IMAGE`
+
+- **說明**: 開發環境（建置）使用的 Docker 映像
+- **範例**: `node:20`, `python:3.9`, `golang:1.21`
+- **用途**: 執行 build.sh 的容器環境
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 執行 `kde project create <project_name>` 時設定
+- **使用場景**:
+  - `kde project exec <project_name> develop`
+  - `kde project build <project_name>`
+
+#### `DEPLOY_IMAGE`
+
+- **說明**: 部署環境使用的 Docker 映像
+- **預設值**: `${KDE_DEPLOY_ENV_IMAGE}`
+- **用途**: 執行 deploy.sh 等部署相關腳本的容器環境
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 執行 `kde project create <project_name>` 時設定
+- **使用場景**:
+  - `kde project exec <project_name> deploy`
+  - `kde project deploy <project_name>`
+  - `kde project undeploy <project_name>`
+
+### CI/CD 階段映像配置（可選）
+
+#### `PRE_BUILD_IMAGE`
+
+- **說明**: 建置前階段使用的 Docker 映像
+- **預設值**: `${DEVELOP_IMAGE}`（未設定時使用）
+- **用途**: 執行 pre-build.sh 的容器環境
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 手動設定（可選）
+
+#### `BUILD_IMAGE`
+
+- **說明**: 建置階段使用的 Docker 映像
+- **預設值**: `${DEVELOP_IMAGE}`（未設定時使用）
+- **用途**: 執行 build.sh 的容器環境
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 手動設定（可選）
+
+#### `POST_BUILD_IMAGE`
+
+- **說明**: 建置後階段使用的 Docker 映像
+- **預設值**: `${DEVELOP_IMAGE}`（未設定時使用）
+- **用途**: 執行 post-build.sh 的容器環境
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 手動設定（可選）
+
+#### `PRE_DEPLOY_IMAGE`
+
+- **說明**: 部署前階段使用的 Docker 映像
+- **預設值**: `${DEPLOY_IMAGE}`（未設定時使用）
+- **用途**: 執行 pre-deploy.sh 的容器環境
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 手動設定（可選）
+
+#### `POST_DEPLOY_IMAGE`
+
+- **說明**: 部署後階段使用的 Docker 映像
+- **預設值**: `${DEPLOY_IMAGE}`（未設定時使用）
+- **用途**: 執行 post-deploy.sh 的容器環境
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 手動設定（可選）
+
+#### `UNDEPLOY_IMAGE`
+
+- **說明**: 解除部署階段使用的 Docker 映像
+- **預設值**: `${DEPLOY_IMAGE}`（未設定時使用）
+- **用途**: 執行 undeploy.sh 的容器環境
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 手動設定（可選）
+
+### Helm 配置（自動設定）
+
+#### `HELM_CONFIG_HOME`
+
+- **說明**: Helm 配置目錄
+- **預設值**: `${PROJECT_PATH}/.helm/config`
+- **用途**: 儲存 Helm 配置
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 建立專案時自動設定
+
+#### `HELM_CACHE_HOME`
+
+- **說明**: Helm 快取目錄
+- **預設值**: `${PROJECT_PATH}/.helm/cache`
+- **用途**: 儲存 Helm 快取
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 建立專案時自動設定
+
+#### `HELM_DATA_HOME`
+
+- **說明**: Helm 資料目錄
+- **預設值**: `${PROJECT_PATH}/.helm/data`
+- **用途**: 儲存 Helm 資料
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 建立專案時自動設定
+
+#### `HELM_PLUGINS`
+
+- **說明**: Helm 插件目錄
+- **預設值**: `${PROJECT_PATH}/.helm/plugins`
+- **用途**: 儲存 Helm 插件
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 建立專案時自動設定
+
+### 自訂掛載配置
+
+#### `KDE_MOUNT_*`
+
+- **說明**: 自訂 Docker Volume 掛載
+- **格式**: `KDE_MOUNT_<名稱>=<來源路徑>:<目標路徑>`
+- **範例**:
+
+  ```bash
+  # 掛載 .netrc 檔案
+  KDE_MOUNT_NETRC=~/.netrc:~/.netrc
+
+  # 掛載 .docker 目錄
+  KDE_MOUNT_DOCKER=~/.docker:~/.docker
+
+  # 掛載自訂資料夾
+  KDE_MOUNT_DATA=/path/to/data:/data
+  ```
+
+- **用途**: 在專案容器中掛載額外的檔案或目錄
+- **設定位置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+- **設定時機**: 手動設定
+- **注意事項**:
+  - 支援 `~` 符號表示 HOME 目錄
+  - 所有 `KDE_MOUNT_` 開頭的環境變數都會被自動轉換為 Docker -v 參數
+
+### 專案本地配置（.env）
+
+專案也可以在 `environments/<env_name>/namespaces/<project_name>/.env` 中設定本地環境變數（不建議加入版本控制）。
+
+- **用途**: 儲存敏感資訊或本地特定的配置
+- **優先級**: 會覆蓋 `project.env` 中的同名變數
+- **範例**:
+
+  ```bash
+  # API 金鑰
+  API_KEY=your_secret_key
+
+  # 資料庫連線
+  DB_HOST=localhost
+  DB_PORT=5432
   ```
 
 ---
@@ -391,6 +526,12 @@
 - **計算方式**: `${ENV_PATH}/.env`
 - **用途**: 內部腳本使用，讀取本地配置
 
+#### `PROJECT_PATH`
+
+- **說明**: 當前專案的完整路徑
+- **計算方式**: `${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}`
+- **用途**: 內部腳本使用，定位專案目錄
+
 ### 運行時變數
 
 #### `INITIALIZING`
@@ -428,20 +569,19 @@
 當同一個變數在多個檔案中定義時，優先級如下（由高到低）：
 
 1. **執行時環境變數**: 在命令列中 `export` 設定的變數
-2. **環境本地配置**: `environments/<env_name>/.env`
-3. **環境配置**: `environments/<env_name>/k8s.env`
-4. **當前環境配置**: `current.env`
-5. **雲端代理配置**: `ngrok.env`
-6. **全域配置**: `kde.env`
-7. **預設值**: KDE CLI 程式碼中定義的預設值
-
-**注意**: 專案層級的配置（`project.env`）有其獨立的優先級系統，請參考[專案管理文檔](../projects/setting.md)。
+2. **專案本地配置**: `environments/<env_name>/namespaces/<project_name>/.env`
+3. **專案配置**: `environments/<env_name>/namespaces/<project_name>/project.env`
+4. **環境本地配置**: `environments/<env_name>/.env`
+5. **環境配置**: `environments/<env_name>/k8s.env`
+6. **當前環境配置**: `current.env`
+7. **全域配置**: `kde.env`
+8. **預設值**: KDE CLI 程式碼中定義的預設值
 
 ---
 
 ## 環境變數載入順序
 
-KDE CLI 在執行環境相關命令時會按以下順序載入環境變數：
+KDE CLI 在執行時會按以下順序載入環境變數：
 
 ```bash
 # 1. 載入全域配置
@@ -458,9 +598,11 @@ source ${ENV_PATH}/k8s.env                                # k8s.env
 
 # 5. 載入環境本地配置
 source ${ENV_PATH}/.env                                   # .env
-```
 
-**注意**: 專案層級的命令（如 `kde project`）會額外載入專案配置，詳情請參考[專案管理文檔](../projects/setting.md)。
+# 6. 專案執行時載入專案配置
+source ${PROJECT_PATH}/project.env                        # project.env
+source ${PROJECT_PATH}/.env                               # project .env
+```
 
 ---
 
@@ -494,30 +636,45 @@ cat environments/dev-env/.env
 # K8S_INGRESS_NGINX_PORT=8080
 ```
 
-### 場景 2: 建立多個環境
+### 場景 2: 建立專案並設定環境
 
 ```bash
-# 1. 建立開發環境（Kind）
-kde start dev-env kind
-# 設定 API Server 端口: 6443
-# 設定 Ingress 端口: 8080
+# 1. 建立專案
+kde project create myapp
 
-# 2. 建立測試環境（K3D）
-kde start test-env k3d
-# 設定 API Server 端口: 6444
-# 設定 Ingress 端口: 8081
+# 2. 設定 Git 倉庫
+# 系統會詢問: Is this project a git remote repo? (y/n):
+# 輸入: y
+# 系統會詢問: 請輸入 git repo HTTPS URL:
+# 輸入: https://github.com/user/myapp.git
+# 系統會詢問: 請輸入分支名稱(default: main):
+# 輸入: main
 
-# 3. 連接生產環境（外部 K8s）
-kde start prod-env k8s
-# 系統會詢問 kubeconfig 路徑
+# 3. 設定開發環境
+# 系統會詢問: 請輸入專案開發(建置)環境 Image:
+# 輸入: node:20
 
-# 4. 切換環境
-kde use dev-env      # 切換到開發環境
-kde use test-env     # 切換到測試環境
+# 4. 設定部署環境
+# 系統會詢問: 請輸入專案部署環境 Image:
+# 輸入: r82wei/deploy-env:1.0.0
 
-# 5. 查看當前環境
-kde current
-# 輸出: 當前 k8s 環境名稱: test-env
+# 5. 自訂環境變數
+cat >> environments/dev-env/namespaces/myapp/project.env << EOF
+# API 配置
+API_URL=https://api.example.com
+
+# 掛載 Docker 配置
+KDE_MOUNT_DOCKER=~/.docker:~/.docker
+
+# 掛載 NPM 快取
+KDE_MOUNT_NPM=~/.npm:~/.npm
+EOF
+
+# 6. 設定敏感資訊（本地配置）
+cat >> environments/dev-env/namespaces/myapp/.env << EOF
+API_KEY=your_secret_key
+DB_PASSWORD=your_db_password
+EOF
 ```
 
 ### 場景 3: 使用 Telepresence 連線
@@ -531,6 +688,9 @@ export TELEPRESENCE_MANAGER_NAMESPACE=custom-namespace
 
 # 3. 執行 Telepresence 連線
 kde telepresence intercept myapp myapp-deployment
+
+# 4. 進入開發環境
+kde project exec myapp develop
 ```
 
 ### 場景 4: 調試 KDE CLI
@@ -555,104 +715,84 @@ kde status
 
 **應加入版本控制的檔案：**
 
-- `kde.env` - Docker 映像版本（可選，建議保留預設值）
-- `environments/<env_name>/k8s.env` - 環境配置（團隊共用）
-- `environments/<env_name>/kind-config.yaml` - Kind 配置（如有自訂）
-- `environments/<env_name>/k3d-config.yaml` - K3D 配置（如有自訂）
+- `kde.env`（Docker 映像版本）
+- `environments/<env_name>/k8s.env`（環境公用配置）
+- `environments/<env_name>/namespaces/<project_name>/project.env`（專案配置）
 
 **不應加入版本控制的檔案：**
 
-- `current.env` - 當前環境（個人偏好）
-- `ngrok.env` - Ngrok Token（敏感資訊）
-- `environments/<env_name>/.env` - 本地配置（個人設定）
-- `environments/<env_name>/kubeconfig/` - K8s 配置（敏感資訊）
-- `environments/<env_name>/pki/` - PKI 憑證（敏感資訊）
+- `current.env`（當前環境，個人偏好）
+- `ngrok.env`（包含 Token）
+- `environments/<env_name>/.env`（本地配置）
+- `environments/<env_name>/namespaces/<project_name>/.env`（敏感資訊）
+- `environments/<env_name>/kubeconfig/`（K8s 配置）
+- `environments/<env_name>/pki/`（PKI 憑證）
 
-**建議的 .gitignore 設定：**
-
-```bash
-# KDE 環境相關
-current.env
-ngrok.env
-environments/*/.env
-environments/*/kubeconfig/
-environments/*/pki/
-environments/*/namespaces/
-```
-
-### 2. 環境命名慣例
+### 2. 敏感資訊處理
 
 ```bash
-# 使用有意義的環境名稱
-kde start dev-env kind          # 開發環境
-kde start test-env k3d          # 測試環境
-kde start staging-env k8s       # 預發布環境
-kde start prod-env k8s          # 生產環境
+# 將敏感資訊放在 .env 檔案中
+cat >> environments/dev-env/namespaces/myapp/.env << EOF
+API_KEY=secret_key
+DB_PASSWORD=secret_password
+PRIVATE_TOKEN=secret_token
+EOF
 
-# 或依照功能/專案命名
-kde start feature-auth kind     # 功能開發環境
-kde start demo-env kind         # 展示環境
+# 確保 .env 檔案不被加入版本控制
+echo "**/.env" >> .gitignore
 ```
 
-### 3. 端口管理
+### 3. 團隊協作
 
-````bash
-# 為不同環境設定不同端口，避免衝突
+```bash
+# 在 project.env 中使用預設值和註解
+cat >> environments/dev-env/namespaces/myapp/project.env << EOF
+# Git 倉庫配置
+GIT_REPO_URL=https://github.com/team/myapp.git
+GIT_REPO_BRANCH=main
+
+# 容器映像配置
+DEVELOP_IMAGE=node:20
+DEPLOY_IMAGE=r82wei/deploy-env:1.0.0
+
+# API 配置（可在 .env 中覆蓋）
+API_URL=https://api.staging.example.com
+
+# 掛載配置範例
+# KDE_MOUNT_DOCKER=~/.docker:~/.docker
+# KDE_MOUNT_NPM=~/.npm:~/.npm
+EOF
+
+# 提供 .env.example 作為範本
+cat >> environments/dev-env/namespaces/myapp/.env.example << EOF
+# API 金鑰（請填入您的金鑰）
+API_KEY=
+
+# 資料庫密碼（請填入您的密碼）
+DB_PASSWORD=
+
+# 可選：覆蓋 API URL
+# API_URL=https://api.dev.example.com
+EOF
+```
+
+### 4. 環境隔離
+
+```bash
+# 為不同環境建立不同的配置
 # 開發環境
-
-```bash
-# 為不同環境設定不同端口，避免衝突
-# 開發環境 (端口規劃: 6443, 8080)
 kde start dev-env kind
-# API Server: 6443
-# Ingress: 8080
-
-# 測試環境 (端口規劃: 6444, 8081)
-kde start test-env k3d
-# API Server: 6444
-# Ingress: 8081
-
-# 檢查端口配置
-cat environments/dev-env/.env | grep PORT
-cat environments/test-env/.env | grep PORT
-````
-
-### 4. 團隊協作建議
-
-```bash
-# 1. 共用環境配置 (k8s.env)
-# 將團隊共用的設定放在 k8s.env，並加入版本控制
-cat environments/dev-env/k8s.env
-# ENV_NAME=dev-env
-# ENV_TYPE=kind
-# K8S_CONTAINER_NAME=dev-env-control-plane
-# DOCKER_NETWORK=kde-dev-env
-# STORAGE_CLASS=local-path
-
-# 2. 個人化設定 (.env)
-# 將個人特定的設定放在 .env，不加入版本控制
 cat >> environments/dev-env/.env << EOF
-# 個人偏好的端口設定
 K8S_API_SERVER_PORT=6443
 K8S_INGRESS_NGINX_PORT=8080
 EOF
 
-# 3. 提供環境設定範本
-cp environments/dev-env/.env environments/dev-env/.env.example
-echo "# 請複製此檔案為 .env 並填入您的設定" > environments/dev-env/.env.example
-```
-
-### 5. 環境隔離與管理
-
-```bash
-# 為不同用途建立隔離的環境
-kde start dev-feature-a kind    # 功能 A 開發
-kde start dev-feature-b kind    # 功能 B 開發
-kde start integration-test k3d  # 整合測試
-
-# 定期清理不需要的環境
-kde list                        # 查看所有環境
-kde remove dev-feature-a        # 刪除已完成的功能環境
+# 測試環境
+kde start test-env k3d
+cat >> environments/test-env/.env << EOF
+K8S_API_SERVER_PORT=6444
+K8S_INGRESS_NGINX_PORT=8081
+EOF
 ```
 
 ---
@@ -696,54 +836,30 @@ docker pull r82wei/kind:v0.27.0
 echo "KIND_IMAGE=kindest/node:v1.27.0" >> kde.env
 ```
 
-### 問題 3: 環境端口衝突
+### 問題 3: 專案容器無法掛載檔案
 
-**症狀**: 啟動環境時端口已被佔用
-
-**解決方案**:
-
-```bash
-# 1. 檢查端口佔用情況
-lsof -i :6443
-lsof -i :8080
-
-# 2. 停止衝突的環境
-kde stop
-kde list
-
-# 3. 修改環境端口設定
-cat >> environments/dev-env/.env << EOF
-K8S_API_SERVER_PORT=6445
-K8S_INGRESS_NGINX_PORT=8082
-EOF
-
-# 4. 重新啟動環境
-kde restart dev-env
-```
-
-### 問題 4: Ngrok Token 設定問題
-
-**症狀**: 使用 Ngrok 時提示 Token 無效
+**症狀**: 使用 `KDE_MOUNT_*` 掛載檔案失敗
 
 **解決方案**:
 
 ```bash
-# 1. 檢查 Token 設定
-cat ngrok.env
+# 1. 確認檔案路徑存在
+ls -la ~/.docker
 
-# 2. 重新設定 Token
-echo "NGROK_TOKEN=your_correct_token" > ngrok.env
+# 2. 確認路徑格式正確
+cat environments/${CUR_ENV}/namespaces/myapp/project.env | grep KDE_MOUNT
 
-# 3. 測試 Ngrok 連線
-kde ngrok ingress
+# 3. 確認使用絕對路徑或 ~ 符號
+# 正確: KDE_MOUNT_DOCKER=~/.docker:~/.docker
+# 錯誤: KDE_MOUNT_DOCKER=.docker:.docker
 ```
 
 ---
 
 ## 參考資料
 
-- [KDE 專案管理指南](../projects/setting.md) - 專案層級環境變數說明
-- [KDE 資料夾結構說明](../folder.structure.md) - 完整資料夾結構
-- [Telepresence 使用說明](../telepresence.usage.md) - Telepresence 詳細用法
-- [Ngrok 使用說明](../ngrok.usage.md) - Ngrok 詳細用法
-- [Cloudflare Tunnel 使用說明](../cloudflare-tunnel.usage.md) - Cloudflare Tunnel 詳細用法
+- [KDE 環境管理指南](../k8s/k8s-env.md)
+- [KDE 專案管理指南](../projects/setting.md)
+- [KDE 資料夾結構說明](../folder.structure.md)
+- [Telepresence 使用說明](../telepresence.usage.md)
+- [Ngrok 使用說明](../ngrok.usage.md)
