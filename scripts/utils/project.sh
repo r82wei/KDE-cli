@@ -117,22 +117,40 @@ fetch_project() {
 
 pull_project_repo() {
     PROJECT_NAME=$1
+    FORCE_FLAG=$2
 
-    if [[ $(is_project_env_exist ${PROJECT_NAME}) == "false" ]]; then
-        echo "專案 ${PROJECT_NAME} 設定檔(project.env) 不存在"
-        return 1
-    fi
+    exit_if_project_not_exist ${PROJECT_NAME}
+    exit_if_project_env_not_exist ${PROJECT_NAME}
 
     load_project_env ${PROJECT_NAME}
 
-    # 如果 GIT_REPO_URL 是 ./ 開頭，則繼續迴圈
+    # 檢查是否為本地專案 (是否為 ./ 開頭)
     if [[ ${GIT_REPO_URL} == "./"* ]]; then
-        echo "專案 ${PROJECT_NAME} 使用本地專案"
+        echo "專案 ${PROJECT_NAME} 使用本地專案，無法執行 pull 操作"
         return 0
     fi
     
     PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-    download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${PROJECT_REPO_PATH}/$(git_repo_name ${GIT_REPO_URL})
+    REPO_PATH=${PROJECT_REPO_PATH}/$(git_repo_name ${GIT_REPO_URL})
+    
+    # 處理 --force 參數：刪除現有 repository
+    if [[ "${FORCE_FLAG}" == "--force" ]]; then
+        if [[ -d ${REPO_PATH} ]]; then
+            echo "使用強制模式：刪除 repository 目錄並重新 clone..."
+            rm -rf ${REPO_PATH}
+            echo "已刪除 repository 目錄：${REPO_PATH}"
+        fi
+    fi
+    
+    # 根據 repository 是否存在決定操作
+    if [[ ! -d ${REPO_PATH} ]]; then
+        # Repository 不存在：執行 clone
+        echo "開始 clone repository..."
+        download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${REPO_PATH}
+    else
+        # Repository 存在：執行 pull
+        update_git_repo ${PROJECT_NAME} ${REPO_PATH} ${GIT_REPO_BRANCH}
+    fi
 }
 
 pull_if_project_repo_not_exist() {
@@ -188,6 +206,46 @@ download_git_repo() {
 
     # 下載 git repo
     git clone --recursive -b ${GIT_REPO_BRANCH} ${GIT_REPO_URL} ${REPO_PATH}
+}
+
+update_git_repo() {
+    PROJECT_NAME=$1
+    REPO_PATH=$2
+    GIT_REPO_BRANCH=$3
+
+    if [[ ! -d ${REPO_PATH} ]]; then
+        echo "專案目錄 ${REPO_PATH} 不存在"
+        return 1
+    fi
+
+    echo "正在更新專案 ${PROJECT_NAME}..."
+    cd ${REPO_PATH}
+    
+    # 檢查是否為 git 倉庫
+    if [[ ! -d .git ]]; then
+        echo "錯誤：${REPO_PATH} 不是一個 git 倉庫"
+        return 1
+    fi
+    
+    # 檢查是否有未提交的修改
+    if [[ -n $(git status --porcelain) ]]; then
+        echo "錯誤：有未提交的修改，請先提交或 stash 後再執行 pull"
+        echo ""
+        git status --short
+        return 1
+    fi
+    
+    # 執行 git pull
+    git fetch origin ${GIT_REPO_BRANCH}
+    git checkout ${GIT_REPO_BRANCH}
+    git pull origin ${GIT_REPO_BRANCH}
+    
+    if [[ $? -eq 0 ]]; then
+        echo "專案 ${PROJECT_NAME} 已更新完成"
+    else
+        echo "專案 ${PROJECT_NAME} 更新失敗"
+        return 1
+    fi
 }
 
 # 建立資料夾軟連結
