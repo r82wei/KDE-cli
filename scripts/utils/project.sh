@@ -7,6 +7,12 @@ list_projects() {
 check_project_name() {
     PROJECT_NAME=$1
 
+    # 檢查專案名稱是否以 - 開頭
+    if [[ "${PROJECT_NAME}" == -* ]]; then
+        echo "專案名稱不能以 - 開頭"
+        exit 1
+    fi
+
     if [[ -z "${PROJECT_NAME}" ]]; then
         select_project
     fi
