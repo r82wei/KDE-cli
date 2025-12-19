@@ -10,9 +10,13 @@ flowchart TD
     Init -->|是| StartEnv["啟動/連接 K8S 環境<br/>kde start 或 kde start (環境名稱)"]
 
     StartEnv --> EnvType{選擇環境類型}
-    EnvType -->|本地開發| KindEnv[kind 環境<br/>預設]
-    EnvType -->|輕量級| K3dEnv[k3d 環境<br/>--k3d]
+    EnvType -->|本地 container 開發| ContainerEnv["DEVELOP_IMAGE 容器環境 <br/><br/> kde project exec (專案名稱) dev (使用的Port)"]
+    EnvType -->|本地 K8S 開發| KindEnv[kind 環境<br/>預設]
+    EnvType -->|本地輕量級 K8S 開發| K3dEnv[k3d 環境<br/>--k3d]
     EnvType -->|遠端連接| RemoteEnv["連接遠端 K8s<br/>kde start (環境名稱) --k8s<br/>提供 kubeconfig"]
+
+    %% 本地容器開發流程
+    ContainerEnv --> LocalDev[本地開發<br/>Hot Reload<br/>即時測試]
 
     %% 本地 K8S 流程
     KindEnv --> LocalDeploy
@@ -85,9 +89,15 @@ flowchart TD
     style Optional fill:#e2e3e5
 ```
 
-## 流程說明
+## 開發流程說明
 
-### 本地 K8S 流程（kind/k3d）
+### 本地 Container 開發流程（DEVELOP_IMAGE）
+
+1. **啟動環境**：使用 `kde project exec <專案名稱> dev <使用的 Port>` 啟動本地 Container 環境（DEVELOP_IMAGE）
+2. **本地開發**：進入本地開發容器，支援 Hot Reload 即時測試
+3. **對外公開**（可選）：使用 Ngrok 或 Cloudflare Tunnel 對外公開服務
+
+### 本地 K8S 開發流程（kind/k3d）
 
 1. **啟動環境**：使用 `kde start` 啟動本地 K8S 環境（kind 或 k3d）
 2. **部署專案**：執行 `kde proj deploy` 部署專案到 K8S
@@ -103,12 +113,17 @@ flowchart TD
 4. **服務管理**：使用 K9s、Headlamp 或 Port Forward 管理服務
 5. **對外公開**（可選）：使用 Ngrok 或 Cloudflare Tunnel 對外公開服務
 
-### 遠端 K8S 流程
+### 遠端 K8S 開發流程
 
 1. **連接遠端環境**：使用 `kde start [環境名稱] --k8s` 連接遠端 K8S（需提供 kubeconfig）
 2. **使用 Telepresence**：執行 `kde telepresence replace/intercept` 攔截遠端 Pod 流量
-3. **本地開發**：進入本地開發容器，流量會攔截到本地，支援 Hot Reload 即時測試
+3. **本地開發**：進入本地開發容器，流量會攔截到本地開發容器，支援 Hot Reload 即時測試
 4. **服務管理與對外公開**：與本地 K8S 流程相同
+
+### 本地 CICD 開發流程（DEPLOY_IMAGE）
+
+1. **啟動環境**：使用 `kde project exec <專案名稱> dep <使用的 Port>` 啟動本地 Container 環境（DEPLOY_IMAGE）
+2. **本地開發**：進入本地開發容器，直接執行 CICD script (pre-build.sh、build.sh、post-build.sh、pre-deploy.sh、deploy.sh、post-deploy.sh)
 
 ## 相關文件
 
