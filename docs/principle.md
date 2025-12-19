@@ -4,18 +4,33 @@
 
 ### 只需要安裝 docker 就可以執行所有東西 (All in container)
 
-### 環境一致、可攜、共享，並且模擬接近正式的環境、CICD pipeline
+### Environment as Code（環境即程式碼），開發環境必須是「可宣告、可重建、可版本控制」。
 
+- 環境一致、可攜、共享，並且模擬接近正式的環境、CICD pipeline
 - 產生的環境、專案設定可以透過 git 版本化，並且讓所有人共同協作或是分工維護 SDLC。
 - 透過容器化執行環境，確保所有人的環境一致
 - pv 掛載本地資料夾可以直接打包、複製、移轉到所有人的電腦，保持資料一致性
+- 每個環境相同的 project 只有一種環境定義
+- 程式執行期的環境變數應：
+  - 定義於 Kubernetes ConfigMap / Secret
+  - 而不是散落在 .env、project.env、
 
-### 配置分層管理，從全局到專案逐層覆蓋
+### 設定檔分層管理，從全局到專案逐層覆蓋，並且區分是否進入版控的共享設定檔
 
 - **第一層 kde.env**: 全局配置，包含 KDE 路徑、預設映像版本、工具映像等
 - **第二層 current.env**: 當前使用的環境名稱，用於快速切換環境
-- **第三層 k8s.env**: 環境級配置，每個 K8S 環境獨立的設定
-- **第四層 project.env**: 專案級配置，包含 Git 倉庫、映像、建置/部署腳本等
+- **第三層 k8s.env、.env**: 環境級配置，每個 K8S 環境獨立的設定，k8s.env 進入版控、.env 透過 .gitignore 不進入版控
+- **第四層 project.env、.env**: 專案級配置，包含 Git 倉庫、映像、建置/部署腳本、CI/CD 的環境變數等，project.env 進入版控、.env 透過 .gitignore 不進入版控
+
+### Workspace 是一個完整的開發工作區。
+
+- 一個 workspace 通常包含：
+  - 一個或多個對應的 Kubernetes cluster（本地或遠端）
+  - 每個 Kubernetes cluster 內會有一個或多個專案 repo 定義
+  - 每個 Kubernetes 的 namespace 對應的是一個專案 repo
+  - 專案的 CI/CD 包含 pre-build / build / post-build / pre-deploy / deploy / post-deploy / undeploy 等等的 scripts
+  - 每個 CI/CD 的 script 都可以指定 docker image，在指定的 container 內執行
+  - 使用者可以同時存在多個 workspace，彼此隔離。
 
 ### 自動環境搜尋機制，無需手動設定路徑
 
@@ -26,6 +41,8 @@
 
 - 透過 KDE_DEBUG 環境變數啟用除錯模式
 - 除錯模式會顯示所有執行的 shell 指令 (set -x)
+
+### Script 驅動的 CI/CD 工作流程，build.sh / deploy.sh / undeploy.sh 等等的流程腳本，可以僅作為觸發事件執行專案內原有的 CI/CD 腳本，也可以直接在流程腳本內實作實際執行的步驟
 
 ## 環境 (K8S)
 
