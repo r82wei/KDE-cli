@@ -222,7 +222,9 @@ environments/
   └─ <k8s-name>/      # K8S 環境
     └─ kubeconfig/          # k8s kubeconfig 所在資料夾 (建議加入 .gitignore)
     └─ pki/                 # kind cluster cert 所在資料夾 (建議加入 .gitignore)
+    └─ kind-config.template.yaml     # kind 的設定檔模板
     └─ kind-config.yaml     # kind 的設定檔 (建議加入 .gitignore)
+    └─ k3d-config.template.yaml      # k3d 的設定檔模板
     └─ k3d-config.yaml      # k3d 的設定檔 (建議加入 .gitignore)
     └─ .env                 # 此環境的本地的設定檔 (建議加入 .gitignore)
     └─ k8s.env              # 此環境的公用的設定檔，環境級配置，每個 K8S 環境獨立的設定
