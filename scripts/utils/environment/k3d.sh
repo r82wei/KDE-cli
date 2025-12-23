@@ -41,8 +41,7 @@ create_k3d_env(){
             echo "指定的 k3d 的 config 路徑不存在"
             exit 1
         fi
-        cp ${CONFIG_PATH} ${ENV_PATH}/k3d-config.yaml
-        echo "CUSTOM_CONFIG=true" >> ${K8S_ENV_FILE_PATH}
+        cp ${CONFIG_PATH} ${ENV_PATH}/k3d-config.template.yaml
     fi
 
     # 設定 K8S container 名稱
@@ -59,13 +58,22 @@ create_k3d_env(){
 }
 
 init_k3d_config() {
-    if [[ ${CUSTOM_CONFIG} != "true" ]]; then
-        # 設定 k3d-config.yaml
-        envsubst < ${KDE_SCRIPTS_PATH}/utils/environment/k3d-config.yaml > ${ENV_PATH}/k3d-config.yaml
+    # 如果 ${ENV_PATH}/k3d-config.template.yaml 存在，則使用 ${ENV_PATH}/k3d-config.template.yaml 設定 k3d-config.yaml
+    # 否則使用預設的 k3d-config.yaml 模板 ${KDE_SCRIPTS_PATH}/utils/environment/k3d-config.yaml 設定 k3d-config.yaml
+    if [[ -f ${ENV_PATH}/k3d-config.template.yaml ]]; then
+        CONFIG_TEMPLATE_PATH=${ENV_PATH}/k3d-config.template.yaml
+        echo "使用自訂模板: ${CONFIG_TEMPLATE_PATH}"
+    else
+        CONFIG_TEMPLATE_PATH=${KDE_SCRIPTS_PATH}/utils/environment/k3d-config.yaml
+        echo "使用預設模板: ${CONFIG_TEMPLATE_PATH}"
     fi
+    
+    # 設定 k3d-config.yaml
+    envsubst < ${CONFIG_TEMPLATE_PATH} > ${ENV_PATH}/k3d-config.yaml
 }
 
 start_k3d() {
+    # 避免環境資料夾位置發生變動的防禦性機制
     # 如果 VOLUMES_PATH 不等于 ENV_PATH/${VOLUMES_DIR}，則重新初始化 k3d-config.yaml
     if [[ ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
         init_k3d_config
