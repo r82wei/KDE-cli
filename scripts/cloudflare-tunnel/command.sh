@@ -28,38 +28,40 @@ show_help() {
 }
 
 TARGET=$1
-OPTIONS=$2
 
 if [[ -z "${TARGET}" || "$1" == "--help" || "$1" == "-h" ]]; then
     show_help
     exit 1
 fi
 
-# 解析 options，從第二個參數開始解析，直到遇到非 option 的參數為止
-while [[ $# -gt 0 && "$2" != "" ]]; do
-    case "$2" in
+# 移除第一個參數（TARGET）
+shift
+
+# 解析 options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         -d|--domain)
-            DOMAIN="$3"
+            DOMAIN="$2"
             shift 2
             ;;
         -u|--url)
-            export TARGET_URL="$3"
+            export TARGET_URL="$2"
             shift 2
             ;;
         -n|--namespace)
-            TARGET_NAMESPACE="$3"
+            TARGET_NAMESPACE="$2"
             shift 2
             ;;
         -s|--service)
-            TARGET_SERVICE="$3"
+            TARGET_SERVICE="$2"
             shift 2
             ;;
         --pod)
-            TARGET_POD="$3"
+            TARGET_POD="$2"
             shift 2
             ;;
         -p|--port)
-            TARGET_PORT="$3"
+            TARGET_PORT="$2"
             shift 2
             ;;
         -q|--quick)
@@ -67,7 +69,7 @@ while [[ $# -gt 0 && "$2" != "" ]]; do
             shift 1
             ;;
         --network)
-            export DOCKER_NETWORK="$3"
+            export DOCKER_NETWORK="$2"
             shift 2
             ;;
         *)

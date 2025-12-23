@@ -12,7 +12,8 @@ show_help() {
     echo "  create          建立專案"
     echo "  link            連結專案"
     echo "  fetch           透過 git url 抓取專案"
-    echo "  pull            透過 project.env 內的 git repo 設定重新抓取專案"
+    echo "  pull            透過 project.env 內的 git repo 設定更新專案（git pull）"
+    echo "                  使用 --force 或 -f 參數可刪除 repo 目錄並重新 clone"
     echo "  build           建置專案"
     echo "  deploy          建置 & 部署專案"
     echo "  deploy-only     不執行建置，只部署專案"
@@ -74,6 +75,15 @@ case "${COMMAND}" in
         fetch_project ${PROJECT_NAME} ${PROJECT_GIT_REPO_URL} ${PROJECT_GIT_REPO_BRANCH}
         ;;
     pull)
+        FORCE_FLAG=""
+        # 檢查是否有 --force 參數
+        if [[ "$3" == "--force" || "$3" == "-f" ]]; then
+            FORCE_FLAG="--force"
+        elif [[ "$PROJECT_NAME" == "--force" || "$PROJECT_NAME" == "-f" ]]; then
+            FORCE_FLAG="--force"
+            PROJECT_NAME=""
+        fi
+        
         if [[ -z "${PROJECT_NAME}" ]]; then
             projects=($(kde project list))
             PS3="請選擇一個 project（輸入編號）："
@@ -94,7 +104,7 @@ case "${COMMAND}" in
                 esac
             done
         fi
-        pull_project_repo ${PROJECT_NAME}
+        pull_project_repo ${PROJECT_NAME} ${FORCE_FLAG}
         ;;
     build)
         check_project_name ${PROJECT_NAME}

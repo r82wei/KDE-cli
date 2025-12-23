@@ -35,14 +35,13 @@ stop_kind() {
 create_kind_env() {
     CONFIG_PATH=$1
     
-    # 如果 $1 存在，則使用指定的 kind 的 config 路徑
+    # 如果 $1 存在，則使用指定的 kind 的 config 路徑，並且複製到 ${ENV_PATH}/kind-config.template.yaml
     if [[ -n "${CONFIG_PATH}" ]]; then
         if [[ ! -f "${CONFIG_PATH}" ]]; then
             echo "指定的 kind 的 config 路徑不存在"
             exit 1
         fi
-        cp ${CONFIG_PATH} ${ENV_PATH}/kind-config.yaml
-        echo "CUSTOM_CONFIG=true" >> ${K8S_ENV_FILE_PATH}
+        cp ${CONFIG_PATH} ${ENV_PATH}/kind-config.template.yaml
     fi
 
     # 設定 K8S container 名稱
@@ -59,13 +58,22 @@ create_kind_env() {
 }
 
 init_kind_config() {
-    if [[ ${CUSTOM_CONFIG} != "true" ]]; then
-        # 設定 kind-config.yaml
-        envsubst < ${KDE_SCRIPTS_PATH}/utils/environment/kind-config.yaml > ${ENV_PATH}/kind-config.yaml
+    # 如果 ${ENV_PATH}/kind-config.template.yaml 存在，則使用 ${ENV_PATH}/kind-config.template.yaml 設定 kind-config.yaml
+    # 否則使用預設的 kind-config.yaml 模板 ${KDE_SCRIPTS_PATH}/utils/environment/kind-config.yaml 設定 kind-config.yaml
+    if [[ -f ${ENV_PATH}/kind-config.template.yaml ]]; then
+        CONFIG_TEMPLATE_PATH=${ENV_PATH}/kind-config.template.yaml
+        echo "使用自訂模板: ${CONFIG_TEMPLATE_PATH}"
+    else
+        CONFIG_TEMPLATE_PATH=${KDE_SCRIPTS_PATH}/utils/environment/kind-config.yaml
+        echo "使用預設模板: ${CONFIG_TEMPLATE_PATH}"
     fi
+
+    # 設定 kind-config.yaml
+    envsubst < ${CONFIG_TEMPLATE_PATH} > ${ENV_PATH}/kind-config.yaml
 }
 
 start_kind() {
+    # 避免環境資料夾位置發生變動的防禦性機制
     # 如果 VOLUMES_PATH 不等于 ENV_PATH/${VOLUMES_DIR}，則重新初始化 kind-config.yaml
     if [[ ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
         init_kind_config
@@ -95,6 +103,12 @@ start_kind() {
 
     script=$(< ${KDE_SCRIPTS_PATH}/utils/environment/kind-install-default-services.sh)
     exec_script_in_deploy_env "${script}"
+
+    if [[ -f ${ENV_PATH}/init.sh ]]; then
+        script=$(< ${ENV_PATH}/init.sh)
+        exec_script_in_deploy_env "${script}"
+    fi
+
     echo "kind 初始化已完成"
 }
 
