@@ -404,9 +404,13 @@ flowchart TD
     Init -->|是| StartEnv["啟動/連接 K8S 環境<br/>kde start 或 kde start (環境名稱)"]
 
     StartEnv --> EnvType{選擇環境類型}
-    EnvType -->|本地開發| KindEnv[kind 環境<br/>預設]
-    EnvType -->|輕量級| K3dEnv[k3d 環境<br/>--k3d]
+    EnvType -->|本地 container 開發| ContainerEnv["DEVELOP_IMAGE 容器環境 <br/><br/> kde project exec (專案名稱) dev (使用的Port)"]
+    EnvType -->|本地 K8S 開發| KindEnv[kind 環境<br/>預設]
+    EnvType -->|本地輕量級 K8S 開發| K3dEnv[k3d 環境<br/>--k3d]
     EnvType -->|遠端連接| RemoteEnv["連接遠端 K8s<br/>kde start (環境名稱) --k8s<br/>提供 kubeconfig"]
+
+    %% 本地容器開發流程
+    ContainerEnv --> LocalDev[本地開發<br/>Hot Reload<br/>即時測試]
 
     %% 本地 K8S 流程
     KindEnv --> LocalDeploy
