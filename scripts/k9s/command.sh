@@ -30,12 +30,17 @@ fi
 # 初始化變數
 K9S_PORT=""
 K9S_NAMESPACE=""
+K9S_CONFIG=""
 
 # 解析參數
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --port|-p)
             K9S_PORT="$2"
+            shift 2
+            ;;
+        --config|-c)
+            K9S_CONFIG="$2"
             shift 2
             ;;
         --namespace|-n)
@@ -55,4 +60,4 @@ while [[ $# -gt 0 ]]; do
 done
 
 # 啟動 k9s
-start_k9s "$K9S_PORT" "$K9S_NAMESPACE"
+start_k9s "$K9S_PORT" "$K9S_NAMESPACE" "$K9S_CONFIG"
