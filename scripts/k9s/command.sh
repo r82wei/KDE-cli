@@ -6,6 +6,9 @@ source ${KDE_SCRIPTS_PATH}/utils/k9s.sh
 show_help() {
     echo "usage: kde k9s [options]"
     echo ""
+    echo "預設使用 environments/[env-name]/k9s 目錄作為 k9s 的設定檔目錄"
+    echo "如果想要使用自訂設定檔目錄，請在 environments/[env-name]/k9s 目錄下建立 config.yaml 檔案"
+    echo ""
     echo "options:"
     echo "  -p, --port <port>          透過 docker run --expose 將 k9s 指定的 port 對應到本機"
     echo "  -n, --namespace <ns>       指定要查看的 namespace"
@@ -30,17 +33,12 @@ fi
 # 初始化變數
 K9S_PORT=""
 K9S_NAMESPACE=""
-K9S_CONFIG=""
 
 # 解析參數
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --port|-p)
             K9S_PORT="$2"
-            shift 2
-            ;;
-        --config|-c)
-            K9S_CONFIG="$2"
             shift 2
             ;;
         --namespace|-n)
@@ -60,4 +58,4 @@ while [[ $# -gt 0 ]]; do
 done
 
 # 啟動 k9s
-start_k9s "$K9S_PORT" "$K9S_NAMESPACE" "$K9S_CONFIG"
+start_k9s "$K9S_PORT" "$K9S_NAMESPACE"
