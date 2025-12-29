@@ -12,9 +12,12 @@ start_k9s() {
         K9S_ARGS="${K9S_ARGS} -n ${K9S_NAMESPACE}"
     fi
 
-    # 如果有 Env dir 底下存在 k9s config dir 則設定 K9S_CONFIG_DIR
+    # （單一環境）如果有 Env dir 底下存在 k9s config dir 則設定 K9S_CONFIG_DIR
     if [[ -d "${ENV_PATH}/k9s" ]]; then
         export K9S_CONFIG_DIR="${ENV_PATH}/k9s"
+    # （全部環境）如果 KDE_PATH 底下存在 k9s config dir 則設定 K9S_CONFIG_DIR
+    elif [[ -d "${KDE_PATH}/k9s" ]]; then
+        export K9S_CONFIG_DIR="${KDE_PATH}/k9s"
     fi
     
     # 如果已經有 k9s 指令，就執行 k9s 指令，否則透過 docker run 執行 k9s 指令

@@ -226,7 +226,7 @@ environments/
     └─ kind-config.yaml     # kind 的設定檔 (建議加入 .gitignore)
     └─ k3d-config.template.yaml      # k3d 的設定檔模板
     └─ k3d-config.yaml      # k3d 的設定檔 (建議加入 .gitignore)
-    └─ k9s                  # k9s 的設定檔目錄
+    └─ k9s                  # 此環境的 k9s 設定檔目錄
     └─ .env                 # 此環境的本地的設定檔 (建議加入 .gitignore)
     └─ k8s.env              # 此環境的公用的設定檔，環境級配置，每個 K8S 環境獨立的設定
     └─ init.sh              # 本地 K8S 啟動後執行的初始化腳本
@@ -246,6 +246,7 @@ environments/
         └─ ...
 current.env  # 當前使用的環境名稱，用於快速切換環境 (建議加入 .gitignore)
 kde.env      # 全局配置，包含 KDE 路徑、預設映像版本、工具映像等
+k9s/         # 全部環境的 k9s 設定檔目錄
 ```
 
 ## 檔案說明

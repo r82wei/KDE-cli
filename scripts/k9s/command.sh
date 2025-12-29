@@ -6,8 +6,8 @@ source ${KDE_SCRIPTS_PATH}/utils/k9s.sh
 show_help() {
     echo "usage: kde k9s [options]"
     echo ""
-    echo "預設使用 environments/[env-name]/k9s 目錄作為 k9s 的設定檔目錄"
-    echo "如果想要使用自訂設定檔目錄，請在 environments/[env-name]/k9s 目錄下建立 config.yaml 檔案"
+    echo "如果想要在單一環境使用自訂的 k9s 設定檔，請在 ${KDE_PATH}/environments/[env-name]/k9s 目錄下建立 config.yaml 檔案"
+    echo "如果想要在全部環境使用自訂的 k9s 設定檔，請在 ${KDE_PATH}/k9s 目錄下建立 config.yaml 檔案"
     echo ""
     echo "options:"
     echo "  -p, --port <port>          透過 docker run --expose 將 k9s 指定的 port 對應到本機"
