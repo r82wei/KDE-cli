@@ -22,7 +22,15 @@ start_k9s() {
     
     # 如果已經有 k9s 指令，就執行 k9s 指令，否則透過 docker run 執行 k9s 指令
     if command -v k9s > /dev/null 2>&1; then
-        k9s ${K9S_ARGS}
+        K9S_CMD="k9s ${K9S_ARGS}"
+
+        # 如果自訂設定檔目錄存在，則 mount 到容器內
+        if [[ -n "$K9S_CONFIG_DIR" ]]; then
+            K9S_CMD="K9S_CONFIG_DIR=${K9S_CONFIG_DIR} ${K9S_CMD}"
+            echo "k9s 使用自訂設定檔目錄: ${K9S_CONFIG_DIR}"
+        fi
+
+        eval $K9S_CMD
     else
         # 建立 docker run 指令
         local DOCKER_CMD="docker run --rm -it --net ${DOCKER_NETWORK} -e KUBECONFIG=${KUBECONFIG} -v ${KUBECONFIG}:${KUBECONFIG}"
