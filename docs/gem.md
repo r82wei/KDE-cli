@@ -193,26 +193,35 @@
 - 透過 Cloudfoare tunnel 提供外部連線
 - 透過 Ngrok 提供外部連線
 
-## Workspace。
+## Workspace
 
-### workspace 是一個完整的開發工作區
+### workspace 是一個定義環境、專案、CICD 流程的地方
 
-- 一個 workspace 通常包含：
+一個 workspace 通常包含：
+
+- 環境定義
   - 一個或多個對應的 Kubernetes cluster（本地或遠端）
-  - 每個 Kubernetes 環境的 namespaces 內會有一個或多個專案 repo 定義
-  - 每個 Kubernetes 的每個 namespace 對應的是一個專案 repo
+  - 每個環境的 namespaces 內會有一個或多個專案 repo 定義
+  - 在 kde.env 內定義相關工具的 image
+- 專案定義
+  - 每個專案名稱對應的是一個 Kubernetes 的 namespace
+  - 同一專案可以同時存在多個環境，彼此隔離。
+  - 在 project.env 內定義 git repo 相關設定
+  - 在 project.env 內定義`開發環境`image
+  - 在 project.env 內定義`部署環境`image
+  - 在 project.env 內定義`CICD 流程`的環境變數
+- CICD 流程定義
   - 專案的 CI/CD 包含 pre-build / build / post-build / pre-deploy / deploy / post-deploy / undeploy 等等的 scripts
   - 每個 CI/CD 的 script 都可以指定 docker image，在指定的 container 內執行
-  - 專案可以同時存在多個 workspace，彼此隔離。
 
 ### 自動環境搜尋機制，無需手動設定路徑
 
-- 從當前目錄往上搜尋 kde.env 檔案，自動定位 KDE 根目錄
-- 支援在任意子目錄執行 kde 指令，保持操作一致性
+- 從當前目錄往上搜尋 kde.env 檔案，自動定位 workspace 根目錄
+- 支援在 workspace 的任意子目錄執行 kde 指令，保持操作一致性
 
 ### Debug 模式支援
 
-- 透過 KDE_DEBUG 環境變數啟用除錯模式
+- 透過在 kde.env 設定 KDE_DEBUG 環境變數啟用除錯模式
 - 除錯模式會顯示所有執行的 shell 指令 (set -x)
 
 ## 資料夾結構
