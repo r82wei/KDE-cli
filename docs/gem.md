@@ -193,26 +193,35 @@
 - 透過 Cloudfoare tunnel 提供外部連線
 - 透過 Ngrok 提供外部連線
 
-## Workspace。
+## Workspace
 
-### workspace 是一個完整的開發工作區
+### workspace 是一個定義環境、專案、CICD 流程的地方
 
-- 一個 workspace 通常包含：
+一個 workspace 通常包含：
+
+- 環境定義
   - 一個或多個對應的 Kubernetes cluster（本地或遠端）
-  - 每個 Kubernetes 環境的 namespaces 內會有一個或多個專案 repo 定義
-  - 每個 Kubernetes 的每個 namespace 對應的是一個專案 repo
+  - 每個環境的 namespaces 內會有一個或多個專案 repo 定義
+  - 在 kde.env 內定義相關工具的 image
+- 專案定義
+  - 每個專案名稱對應的是一個 Kubernetes 的 namespace
+  - 同一專案可以同時存在多個環境，彼此隔離。
+  - 在 project.env 內定義 git repo 相關設定
+  - 在 project.env 內定義`開發環境`image
+  - 在 project.env 內定義`部署環境`image
+  - 在 project.env 內定義`CICD 流程`的環境變數
+- CICD 流程定義
   - 專案的 CI/CD 包含 pre-build / build / post-build / pre-deploy / deploy / post-deploy / undeploy 等等的 scripts
   - 每個 CI/CD 的 script 都可以指定 docker image，在指定的 container 內執行
-  - 專案可以同時存在多個 workspace，彼此隔離。
 
 ### 自動環境搜尋機制，無需手動設定路徑
 
-- 從當前目錄往上搜尋 kde.env 檔案，自動定位 KDE 根目錄
-- 支援在任意子目錄執行 kde 指令，保持操作一致性
+- 從當前目錄往上搜尋 kde.env 檔案，自動定位 workspace 根目錄
+- 支援在 workspace 的任意子目錄執行 kde 指令，保持操作一致性
 
 ### Debug 模式支援
 
-- 透過 KDE_DEBUG 環境變數啟用除錯模式
+- 透過在 kde.env 設定 KDE_DEBUG 環境變數啟用除錯模式
 - 除錯模式會顯示所有執行的 shell 指令 (set -x)
 
 ## 資料夾結構
@@ -226,6 +235,7 @@ environments/
     └─ kind-config.yaml     # kind 的設定檔 (建議加入 .gitignore)
     └─ k3d-config.template.yaml      # k3d 的設定檔模板
     └─ k3d-config.yaml      # k3d 的設定檔 (建議加入 .gitignore)
+    └─ k9s                  # 此環境的 k9s 設定檔目錄
     └─ .env                 # 此環境的本地的設定檔 (建議加入 .gitignore)
     └─ k8s.env              # 此環境的公用的設定檔，環境級配置，每個 K8S 環境獨立的設定
     └─ init.sh              # 本地 K8S 啟動後執行的初始化腳本
@@ -245,6 +255,7 @@ environments/
         └─ ...
 current.env  # 當前使用的環境名稱，用於快速切換環境 (建議加入 .gitignore)
 kde.env      # 全局配置，包含 KDE 路徑、預設映像版本、工具映像等
+k9s/         # 全部環境的 k9s 設定檔目錄
 ```
 
 ## 檔案說明
@@ -404,9 +415,13 @@ flowchart TD
     Init -->|是| StartEnv["啟動/連接 K8S 環境<br/>kde start 或 kde start (環境名稱)"]
 
     StartEnv --> EnvType{選擇環境類型}
-    EnvType -->|本地開發| KindEnv[kind 環境<br/>預設]
-    EnvType -->|輕量級| K3dEnv[k3d 環境<br/>--k3d]
+    EnvType -->|本地 container 開發| ContainerEnv["DEVELOP_IMAGE 容器環境 <br/><br/> kde project exec (專案名稱) dev (使用的Port)"]
+    EnvType -->|本地 K8S 開發| KindEnv[kind 環境<br/>預設]
+    EnvType -->|本地輕量級 K8S 開發| K3dEnv[k3d 環境<br/>--k3d]
     EnvType -->|遠端連接| RemoteEnv["連接遠端 K8s<br/>kde start (環境名稱) --k8s<br/>提供 kubeconfig"]
+
+    %% 本地容器開發流程
+    ContainerEnv --> LocalDev[本地開發<br/>Hot Reload<br/>即時測試]
 
     %% 本地 K8S 流程
     KindEnv --> LocalDeploy

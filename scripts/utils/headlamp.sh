@@ -59,14 +59,34 @@ open_browser() {
 
 start_headlamp() {
     PORT=${1:-4466}
+    BACKGROUND=${2:-false}
     KUBECONFIG=${ENV_PATH}/${KUBE_CONFIG_DIR}/config
-
-    open_browser "http://$(get_local_ip):${PORT}"
     
-    docker run --rm -it \
-      -p ${PORT}:4466 \
-      -v ${KUBECONFIG}:/home/headlamp/.kube/config \
-      --network ${DOCKER_NETWORK} \
-      ghcr.io/headlamp-k8s/headlamp:latest /headlamp/headlamp-server -html-static-dir /headlamp/frontend -plugins-dir=/headlamp/plugins
+    local LOCAL_IP=$(get_local_ip)
+    local URL="http://${LOCAL_IP}:${PORT}"
+    
+    if [[ "${BACKGROUND}" == "true" ]]; then
+        # 背景執行模式
+        echo "正在背景啟動 Headlamp..."
+        docker run --rm -d \
+          --name headlamp-${CUR_ENV} \
+          -p ${PORT}:4466 \
+          -v ${KUBECONFIG}:/home/headlamp/.kube/config \
+          --network ${DOCKER_NETWORK} \
+          ghcr.io/headlamp-k8s/headlamp:latest /headlamp/headlamp-server -html-static-dir /headlamp/frontend -plugins-dir=/headlamp/plugins
         
+        echo "✓ Headlamp 已在背景啟動"
+        echo "存取網址: ${URL}"
+        echo "停止服務: docker stop headlamp-${CUR_ENV}"
+    else
+        # 前景執行模式
+        open_browser "${URL}"
+        
+        docker run --rm -it \
+          --name headlamp-${CUR_ENV} \
+          -p ${PORT}:4466 \
+          -v ${KUBECONFIG}:/home/headlamp/.kube/config \
+          --network ${DOCKER_NETWORK} \
+          ghcr.io/headlamp-k8s/headlamp:latest /headlamp/headlamp-server -html-static-dir /headlamp/frontend -plugins-dir=/headlamp/plugins
+    fi
 }
