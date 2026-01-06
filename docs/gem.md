@@ -276,7 +276,7 @@ kde-cli 的全域環境變數設定以及各功能使用的 docker image。
 
 ### environments/[k8s-name]/k8s.env
 
-特定 K8S 環境的共用設定檔，包含此環境的名稱、類型、DOCKER_NETWORK...等等，，主要放置共用的 K8S 環境設定。
+特定 K8S 環境的共用設定檔，主要放置不應該進入版控的個人化的 k8s 環境設定，包含此環境的名稱、類型、DOCKER_NETWORK...等等，，主要放置共用的 K8S 環境設定。
 
 - 建議加入 git 版控。
 
@@ -316,6 +316,35 @@ k3d 的[設定檔](https://k3d.io/stable/usage/configfile/#config-options)。
   DEBUG=*
   ```
 
+- 自訂 CI/CD 腳本路徑：
+
+  可以在 project.env 中指定自訂的 CI/CD 腳本，支援以下環境變數：
+
+  - `KDE_PROJECT_PRE_BUILD_SCRIPT`: 自訂 pre-build 腳本路徑
+  - `KDE_PROJECT_BUILD_SCRIPT`: 自訂 build 腳本路徑
+  - `KDE_PROJECT_POST_BUILD_SCRIPT`: 自訂 post-build 腳本路徑
+  - `KDE_PROJECT_PRE_DEPLOY_SCRIPT`: 自訂 pre-deploy 腳本路徑
+  - `KDE_PROJECT_DEPLOY_SCRIPT`: 自訂 deploy 腳本路徑
+  - `KDE_PROJECT_POST_DEPLOY_SCRIPT`: 自訂 post-deploy 腳本路徑
+  - `KDE_PROJECT_UNDEPLOY_SCRIPT`: 自訂 undeploy 腳本路徑
+
+  範例：
+
+  ```bash
+  # 使用自訂的 build 腳本
+  KDE_PROJECT_BUILD_SCRIPT=build-production.sh
+
+  # 使用自訂的 deploy 腳本
+  KDE_PROJECT_DEPLOY_SCRIPT=deploy-k8s-staging.sh
+  ```
+
+  優先級規則：
+
+  - 如果設定了自訂腳本環境變數，優先使用自訂腳本
+  - 如果自訂腳本不存在，會回退到使用標準腳本（如 build.sh）
+  - 如果同時存在自訂腳本和標準腳本，會顯示警告訊息
+  - 未設定環境變數時，使用標準腳本
+
 - `容器開發環境` 和 `CI/CD pipeline` 掛載檔案/資料夾路徑的方式
 
   設定 `KDE_MOUNT_` 開頭的環境變數，並且指定掛載路徑
@@ -327,6 +356,12 @@ k3d 的[設定檔](https://k3d.io/stable/usage/configfile/#config-options)。
   KDE_MOUNT_NETRC=~/.netrc:~/.netrc
   ```
 
+### environments/[k8s-name]/namespaces/[project-name]/.env
+
+特定專案本地設定檔，主要放置不應該進入版控的個人化的專案環境設定，像是：敏感資訊 (Secrets & Credentials)、本地開發的覆寫、CICD 腳本的本地驅動參數
+
+- 不建議加入 git 版控。
+
 ### environments/[k8s-name]/namespaces/[project-name]/pre-build.sh
 
 CI 前置腳本，可以透過在 project.env 設定 `PRE_BUILD_IMAGE` 自訂執行環境(預設使用：`DEVELOP_IMAGE`)。
@@ -336,6 +371,8 @@ CI 前置腳本，可以透過在 project.env 設定 `PRE_BUILD_IMAGE` 自訂執
   - 執行 `kde proj [project-name] build` 時，在執行 `build.sh` 前會執行此腳本
 
 - 如果 pre-build.sh 不存在，不做任何動作
+
+- 可以透過在 project.env 設定 `KDE_PROJECT_PRE_BUILD_SCRIPT` 來指定使用其他腳本（如 `pre-build-production.sh`）
 
 ### environments/[k8s-name]/namespaces/[project-name]/build.sh
 
@@ -348,6 +385,8 @@ CI 腳本，可以透過在 project.env 設定 `BUILD_IMAGE` 自訂執行環境(
 
 - 如果 build.sh 不存在，不做任何動作
 
+- 可以透過在 project.env 設定 `KDE_PROJECT_BUILD_SCRIPT` 來指定使用其他腳本（如 `build-production.sh`）
+
 ### environments/[k8s-name]/namespaces/[project-name]/post-build.sh
 
 CI 後置腳本，可以透過在 project.env 設定 `POST_BUILD_IMAGE` 自訂執行環境(預設使用：`DEVELOP_IMAGE`)。
@@ -357,6 +396,8 @@ CI 後置腳本，可以透過在 project.env 設定 `POST_BUILD_IMAGE` 自訂�
   - 執行 `kde proj [project-name] build` 時，在執行 `build.sh` 後會執行此腳本
 
 - 如果 post-build.sh 不存在，不做任何動作
+
+- 可以透過在 project.env 設定 `KDE_PROJECT_POST_BUILD_SCRIPT` 來指定使用其他腳本（如 `post-build-production.sh`）
 
 ### environments/[k8s-name]/namespaces/[project-name]/pre-deploy.sh
 
@@ -369,6 +410,8 @@ CD 前置腳本，可以透過在 project.env 設定 `PRE_DEPLOY_IMAGE` 自訂�
 
 - 如果 pre-deploy.sh 不存在，不做任何動作
 
+- 可以透過在 project.env 設定 `KDE_PROJECT_PRE_DEPLOY_SCRIPT` 來指定使用其他腳本（如 `pre-deploy-staging.sh`）
+
 ### environments/[k8s-name]/namespaces/[project-name]/deploy.sh
 
 CD 腳本，可以透過在 project.env 設定 `DEPLOY_IMAGE` 自訂執行環境。
@@ -379,6 +422,8 @@ CD 腳本，可以透過在 project.env 設定 `DEPLOY_IMAGE` 自訂執行環境
   - 執行 `kde proj [project-name] deploy-only` 時
 
 - 如果 deploy.sh 不存在，不做任何動作
+
+- 可以透過在 project.env 設定 `KDE_PROJECT_DEPLOY_SCRIPT` 來指定使用其他腳本（如 `deploy-k8s.sh`）
 
 ### environments/[k8s-name]/namespaces/[project-name]/post-deploy.sh
 
@@ -391,6 +436,8 @@ CD 後置腳本，可以透過在 project.env 設定 `POST_DEPLOY_IMAGE` 自訂�
 
 - 如果 post-deploy.sh 不存在，不做任何動作
 
+- 可以透過在 project.env 設定 `KDE_PROJECT_POST_DEPLOY_SCRIPT` 來指定使用其他腳本（如 `post-deploy-notification.sh`）
+
 ### environments/[k8s-name]/namespaces/[project-name]/undeploy.sh
 
 解除部署腳本，如果存在（如果不存在 undeploy.sh，預設動作為刪除與專案同名的 namespace ）。可以透過在 project.env 設定 `UNDEPLOY_IMAGE` 自訂執行環境(預設使用：`DEPLOY_IMAGE`)。
@@ -400,6 +447,8 @@ CD 後置腳本，可以透過在 project.env 設定 `POST_DEPLOY_IMAGE` 自訂�
   - 執行 `kde proj [project-name] undeploy` 時
 
 - 如果 undeploy.sh 不存在，預設動作為刪除與專案同名的 namespace
+
+- 可以透過在 project.env 設定 `KDE_PROJECT_UNDEPLOY_SCRIPT` 來指定使用其他腳本（如 `undeploy-cleanup.sh`）
 
 ## 工作流程
 
