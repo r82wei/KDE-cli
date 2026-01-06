@@ -154,6 +154,11 @@ flowchart LR
      | 5     | deploy.sh      | DEPLOY_IMAGE  | DEPLOY_IMAGE                   |
      | 6     | post-deploy.sh | DEPLOY_IMAGE  | POST_DEPLOY_IMAGE              |
 
+   - You can customize CI/CD scripts by setting environment variables in `project.env`:
+     - `KDE_PROJECT_BUILD_SCRIPT=build-xxx.sh` - Custom build script
+     - `KDE_PROJECT_DEPLOY_SCRIPT=deploy-xxx.sh` - Custom deploy script
+     - Applicable to all CI/CD stages (pre-build, build, post-build, pre-deploy, deploy, post-deploy, undeploy)
+
    ```bash
    kde project deploy <project-name>
 

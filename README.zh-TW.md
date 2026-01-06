@@ -93,19 +93,44 @@ flowchart LR
 
 ## 安裝
 
-1. **準備 Docker**
-   - 必須先安裝 [Docker](https://docs.docker.com/engine/install/)。
-2. **安裝 KDE-cli**
-   - 透過 Docker 啟動可執行 kde-cli 的環境
-     ```
-      bash <(curl -fsSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/run.sh)
-     ```
-   - 透過 Git 安裝在 Linux/Mac
-   ```bash
-   git clone https://github.com/r82wei/KDE-cli.git
-   cd KDE-cli
-   sudo ./install.sh
-   ```
+### 前置需求
+
+- 必須先安裝 [Docker](https://docs.docker.com/engine/install/)
+
+### 推薦方式：容器化執行（無需安裝）
+
+在 `~/.bashrc` 或 `~/.zshrc` 中加入以下 alias：
+
+```bash
+kde() {
+  docker run -it --rm \
+    -v $(pwd):$(pwd) \
+    -v $HOME:$HOME \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -w $(pwd) \
+    -e HOME=$HOME \
+    -e PUID=$(id -u) \
+    -e PGID=$(id -g) \
+    -e USER_NAME=$USER \
+    r82wei/kde-cli:latest \
+    kde "$@"
+}
+```
+
+重新載入配置：
+
+```bash
+source ~/.bashrc  # 或 source ~/.zshrc
+```
+
+現在就可以直接使用 `kde` 指令！
+
+### 其他安裝方式
+
+詳細安裝說明請參考 [安裝指南 (INSTALL.zh-TW.md)](./INSTALL.zh-TW.md)
+
+- 使用包裝腳本 `kde-docker.sh`
+- 本地安裝（需要 sudo）
 
 ## 快速開始
 
@@ -148,6 +173,11 @@ flowchart LR
      | 4        | pre-deploy.sh  | DEPLOY_IMAGE  | PRE_DEPLOY_IMAGE                  |
      | 5        | deploy.sh      | DEPLOY_IMAGE  | DEPLOY_IMAGE                      |
      | 6        | post-deploy.sh | DEPLOY_IMAGE  | POST_DEPLOY_IMAGE                 |
+
+   - 可以透過在 `project.env` 中設定環境變數來自訂 CI/CD 腳本：
+     - `KDE_PROJECT_BUILD_SCRIPT=build-xxx.sh` - 自訂 build 腳本
+     - `KDE_PROJECT_DEPLOY_SCRIPT=deploy-xxx.sh` - 自訂 deploy 腳本
+     - 同樣適用於其他所有 CI/CD 階段（pre-build, build, post-build, pre-deploy, deploy, post-deploy, undeploy）
 
    ```bash
    kde project deploy <project-name>

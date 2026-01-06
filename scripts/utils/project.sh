@@ -263,6 +263,41 @@ create_link() {
     ln -s ${DIR_PATH} ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${DIR_NAME}
 }
 
+# 解析要執行的 CICD 腳本（支援自訂腳本）
+# 參數：
+#   $1 - 標準腳本名稱（如 build.sh）
+#   $2 - 自訂腳本環境變數的值（如 ${KDE_PROJECT_BUILD_SCRIPT}）
+#   $3 - 專案路徑
+# 返回：實際要執行的腳本名稱（透過 echo 輸出）
+resolve_cicd_script() {
+    local STANDARD_SCRIPT=$1
+    local CUSTOM_SCRIPT=$2
+    local PROJECT_PATH=$3
+    
+    local RESOLVED_SCRIPT="${STANDARD_SCRIPT}"
+    
+    # 如果設定了自訂腳本
+    if [[ -n "${CUSTOM_SCRIPT}" ]]; then
+        # 檢查自訂腳本是否存在
+        if [[ -f "${PROJECT_PATH}/${CUSTOM_SCRIPT}" ]]; then
+            # Guardrail: 如果標準腳本也存在，給予警告
+            if [[ -f "${PROJECT_PATH}/${STANDARD_SCRIPT}" && "${CUSTOM_SCRIPT}" != "${STANDARD_SCRIPT}" ]]; then
+                echo "⚠️  警告：檢測到同時存在 ${STANDARD_SCRIPT} 和 ${CUSTOM_SCRIPT}" >&2
+                echo "    將使用 project.env 中指定的: ${CUSTOM_SCRIPT}" >&2
+                echo "    如果這不是預期行為，請移除 project.env 中的相關環境變數設定" >&2
+                echo "" >&2
+            fi
+            RESOLVED_SCRIPT="${CUSTOM_SCRIPT}"
+        else
+            echo "❌ 錯誤：自訂腳本 ${CUSTOM_SCRIPT} 不存在" >&2
+            echo "    將回退到使用標準腳本: ${STANDARD_SCRIPT}" >&2
+            RESOLVED_SCRIPT="${STANDARD_SCRIPT}"
+        fi
+    fi
+    
+    echo "${RESOLVED_SCRIPT}"
+}
+
 build_project() {
     PROJECT_NAME=$1
     PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
@@ -270,17 +305,22 @@ build_project() {
     pull_if_project_repo_not_exist ${PROJECT_NAME}
     source ${PROJECT_PATH}/project.env
 
-    if [[ -f ${PROJECT_PATH}/pre-build.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./pre-build.sh
+    # 解析要執行的腳本
+    local PRE_BUILD_SCRIPT=$(resolve_cicd_script "pre-build.sh" "${KDE_PROJECT_PRE_BUILD_SCRIPT}" "${PROJECT_PATH}")
+    local BUILD_SCRIPT=$(resolve_cicd_script "build.sh" "${KDE_PROJECT_BUILD_SCRIPT}" "${PROJECT_PATH}")
+    local POST_BUILD_SCRIPT=$(resolve_cicd_script "post-build.sh" "${KDE_PROJECT_POST_BUILD_SCRIPT}" "${PROJECT_PATH}")
+
+    if [[ -f ${PROJECT_PATH}/${PRE_BUILD_SCRIPT} ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${PRE_BUILD_SCRIPT}
     fi
-    if [[ -f ${PROJECT_PATH}/build.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${BUILD_IMAGE:-${DEVELOP_IMAGE}} ./build.sh
+    if [[ -f ${PROJECT_PATH}/${BUILD_SCRIPT} ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${BUILD_SCRIPT}
     fi
-    if [[ -f ${PROJECT_PATH}/post-build.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./post-build.sh
+    if [[ -f ${PROJECT_PATH}/${POST_BUILD_SCRIPT} ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${POST_BUILD_SCRIPT}
     fi
 
-    if [[ -f ${PROJECT_PATH}/pre-build.sh || -f ${PROJECT_PATH}/build.sh || -f ${PROJECT_PATH}/post-build.sh ]]; then
+    if [[ -f ${PROJECT_PATH}/${PRE_BUILD_SCRIPT} || -f ${PROJECT_PATH}/${BUILD_SCRIPT} || -f ${PROJECT_PATH}/${POST_BUILD_SCRIPT} ]]; then
         echo "專案 ${PROJECT_NAME} 已建置完成"
     fi
 }
@@ -292,17 +332,22 @@ deploy_project() {
     pull_if_project_repo_not_exist ${PROJECT_NAME}
     source ${PROJECT_PATH}/project.env
     
-    if [[ -f ${PROJECT_PATH}/pre-deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./pre-deploy.sh
+    # 解析要執行的腳本
+    local PRE_DEPLOY_SCRIPT=$(resolve_cicd_script "pre-deploy.sh" "${KDE_PROJECT_PRE_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    local DEPLOY_SCRIPT=$(resolve_cicd_script "deploy.sh" "${KDE_PROJECT_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    local POST_DEPLOY_SCRIPT=$(resolve_cicd_script "post-deploy.sh" "${KDE_PROJECT_POST_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    
+    if [[ -f ${PROJECT_PATH}/${PRE_DEPLOY_SCRIPT} ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${PRE_DEPLOY_SCRIPT}
     fi
-    if [[ -f ${PROJECT_PATH}/deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./deploy.sh
+    if [[ -f ${PROJECT_PATH}/${DEPLOY_SCRIPT} ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./${DEPLOY_SCRIPT}
     fi
-    if [[ -f ${PROJECT_PATH}/post-deploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./post-deploy.sh
+    if [[ -f ${PROJECT_PATH}/${POST_DEPLOY_SCRIPT} ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${POST_DEPLOY_SCRIPT}
     fi
 
-    if [[ -f ${PROJECT_PATH}/pre-deploy.sh || -f ${PROJECT_PATH}/deploy.sh || -f ${PROJECT_PATH}/post-deploy.sh ]]; then
+    if [[ -f ${PROJECT_PATH}/${PRE_DEPLOY_SCRIPT} || -f ${PROJECT_PATH}/${DEPLOY_SCRIPT} || -f ${PROJECT_PATH}/${POST_DEPLOY_SCRIPT} ]]; then
         echo "專案 ${PROJECT_NAME} 已部署完成"
     fi
 }
@@ -312,8 +357,13 @@ undeploy_project() {
 
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    if [[ -f ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/undeploy.sh ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${UNDEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./undeploy.sh
+    
+    # 解析要執行的腳本
+    local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+    local UNDEPLOY_SCRIPT=$(resolve_cicd_script "undeploy.sh" "${KDE_PROJECT_UNDEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    
+    if [[ -f ${PROJECT_PATH}/${UNDEPLOY_SCRIPT} ]]; then
+        exec_script_in_container_with_project ${PROJECT_NAME} ${UNDEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${UNDEPLOY_SCRIPT}
     else
         exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
     fi
