@@ -281,6 +281,17 @@ resolve_cicd_script() {
     
     # 如果設定了自訂腳本
     if [[ -n "${CUSTOM_SCRIPT}" ]]; then
+        # 檢查使用者是否已經加上 ./ 前綴，如果是，就把 ./ 去掉
+        if [[ "${CUSTOM_SCRIPT}" == "./"* ]]; then
+            CUSTOM_SCRIPT="${CUSTOM_SCRIPT#./}"
+        fi
+        # 檢查使用者是否已經加上 ${PROJECT_PATH} 前綴，如果是，就把 ${PROJECT_PATH} 前綴去掉
+        if [[ "${CUSTOM_SCRIPT}" == "${PROJECT_PATH}/"* ]]; then
+            CUSTOM_SCRIPT="${CUSTOM_SCRIPT#${PROJECT_PATH}/}"
+        fi
+
+        echo "CUSTOM_SCRIPT: ${CUSTOM_SCRIPT}" >&2
+        
         # 檢查自訂腳本是否存在
         if [[ -f "${PROJECT_PATH}/${CUSTOM_SCRIPT}" ]]; then
             # Guardrail: 如果標準腳本也存在，給予警告
@@ -293,12 +304,15 @@ resolve_cicd_script() {
             RESOLVED_SCRIPT="${CUSTOM_SCRIPT}"
         else
             echo "❌ 錯誤：自訂腳本 ${CUSTOM_SCRIPT} 不存在" >&2
-            echo "    將回退到使用標準腳本: ${STANDARD_SCRIPT}" >&2
-            RESOLVED_SCRIPT="${STANDARD_SCRIPT}"
+            echo "    請確認自訂腳本是否存在" >&2
+            # 返回空字符串並標記錯誤
+            echo ""
+            return 1
         fi
     fi
     
     echo "${RESOLVED_SCRIPT}"
+    return 0
 }
 
 build_project() {
@@ -308,10 +322,27 @@ build_project() {
     pull_if_project_repo_not_exist ${PROJECT_NAME}
     source ${PROJECT_PATH}/project.env
 
-    # 解析要執行的腳本
-    local PRE_BUILD_SCRIPT=$(resolve_cicd_script "pre-build.sh" "${KDE_PROJECT_PRE_BUILD_SCRIPT}" "${PROJECT_PATH}")
-    local BUILD_SCRIPT=$(resolve_cicd_script "build.sh" "${KDE_PROJECT_BUILD_SCRIPT}" "${PROJECT_PATH}")
-    local POST_BUILD_SCRIPT=$(resolve_cicd_script "post-build.sh" "${KDE_PROJECT_POST_BUILD_SCRIPT}" "${PROJECT_PATH}")
+    # 解析要執行的腳本，檢查返回狀態
+    local PRE_BUILD_SCRIPT
+    PRE_BUILD_SCRIPT=$(resolve_cicd_script "pre-build.sh" "${KDE_PROJECT_PRE_BUILD_SCRIPT}" "${PROJECT_PATH}")
+    if [[ $? -ne 0 ]]; then
+        echo "❌ 建置失敗：pre-build 腳本解析錯誤" >&2
+        return 1
+    fi
+    
+    local BUILD_SCRIPT
+    BUILD_SCRIPT=$(resolve_cicd_script "build.sh" "${KDE_PROJECT_BUILD_SCRIPT}" "${PROJECT_PATH}")
+    if [[ $? -ne 0 ]]; then
+        echo "❌ 建置失敗：build 腳本解析錯誤" >&2
+        return 1
+    fi
+    
+    local POST_BUILD_SCRIPT
+    POST_BUILD_SCRIPT=$(resolve_cicd_script "post-build.sh" "${KDE_PROJECT_POST_BUILD_SCRIPT}" "${PROJECT_PATH}")
+    if [[ $? -ne 0 ]]; then
+        echo "❌ 建置失敗：post-build 腳本解析錯誤" >&2
+        return 1
+    fi
 
     if [[ -f ${PROJECT_PATH}/${PRE_BUILD_SCRIPT} ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${PRE_BUILD_SCRIPT}
@@ -335,10 +366,27 @@ deploy_project() {
     pull_if_project_repo_not_exist ${PROJECT_NAME}
     source ${PROJECT_PATH}/project.env
     
-    # 解析要執行的腳本
-    local PRE_DEPLOY_SCRIPT=$(resolve_cicd_script "pre-deploy.sh" "${KDE_PROJECT_PRE_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    local DEPLOY_SCRIPT=$(resolve_cicd_script "deploy.sh" "${KDE_PROJECT_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    local POST_DEPLOY_SCRIPT=$(resolve_cicd_script "post-deploy.sh" "${KDE_PROJECT_POST_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    # 解析要執行的腳本，檢查返回狀態
+    local PRE_DEPLOY_SCRIPT
+    PRE_DEPLOY_SCRIPT=$(resolve_cicd_script "pre-deploy.sh" "${KDE_PROJECT_PRE_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    if [[ $? -ne 0 ]]; then
+        echo "❌ 部署失敗：pre-deploy 腳本解析錯誤" >&2
+        return 1
+    fi
+    
+    local DEPLOY_SCRIPT
+    DEPLOY_SCRIPT=$(resolve_cicd_script "deploy.sh" "${KDE_PROJECT_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    if [[ $? -ne 0 ]]; then
+        echo "❌ 部署失敗：deploy 腳本解析錯誤" >&2
+        return 1
+    fi
+    
+    local POST_DEPLOY_SCRIPT
+    POST_DEPLOY_SCRIPT=$(resolve_cicd_script "post-deploy.sh" "${KDE_PROJECT_POST_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    if [[ $? -ne 0 ]]; then
+        echo "❌ 部署失敗：post-deploy 腳本解析錯誤" >&2
+        return 1
+    fi
     
     if [[ -f ${PROJECT_PATH}/${PRE_DEPLOY_SCRIPT} ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${PRE_DEPLOY_SCRIPT}
@@ -361,9 +409,14 @@ undeploy_project() {
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     
-    # 解析要執行的腳本
+    # 解析要執行的腳本，檢查返回狀態
     local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-    local UNDEPLOY_SCRIPT=$(resolve_cicd_script "undeploy.sh" "${KDE_PROJECT_UNDEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    local UNDEPLOY_SCRIPT
+    UNDEPLOY_SCRIPT=$(resolve_cicd_script "undeploy.sh" "${KDE_PROJECT_UNDEPLOY_SCRIPT}" "${PROJECT_PATH}")
+    if [[ $? -ne 0 ]]; then
+        echo "❌ 解除部署失敗：undeploy 腳本解析錯誤" >&2
+        return 1
+    fi
     
     if [[ -f ${PROJECT_PATH}/${UNDEPLOY_SCRIPT} ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${UNDEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${UNDEPLOY_SCRIPT}
