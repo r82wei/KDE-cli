@@ -129,6 +129,16 @@
     - 透過 Docker 啟動 k3d(K3S in Docker)，快速啟動 Kubernetes/K3S 環境
     - 透過 environment/[環境名稱]/init.sh，可以在 kind/k3d 啟動後執行對應的動作，例如：安裝 ingress、grafana、prometheus、...等等
     - 可指定自訂的 kind-config.yaml/k3d-config.yaml 作為 template yaml
+      - **kind-config.template.yaml 機制**：
+        - 將自訂 kind 配置檔案放置於 `environments/<env_name>/kind-config.template.yaml`
+        - 或執行 `kde start <env_name> kind <config_path>` 自動複製為模板
+        - 系統會使用模板生成最終的 `kind-config.yaml`，支援環境變數替換
+        - 自訂模板可加入版控，生成的配置檔案建議加入 .gitignore
+      - **k3d-config.template.yaml 機制**：
+        - 將自訂 k3d 配置檔案放置於 `environments/<env_name>/k3d-config.template.yaml`
+        - 或執行 `kde start <env_name> k3d <config_path>` 自動複製為模板
+        - 系統會使用模板生成最終的 `k3d-config.yaml`，支援環境變數替換
+        - 自訂模板可加入版控，生成的配置檔案建議加入 .gitignore
   - local k8s(kind、k3d) 內每個 pvc 名稱都會對應到 project 資料夾底下的一個與 pvc 同名的資料夾 or 檔案
   - 開發
     - 透過 rancher 的 local-path-provisioner，將 environment/[環境名稱] 底下的 namespaces 資料夾掛載到 local-path-provisioner 的 hostPath (/opt/local-path-provisioner)，讓使用者可以透過在 namespace 底下建立 pvc，連結到與 pvc 相同名稱的檔案或資料夾，進而達到 Pod 內的資源同步，進行 hot reload 開發
@@ -229,16 +239,16 @@
 ```
 environments/
   └─ <k8s-name>/      # K8S 環境
-    └─ kubeconfig/          # k8s kubeconfig 所在資料夾 (建議加入 .gitignore)
-    └─ pki/                 # kind cluster cert 所在資料夾 (建議加入 .gitignore)
-    └─ kind-config.template.yaml     # kind 的設定檔模板
-    └─ kind-config.yaml     # kind 的設定檔 (建議加入 .gitignore)
-    └─ k3d-config.template.yaml      # k3d 的設定檔模板
-    └─ k3d-config.yaml      # k3d 的設定檔 (建議加入 .gitignore)
-    └─ k9s                  # 此環境的 k9s 設定檔目錄
-    └─ .env                 # 此環境的本地的設定檔 (建議加入 .gitignore)
-    └─ k8s.env              # 此環境的公用的設定檔，環境級配置，每個 K8S 環境獨立的設定
-    └─ init.sh              # 本地 K8S 啟動後執行的初始化腳本
+    └─ kubeconfig/                    # k8s kubeconfig 所在資料夾 (建議加入 .gitignore)
+    └─ pki/                           # kind cluster cert 所在資料夾 (建議加入 .gitignore)
+    └─ kind-config.template.yaml      # kind 的設定檔模板 (可自訂，可版控)
+    └─ kind-config.yaml               # kind 的設定檔 (建議加入 .gitignore)
+    └─ k3d-config.template.yaml       # k3d 的設定檔模板 (可自訂，可版控)
+    └─ k3d-config.yaml                # k3d 的設定檔 (建議加入 .gitignore)
+    └─ k9s                            # 此環境的 k9s 設定檔目錄
+    └─ .env                           # 此環境的本地的設定檔 (建議加入 .gitignore)
+    └─ k8s.env                        # 此環境的公用的設定檔，環境級配置，每個 K8S 環境獨立的設定
+    └─ init.sh                        # 本地 K8S 啟動後執行的初始化腳本
     └─ namespaces/
       └─ <project-name>/    # 專案名稱(K8S namespace 名稱)
         ├─ project.env        # 專案級設定檔(包含專案 Git Repository、環境 image 設定、CICD 環境變數)
@@ -280,13 +290,37 @@ kde-cli 的全域環境變數設定以及各功能使用的 docker image。
 
 - 建議加入 git 版控。
 
-### environments/[k8s-name]/kind-config.env
+### environments/[k8s-name]/kind-config.template.yaml
 
-kind 的[設定檔](https://kind.sigs.k8s.io/docs/user/configuration/)。
+Kind 集群的自訂配置模板檔案。
 
-### environments/[k8s-name]/k3d-config.env
+- 支援環境變數替換（使用 `envsubst`）
+- 可加入 Git 版控與團隊共享
+- 優先級高於預設模板
 
-k3d 的[設定檔](https://k3d.io/stable/usage/configfile/#config-options)。
+### environments/[k8s-name]/kind-config.yaml
+
+Kind 集群的實際配置檔案，由模板生成。
+
+- 透過 `envsubst` 處理環境變數替換
+- 不建議加入 Git 版控（應加入 .gitignore）
+- 每次環境初始化時重新生成
+
+### environments/[k8s-name]/k3d-config.template.yaml
+
+K3d 集群的自訂配置模板檔案。
+
+- 支援環境變數替換（使用 `envsubst`）
+- 可加入 Git 版控與團隊共享
+- 優先級高於預設模板
+
+### environments/[k8s-name]/k3d-config.yaml
+
+K3d 集群的實際配置檔案，由模板生成。
+
+- 透過 `envsubst` 處理環境變數替換
+- 不建議加入 Git 版控（應加入 .gitignore）
+- 每次環境初始化時重新生成
 
 ### environments/[k8s-name]/namespaces/[project-name]/project.env
 
