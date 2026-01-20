@@ -33,7 +33,7 @@ start_k9s() {
         eval $K9S_CMD
     else
         # 建立 docker run 指令
-        local DOCKER_CMD="docker run --rm -it --net ${DOCKER_NETWORK} -e KUBECONFIG=${KUBECONFIG} -v ${KUBECONFIG}:${KUBECONFIG}"
+        local DOCKER_CMD="docker run --rm -it -u ${UID}:${GID} --net ${DOCKER_NETWORK} -e KUBECONFIG=${KUBECONFIG} -v ${KUBECONFIG}:${KUBECONFIG}"
         
         # 如果自訂設定檔目錄存在，則 mount 到容器內
         if [[ -n "$K9S_CONFIG_DIR" ]]; then
