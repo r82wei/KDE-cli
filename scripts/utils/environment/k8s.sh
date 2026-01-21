@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 檢查 $1 的環境在 enviroments 底下是否存在，而且 enviroments 底下有 ENV_NAME 資料夾，而且存在 .env 檔案，存在則回傳 true，不存在則回傳 false
+# 檢查 $1 的環境在 enviroments 底下是否存在，而且 enviroments 底下有 ENV_NAME 資料夾，而且存在 k8s.env 檔案，存在則回傳 true，不存在則回傳 false
 is_env_exist() {
     ENV_NAME=$1
     if [[ -n ${ENV_NAME} && -d ${ENVIROMENTS_PATH}/${ENV_NAME} && -n "$(ls -A ${ENVIROMENTS_PATH}/${ENV_NAME})" && -f ${ENVIROMENTS_PATH}/${ENV_NAME}/k8s.env ]]; then
