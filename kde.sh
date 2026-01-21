@@ -94,6 +94,7 @@ esac
 source ${KDE_SCRIPTS_PATH}/utils/environment/k8s.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/kind.sh
 source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
+source ${KDE_SCRIPTS_PATH}/utils/k9s.sh
 
 # 新增或載入 kde.env 環境變數設定檔
 if [[ ! -f ${KDE_ENV_FILE} ]]; then
@@ -171,7 +172,7 @@ case "$1" in
     start)
         shift  # 移除 "start" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh
-        source ${KDE_SCRIPTS_PATH}/k9s/command.sh
+        start_k9s
         ;;
     create)
         shift  # 移除 "create" 指令
