@@ -112,6 +112,9 @@ load_enviroment_env() {
         source ${ENV_PATH}/k8s.env
     fi
     if [[ $(is_env_init ${ENV_NAME}) == "true" ]]; then
+        if [[ ! -f ${ENV_PATH}/.env ]]; then
+            touch ${ENV_PATH}/.env
+        fi
         source ${ENV_PATH}/.env
         export KUBECONFIG=${ENV_PATH}/${KUBE_CONFIG_DIR}/config
     fi
