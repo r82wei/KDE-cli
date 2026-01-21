@@ -33,11 +33,11 @@ start_k9s() {
         eval $K9S_CMD
     else
         # 建立 docker run 指令
-        local DOCKER_CMD="docker run --rm -it -u ${UID}:${GID} --net ${DOCKER_NETWORK} -e KUBECONFIG=${KUBECONFIG} -v ${KUBECONFIG}:${KUBECONFIG}"
+        local DOCKER_CMD="docker run --rm -it --net ${DOCKER_NETWORK} -e KUBECONFIG=${KUBECONFIG} -v ${KUBECONFIG}:${KUBECONFIG}"
         
         # 如果自訂設定檔目錄存在，則 mount 到容器內
         if [[ -n "$K9S_CONFIG_DIR" ]]; then
-            DOCKER_CMD="${DOCKER_CMD} -e K9S_CONFIG_DIR=${K9S_CONFIG_DIR} -v ${K9S_CONFIG_DIR}:${K9S_CONFIG_DIR}"
+            DOCKER_CMD="${DOCKER_CMD} -u $(id -u):$(id -g) -e USER=${USER} -e K9S_CONFIG_DIR=${K9S_CONFIG_DIR} -v ${K9S_CONFIG_DIR}:${K9S_CONFIG_DIR} -e XDG_CONFIG_HOME=${K9S_CONFIG_DIR}/.config -e XDG_DATA_HOME=${K9S_CONFIG_DIR}/.data -v ${K9S_CONFIG_DIR}/.config:${K9S_CONFIG_DIR}/.config -v ${K9S_CONFIG_DIR}/.data:${K9S_CONFIG_DIR}/.data"
             echo "k9s 使用自訂設定檔目錄: ${K9S_CONFIG_DIR}"
         fi
         
