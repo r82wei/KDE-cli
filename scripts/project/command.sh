@@ -14,15 +14,20 @@ show_help() {
     echo "  fetch           透過 git url 抓取專案"
     echo "  pull            透過 project.env 內的 git repo 設定更新專案（git pull）"
     echo "                  使用 --force 或 -f 參數可刪除 repo 目錄並重新 clone"
-    echo "  build           建置專案"
-    echo "  deploy          建置 & 部署專案"
-    echo "  deploy-only     不執行建置，只部署專案"
+    echo "  build           建置專案（標準模式）"
+    echo "  deploy          執行 CI/CD Pipeline（支援自定義 Pipeline）"
+    echo "  deploy-only     不執行建置，只部署專案（標準模式）"
     echo "  undeploy        卸載專案"
     echo "  redeploy        重新部署專案"
     echo "  tail            查看 pod 的 log，預設查看最後 100 行"
     echo "  remove, rm      刪除專案"
     echo "  exec            進入專案"
     echo "  ingress         建立 ingress"
+    echo ""
+    echo "Pipeline 模式："
+    echo "  標準模式        使用 build.sh, deploy.sh 等標準腳本"
+    echo "  自定義模式      在 project.env 設定 KDE_PIPELINE_STAGES 啟用"
+    echo "                  範例: KDE_PIPELINE_STAGES=\"lint build test deploy\""
 }
 
 show_exec_help() {

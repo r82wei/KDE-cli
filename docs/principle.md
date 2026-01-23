@@ -81,25 +81,18 @@ flowchart TD
 
     LocalDeploy --> CICD[觸發 CI/CD Pipeline]
 
-    CICD --> CI[CI 階段<br/>使用 DEVELOP_IMAGE]
-    CI --> PreBuild{pre-build.sh<br/>存在?}
-    PreBuild -->|是| PreBuildExec[執行 pre-build.sh]
-    PreBuild -->|否| Build
-    PreBuildExec --> Build[執行 build.sh<br/>編譯/建置專案]
-    Build --> PostBuild{post-build.sh<br/>存在?}
-    PostBuild -->|是| PostBuildExec[執行 post-build.sh]
-    PostBuild -->|否| CD
-    PostBuildExec --> CD
-
-    CD[CD 階段<br/>使用 DEPLOY_IMAGE]
-    CD --> PreDeploy{pre-deploy.sh<br/>存在?}
-    PreDeploy -->|是| PreDeployExec[執行 pre-deploy.sh]
-    PreDeploy -->|否| DeployScript
-    PreDeployExec --> DeployScript[執行 deploy.sh<br/>建立 Namespace<br/>建立 PVC<br/>Helm 部署服務]
-    DeployScript --> PostDeploy{post-deploy.sh<br/>存在?}
-    PostDeploy -->|是| PostDeployExec[執行 post-deploy.sh]
-    PostDeploy -->|否| Services
-    PostDeployExec --> Services
+    CICD --> PipelineMode{Pipeline 模式}
+    PipelineMode -->|標準| StandardPipeline[標準 DevOps Loops<br/>Build → Test → Release → Deploy]
+    PipelineMode -->|自定義| CustomPipeline[自定義 Pipeline<br/>KDE_PIPELINE_STAGES]
+    
+    StandardPipeline --> ExecuteStages
+    CustomPipeline --> ExecuteStages
+    
+    ExecuteStages[依序執行各階段腳本<br/>每階段可自訂 Image]
+    ExecuteStages --> StageLoop{還有階段?}
+    StageLoop -->|是| ExecuteStage[執行 {stage}.sh<br/>使用 KDE_STAGE_{stage}_IMAGE]
+    ExecuteStage --> StageLoop
+    StageLoop -->|否| Services
 
     Services[服務已部署到 K8s]
 
@@ -134,8 +127,8 @@ flowchart TD
     style Start fill:#e1f5ff
     style End fill:#d4edda
     style CICD fill:#fff3cd
-    style CI fill:#ffeaa7
-    style CD fill:#ffeaa7
+    style PipelineMode fill:#ffeaa7
+    style ExecuteStages fill:#ffeaa7
     style Services fill:#d1ecf1
     style RemoteEnv fill:#e7f3ff
     style Telepresence fill:#e7f3ff
@@ -158,14 +151,11 @@ flowchart TD
 1. **啟動環境**：使用 `kde start` 啟動本地 K8S 環境（kind 或 k3d）
 2. **部署專案**：執行 `kde proj deploy` 部署專案到 K8S
 3. **CI/CD Pipeline**：
-   - **CI 階段**（使用 `DEVELOP_IMAGE` 或自訂的 `PRE_BUILD_IMAGE`/`BUILD_IMAGE`/`POST_BUILD_IMAGE`）：
-     - `pre-build.sh`：CI 前置作業腳本（預設：`DEVELOP_IMAGE`，可自訂：`PRE_BUILD_IMAGE`）
-     - `build.sh`：CI 執行腳本，進行編譯/建置（預設：`DEVELOP_IMAGE`，可自訂：`BUILD_IMAGE`）
-     - `post-build.sh`：CI 後置作業腳本（預設：`DEVELOP_IMAGE`，可自訂：`POST_BUILD_IMAGE`）
-   - **CD 階段**（使用 `DEPLOY_IMAGE` 或自訂的 `PRE_DEPLOY_IMAGE`/`POST_DEPLOY_IMAGE`）：
-     - `pre-deploy.sh`：CD 前置作業腳本（預設：`DEPLOY_IMAGE`，可自訂：`PRE_DEPLOY_IMAGE`）
-     - `deploy.sh`：CD 執行腳本，進行部署（建立 Namespace、PVC、Helm 部署等）（預設：`DEPLOY_IMAGE`）
-     - `post-deploy.sh`：CD 後置作業腳本（預設：`DEPLOY_IMAGE`，可自訂：`POST_DEPLOY_IMAGE`）
+   - 支援兩種模式：
+     - **標準 DevOps Loops**（預設）- Build → Test → Release → Deploy 階段
+     - **自定義 Pipeline** - 透過 `KDE_PIPELINE_STAGES` 靈活定義階段、順序和執行環境
+   - 每個階段可透過 `KDE_STAGE_{stage}_SCRIPT` 和 `KDE_STAGE_{stage}_IMAGE` 自訂腳本和執行環境
+   - 錯誤處理：`KDE_DEVOPS_FAIL_FAST` 和 `KDE_DEVOPS_AUTO_ROLLBACK`
 4. **服務管理**：使用 K9s、Headlamp 或 Port Forward 管理服務
 5. **對外公開**（可選）：使用 Ngrok 或 Cloudflare Tunnel 對外公開服務
 
@@ -179,7 +169,7 @@ flowchart TD
 #### 本地 CICD 開發流程（DEPLOY_IMAGE）
 
 1. **啟動環境**：使用 `kde project exec <專案名稱> dep <使用的 Port>` 啟動本地 Container 環境（DEPLOY_IMAGE）
-2. **本地開發**：進入本地開發容器，直接執行 CICD script (pre-build.sh、build.sh、post-build.sh、pre-deploy.sh、deploy.sh、post-deploy.sh)
+2. **本地開發**：進入本地開發容器，直接執行 Pipeline 各階段腳本（依 `KDE_PIPELINE_STAGES` 定義的階段）
 
 ## Best practice
 

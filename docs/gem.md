@@ -183,12 +183,14 @@
 
 ## Script 驅動的 CI/CD 部署流程
 
-- 透過 pre-build.sh、build.sh、post-build.sh、pre-deploy.sh、deploy.sh、post-deploy.sh、undeploy.sh 模擬 CI/CD 觸發或執行
-- 可以僅作為觸發事件執行專案內原有的 CI/CD 腳本，也可以直接在流程腳本內實作實際執行的步驟
-- 每個 CICD 腳本可以在 project.env 自訂 Docker image ，啟動各自自定義的執行環境
-- 透過 project.env 設定 CICD 執行需要的環境變數
-- 本地與 CI 執行的流程應盡可能一致。
+- 支援兩種 Pipeline 模式：
+  - **標準 DevOps Loops**（預設）- Build → Test → Release → Deploy 階段
+  - **自定義 Pipeline** - 透過 `KDE_PIPELINE_STAGES` 靈活定義階段、順序和執行環境
+- 每個階段的腳本都可以指定 Docker image，在指定的 container 內執行
+- 透過 project.env 設定 Pipeline 執行需要的環境變數
+- 本地與 CI 執行的流程應盡可能一致
 - 可讀性、可除錯性
+- 詳細配置請參考 [CI/CD Pipeline 配置指南](./cicd-pipeline.md)
 
 ## 開發工具
 
@@ -221,8 +223,11 @@
   - 在 project.env 內定義`部署環境`image
   - 在 project.env 內定義`CICD 流程`的環境變數
 - CICD 流程定義
-  - 專案的 CI/CD 包含 pre-build / build / post-build / pre-deploy / deploy / post-deploy / undeploy 等等的 scripts
-  - 每個 CI/CD 的 script 都可以指定 docker image，在指定的 container 內執行
+  - 支援兩種 Pipeline 模式：
+    - **標準 DevOps Loops**（預設）- Build → Test → Release → Deploy 階段
+    - **自定義 Pipeline** - 透過 `KDE_PIPELINE_STAGES` 靈活定義階段、順序和執行環境
+  - 每個階段的腳本都可以指定 Docker image，在指定的 container 內執行
+  - 詳細配置請參考 [CI/CD Pipeline 配置指南](./cicd-pipeline.md)
 
 ### 自動環境搜尋機制，無需手動設定路徑
 
@@ -251,15 +256,9 @@ environments/
     └─ init.sh                        # 本地 K8S 啟動後執行的初始化腳本
     └─ namespaces/
       └─ <project-name>/    # 專案名稱(K8S namespace 名稱)
-        ├─ project.env        # 專案級設定檔(包含專案 Git Repository、環境 image 設定、CICD 環境變數)
+        ├─ project.env        # 專案級設定檔(包含專案 Git Repository、環境 image 設定、Pipeline 配置)
         ├─ .env               # 專案本地設定檔 (建議加入 .gitignore)
-        ├─ pre-build.sh       # CI 前置腳本
-        ├─ build.sh           # CI 執行腳本
-        ├─ post-build.sh      # CI 後置腳本
-        ├─ pre-deploy.sh      # CD 前置腳本
-        ├─ deploy.sh          # CD 執行腳本
-        ├─ post-deploy.sh     # CD 後置腳本
-        ├─ undeploy.sh        # 解除部署腳本
+        ├─ {stage}.sh         # Pipeline 階段腳本（如 build.sh、test.sh、deploy.sh 等）
         ├─ [repo]/            # 專案 git repo
         ├─ [pvc dir]/         # PVC 掛載的資料夾 (StroageClass: local-path)
         └─ ...
@@ -350,34 +349,50 @@ K3d 集群的實際配置檔案，由模板生成。
   DEBUG=*
   ```
 
-- 自訂 CI/CD 腳本路徑：
+- 自定義 Pipeline 配置：
 
-  可以在 project.env 中指定自訂的 CI/CD 腳本，支援以下環境變數：
-
-  - `KDE_PROJECT_PRE_BUILD_SCRIPT`: 自訂 pre-build 腳本路徑
-  - `KDE_PROJECT_BUILD_SCRIPT`: 自訂 build 腳本路徑
-  - `KDE_PROJECT_POST_BUILD_SCRIPT`: 自訂 post-build 腳本路徑
-  - `KDE_PROJECT_PRE_DEPLOY_SCRIPT`: 自訂 pre-deploy 腳本路徑
-  - `KDE_PROJECT_DEPLOY_SCRIPT`: 自訂 deploy 腳本路徑
-  - `KDE_PROJECT_POST_DEPLOY_SCRIPT`: 自訂 post-deploy 腳本路徑
-  - `KDE_PROJECT_UNDEPLOY_SCRIPT`: 自訂 undeploy 腳本路徑
-
-  範例：
+  可以在 project.env 中定義自定義的 CI/CD Pipeline：
 
   ```bash
-  # 使用自訂的 build 腳本
-  KDE_PROJECT_BUILD_SCRIPT=build-production.sh
+  # 定義要執行的階段（空格或逗號分隔）
+  KDE_PIPELINE_STAGES="lint build test deploy"
 
-  # 使用自訂的 deploy 腳本
-  KDE_PROJECT_DEPLOY_SCRIPT=deploy-k8s-staging.sh
+  # 每個階段的配置
+  KDE_STAGE_lint_SCRIPT=lint.sh
+  KDE_STAGE_lint_IMAGE=node:20
+
+  KDE_STAGE_build_SCRIPT=build.sh
+  KDE_STAGE_build_IMAGE=node:20
+
+  KDE_STAGE_test_SCRIPT=test.sh
+  KDE_STAGE_test_IMAGE=node:20
+
+  KDE_STAGE_deploy_SCRIPT=deploy.sh
+  KDE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
   ```
 
-  優先級規則：
+  階段配置變數：
 
-  - 如果設定了自訂腳本環境變數，優先使用自訂腳本
-  - 如果自訂腳本不存在，會顯示錯誤訊息並且停止繼續執行 CI/CD
-  - 如果同時存在自訂腳本和標準腳本，會顯示警告訊息
-  - 未設定環境變數時，使用標準腳本
+  | 變數模式 | 說明 | 範例 |
+  |---------|------|------|
+  | `KDE_STAGE_{stage}_SCRIPT` | 腳本路徑 | `KDE_STAGE_build_SCRIPT=build.sh` |
+  | `KDE_STAGE_{stage}_IMAGE` | Docker 映像 | `KDE_STAGE_build_IMAGE=node:20` |
+
+  預設行為：
+
+  - **腳本**：如果未指定，使用 `{stage}.sh`
+  - **映像**：如果未指定，使用 `DEPLOY_IMAGE`
+  - **跳過**：沒有設定 Docker 映像、腳本路徑或是腳本檔案不存在
+
+  錯誤處理：
+
+  ```bash
+  KDE_DEVOPS_FAIL_FAST=true       # 任何階段失敗立即停止
+  KDE_DEVOPS_AUTO_ROLLBACK=true   # deploy 相關階段失敗時自動回滾
+  KDE_STAGE_test_SKIP=true        # 跳過特定階段
+  ```
+
+  詳細配置請參考 [CI/CD Pipeline 配置指南](./cicd-pipeline.md)
 
 - `容器開發環境` 和 `CI/CD pipeline` 掛載檔案/資料夾路徑的方式
 
@@ -392,97 +407,35 @@ K3d 集群的實際配置檔案，由模板生成。
 
 ### environments/[k8s-name]/namespaces/[project-name]/.env
 
-特定專案本地設定檔，主要放置不應該進入版控的個人化的專案環境設定，像是：敏感資訊 (Secrets & Credentials)、本地開發的覆寫、CICD 腳本的本地驅動參數
+特定專案本地設定檔，主要放置不應該進入版控的個人化的專案環境設定，像是：敏感資訊 (Secrets & Credentials)、本地開發的覆寫、Pipeline 階段的本地覆寫參數
 
 - 不建議加入 git 版控。
 
-### environments/[k8s-name]/namespaces/[project-name]/pre-build.sh
+### environments/[k8s-name]/namespaces/[project-name]/{stage}.sh
 
-CI 前置腳本，可以透過在 project.env 設定 `PRE_BUILD_IMAGE` 自訂執行環境(預設使用：`DEVELOP_IMAGE`)。
+Pipeline 階段腳本，每個階段可以有對應的腳本檔案。
 
-- 執行時機：
+- 腳本命名規則：`{stage}.sh`（如 `build.sh`、`test.sh`、`deploy.sh`）
+- 可以透過 `KDE_STAGE_{stage}_SCRIPT` 指定自訂腳本路徑
+- 可以透過 `KDE_STAGE_{stage}_IMAGE` 指定執行環境的 Docker 映像
 
-  - 執行 `kde proj [project-name] build` 時，在執行 `build.sh` 前會執行此腳本
+常見的階段腳本範例：
 
-- 如果 pre-build.sh 不存在，不做任何動作
+| 腳本 | 用途 | 預設映像 |
+|------|------|----------|
+| `lint.sh` | 程式碼檢查 | `DEPLOY_IMAGE` |
+| `security-scan.sh` | 安全掃描 | `DEPLOY_IMAGE` |
+| `build.sh` | 建置專案 | `DEPLOY_IMAGE` |
+| `test.sh` | 執行測試 | `DEPLOY_IMAGE` |
+| `deploy.sh` | 部署到 K8s | `DEPLOY_IMAGE` |
+| `monitor.sh` | 監控設定 | `DEPLOY_IMAGE` |
 
-- 可以透過在 project.env 設定 `KDE_PROJECT_PRE_BUILD_SCRIPT` 來指定使用其他腳本（如 `pre-build-production.sh`）
+執行時機：
 
-### environments/[k8s-name]/namespaces/[project-name]/build.sh
+- 執行 `kde proj [project-name] deploy` 時，會依照 `KDE_PIPELINE_STAGES` 定義的順序執行各階段腳本
+- 如果腳本不存在，該階段會被跳過
 
-CI 腳本，可以透過在 project.env 設定 `BUILD_IMAGE` 自訂執行環境(預設使用：`DEVELOP_IMAGE`)。
-
-- 執行時機：
-
-  - 執行 `kde proj [project-name] build` 時
-  - 執行 `kde proj [project-name] deploy` 時
-
-- 如果 build.sh 不存在，不做任何動作
-
-- 可以透過在 project.env 設定 `KDE_PROJECT_BUILD_SCRIPT` 來指定使用其他腳本（如 `build-production.sh`）
-
-### environments/[k8s-name]/namespaces/[project-name]/post-build.sh
-
-CI 後置腳本，可以透過在 project.env 設定 `POST_BUILD_IMAGE` 自訂執行環境(預設使用：`DEVELOP_IMAGE`)。
-
-- 執行時機：
-
-  - 執行 `kde proj [project-name] build` 時，在執行 `build.sh` 後會執行此腳本
-
-- 如果 post-build.sh 不存在，不做任何動作
-
-- 可以透過在 project.env 設定 `KDE_PROJECT_POST_BUILD_SCRIPT` 來指定使用其他腳本（如 `post-build-production.sh`）
-
-### environments/[k8s-name]/namespaces/[project-name]/pre-deploy.sh
-
-CD 前置腳本，可以透過在 project.env 設定 `PRE_DEPLOY_IMAGE` 自訂執行環境(預設使用：`DEPLOY_IMAGE`)。
-
-- 執行時機：
-
-  - 執行 `kde proj [project-name] deploy-only` 時，在執行 `deploy.sh` 前會執行此腳本
-  - 執行 `kde proj [project-name] deploy` 時，在執行 `deploy.sh` 前會執行此腳本
-
-- 如果 pre-deploy.sh 不存在，不做任何動作
-
-- 可以透過在 project.env 設定 `KDE_PROJECT_PRE_DEPLOY_SCRIPT` 來指定使用其他腳本（如 `pre-deploy-staging.sh`）
-
-### environments/[k8s-name]/namespaces/[project-name]/deploy.sh
-
-CD 腳本，可以透過在 project.env 設定 `DEPLOY_IMAGE` 自訂執行環境。
-
-- 執行時機：
-
-  - 執行 `kde proj [project-name] deploy` 時
-  - 執行 `kde proj [project-name] deploy-only` 時
-
-- 如果 deploy.sh 不存在，不做任何動作
-
-- 可以透過在 project.env 設定 `KDE_PROJECT_DEPLOY_SCRIPT` 來指定使用其他腳本（如 `deploy-k8s.sh`）
-
-### environments/[k8s-name]/namespaces/[project-name]/post-deploy.sh
-
-CD 後置腳本，可以透過在 project.env 設定 `POST_DEPLOY_IMAGE` 自訂執行環境(預設使用：`DEPLOY_IMAGE`)。
-
-- 執行時機：
-
-  - 執行 `kde proj [project-name] deploy` 時，在執行 `deploy.sh` 後會執行此腳本
-  - 執行 `kde proj [project-name] deploy-only` 時，在執行 `deploy.sh` 後會執行此腳本
-
-- 如果 post-deploy.sh 不存在，不做任何動作
-
-- 可以透過在 project.env 設定 `KDE_PROJECT_POST_DEPLOY_SCRIPT` 來指定使用其他腳本（如 `post-deploy-notification.sh`）
-
-### environments/[k8s-name]/namespaces/[project-name]/undeploy.sh
-
-解除部署腳本，如果存在（如果不存在 undeploy.sh，預設動作為刪除與專案同名的 namespace ）。可以透過在 project.env 設定 `UNDEPLOY_IMAGE` 自訂執行環境(預設使用：`DEPLOY_IMAGE`)。
-
-- 執行時機：
-
-  - 執行 `kde proj [project-name] undeploy` 時
-
-- 如果 undeploy.sh 不存在，預設動作為刪除與專案同名的 namespace
-
-- 可以透過在 project.env 設定 `KDE_PROJECT_UNDEPLOY_SCRIPT` 來指定使用其他腳本（如 `undeploy-cleanup.sh`）
+詳細配置請參考 [CI/CD Pipeline 配置指南](./cicd-pipeline.md)
 
 ## 工作流程
 
@@ -513,25 +466,18 @@ flowchart TD
 
     LocalDeploy --> CICD[觸發 CI/CD Pipeline]
 
-    CICD --> CI[CI 階段<br/>使用 DEVELOP_IMAGE]
-    CI --> PreBuild{pre-build.sh<br/>存在?}
-    PreBuild -->|是| PreBuildExec[執行 pre-build.sh]
-    PreBuild -->|否| Build
-    PreBuildExec --> Build[執行 build.sh<br/>編譯/建置專案]
-    Build --> PostBuild{post-build.sh<br/>存在?}
-    PostBuild -->|是| PostBuildExec[執行 post-build.sh]
-    PostBuild -->|否| CD
-    PostBuildExec --> CD
-
-    CD[CD 階段<br/>使用 DEPLOY_IMAGE]
-    CD --> PreDeploy{pre-deploy.sh<br/>存在?}
-    PreDeploy -->|是| PreDeployExec[執行 pre-deploy.sh]
-    PreDeploy -->|否| DeployScript
-    PreDeployExec --> DeployScript[執行 deploy.sh<br/>建立 Namespace<br/>建立 PVC<br/>Helm 部署服務]
-    DeployScript --> PostDeploy{post-deploy.sh<br/>存在?}
-    PostDeploy -->|是| PostDeployExec[執行 post-deploy.sh]
-    PostDeploy -->|否| Services
-    PostDeployExec --> Services
+    CICD --> PipelineMode{Pipeline 模式}
+    PipelineMode -->|標準| StandardPipeline[標準 DevOps Loops<br/>Build → Test → Release → Deploy]
+    PipelineMode -->|自定義| CustomPipeline[自定義 Pipeline<br/>KDE_PIPELINE_STAGES]
+    
+    StandardPipeline --> ExecuteStages
+    CustomPipeline --> ExecuteStages
+    
+    ExecuteStages[依序執行各階段腳本<br/>每階段可自訂 Image]
+    ExecuteStages --> StageLoop{還有階段?}
+    StageLoop -->|是| ExecuteStage[執行 {stage}.sh<br/>使用 KDE_STAGE_{stage}_IMAGE]
+    ExecuteStage --> StageLoop
+    StageLoop -->|否| Services
 
     Services[服務已部署到 K8s]
 
@@ -566,8 +512,8 @@ flowchart TD
     style Start fill:#e1f5ff
     style End fill:#d4edda
     style CICD fill:#fff3cd
-    style CI fill:#ffeaa7
-    style CD fill:#ffeaa7
+    style PipelineMode fill:#ffeaa7
+    style ExecuteStages fill:#ffeaa7
     style Services fill:#d1ecf1
     style RemoteEnv fill:#e7f3ff
     style Telepresence fill:#e7f3ff
@@ -590,14 +536,11 @@ flowchart TD
 1. **啟動環境**：使用 `kde start` 啟動本地 K8S 環境（kind 或 k3d）
 2. **部署專案**：執行 `kde proj deploy` 部署專案到 K8S
 3. **CI/CD Pipeline**：
-   - **CI 階段**（使用 `DEVELOP_IMAGE` 或自訂的 `PRE_BUILD_IMAGE`/`BUILD_IMAGE`/`POST_BUILD_IMAGE`）：
-     - `pre-build.sh`：CI 前置作業腳本（預設：`DEVELOP_IMAGE`，可自訂：`PRE_BUILD_IMAGE`）
-     - `build.sh`：CI 執行腳本，進行編譯/建置（預設：`DEVELOP_IMAGE`，可自訂：`BUILD_IMAGE`）
-     - `post-build.sh`：CI 後置作業腳本（預設：`DEVELOP_IMAGE`，可自訂：`POST_BUILD_IMAGE`）
-   - **CD 階段**（使用 `DEPLOY_IMAGE` 或自訂的 `PRE_DEPLOY_IMAGE`/`POST_DEPLOY_IMAGE`）：
-     - `pre-deploy.sh`：CD 前置作業腳本（預設：`DEPLOY_IMAGE`，可自訂：`PRE_DEPLOY_IMAGE`）
-     - `deploy.sh`：CD 執行腳本，進行部署（建立 Namespace、PVC、Helm 部署等）（預設：`DEPLOY_IMAGE`）
-     - `post-deploy.sh`：CD 後置作業腳本（預設：`DEPLOY_IMAGE`，可自訂：`POST_DEPLOY_IMAGE`）
+   - 支援兩種模式：
+     - **標準 DevOps Loops**（預設）- Build → Test → Release → Deploy 階段
+     - **自定義 Pipeline** - 透過 `KDE_PIPELINE_STAGES` 靈活定義階段、順序和執行環境
+   - 每個階段可透過 `KDE_STAGE_{stage}_SCRIPT` 和 `KDE_STAGE_{stage}_IMAGE` 自訂腳本和執行環境
+   - 錯誤處理：`KDE_DEVOPS_FAIL_FAST` 和 `KDE_DEVOPS_AUTO_ROLLBACK`
 4. **服務管理**：使用 K9s、Headlamp 或 Port Forward 管理服務
 5. **對外公開**（可選）：使用 Ngrok 或 Cloudflare Tunnel 對外公開服務
 
@@ -611,4 +554,4 @@ flowchart TD
 #### 本地 CICD 開發流程（DEPLOY_IMAGE）
 
 1. **啟動環境**：使用 `kde project exec <專案名稱> dep <使用的 Port>` 啟動本地 Container 環境（DEPLOY_IMAGE）
-2. **本地開發**：進入本地開發容器，直接執行 CICD script (pre-build.sh、build.sh、post-build.sh、pre-deploy.sh、deploy.sh、post-deploy.sh)
+2. **本地開發**：進入本地開發容器，直接執行 Pipeline 各階段腳本（依 `KDE_PIPELINE_STAGES` 定義的階段）

@@ -4,15 +4,15 @@
 
 KDE 支援兩種 Pipeline 模式：
 
-1. **標準 DevOps Loops**（預設）- 8 個固定階段的完整循環
+1. **標準 DevOps Loops**（預設）- Build ~ Deploy 階段
 2. **自定義 Pipeline** - 靈活定義階段、順序和執行環境
 
 ## 標準 DevOps Loops（預設）
 
-不設定 `KDE_PIPELINE_STAGES` 時，使用標準的 8 階段流程：
+不設定 `KDE_PIPELINE_STAGES` 時，使用 ：
 
 ```
-Plan → Code → Build → Test → Release → Deploy → Operate → Monitor
+Build → Test → Release → Deploy
 ```
 
 ### 執行
@@ -28,23 +28,17 @@ kde project deploy myapp
 
 ```bash
 # 定義要執行的階段（空格或逗號分隔）
-KDE_PIPELINE_STAGES="code build test deploy monitor"
+KDE_PIPELINE_STAGES="TEST BUILD DEPLOY"
 
 # 每個階段的配置
-KDE_STAGE_code_SCRIPT=lint-strict.sh
-KDE_STAGE_code_IMAGE=node:20
+KDE_STAGE_TEST_SCRIPT=${PROJECT_PATH}/test-all.sh
+KDE_STAGE_TEST_IMAGE=node:20-test
 
-KDE_STAGE_build_SCRIPT=build.sh
-KDE_STAGE_build_IMAGE=node:20
+KDE_STAGE_BUILD_SCRIPT=${PROJECT_PATH}/build.sh
+KDE_STAGE_BUILD_IMAGE=node:20
 
-KDE_STAGE_test_SCRIPT=test-all.sh
-KDE_STAGE_test_IMAGE=node:20-test
-
-KDE_STAGE_deploy_SCRIPT=deploy.sh
-KDE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
-
-KDE_STAGE_monitor_SCRIPT=healthcheck.sh
-KDE_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
+KDE_STAGE_DEPLOY_SCRIPT=${PROJECT_PATH}/deploy.sh
+KDE_STAGE_DEPLOY_IMAGE=r82wei/deploy-env:1.0.0
 ```
 
 ### 階段配置變數
@@ -55,13 +49,12 @@ KDE_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
 |---------|------|------|
 | `KDE_STAGE_{stage}_SCRIPT` | 腳本路徑 | `KDE_STAGE_build_SCRIPT=build.sh` |
 | `KDE_STAGE_{stage}_IMAGE` | Docker 映像 | `KDE_STAGE_build_IMAGE=node:20` |
-| `KDE_STAGE_{stage}_SKIP` | 跳過此階段 | `KDE_STAGE_test_SKIP=true` |
 
 ### 預設行為
 
 - **腳本**：如果未指定，使用 `{stage}.sh`
 - **映像**：如果未指定，使用 `DEPLOY_IMAGE`
-- **跳過**：預設為 `false`
+- **跳過**：沒有設定 Docker 映像、腳本路徑或是腳本檔案不存在
 
 ## 使用範例
 

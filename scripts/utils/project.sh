@@ -312,13 +312,240 @@ resolve_cicd_script() {
     return 0
 }
 
+# ============================================================================
+# 自定義 Pipeline 系統
+# ============================================================================
+
+# 將階段名稱轉換為環境變數名稱格式（將 - 轉換為 _）
+# 參數：$1 - 階段名稱
+# 返回：轉換後的名稱
+normalize_stage_name() {
+    local STAGE_NAME=$1
+    echo "${STAGE_NAME//-/_}"
+}
+
+# 取得階段的腳本路徑
+# 參數：$1 - 階段名稱, $2 - 專案路徑
+# 返回：腳本路徑
+get_stage_script() {
+    local STAGE_NAME=$1
+    local PROJECT_PATH=$2
+    local NORMALIZED_NAME=$(normalize_stage_name "${STAGE_NAME}")
+    
+    # 檢查 KDE_STAGE_{stage}_SCRIPT 環境變數
+    local SCRIPT_VAR="KDE_STAGE_${NORMALIZED_NAME}_SCRIPT"
+    local SCRIPT_PATH="${!SCRIPT_VAR}"
+    
+    # 如果未設定，使用預設的 {stage}.sh
+    if [[ -z "${SCRIPT_PATH}" ]]; then
+        SCRIPT_PATH="${STAGE_NAME}.sh"
+    fi
+    
+    # 處理路徑前綴
+    if [[ "${SCRIPT_PATH}" == "./"* ]]; then
+        SCRIPT_PATH="${SCRIPT_PATH#./}"
+    fi
+    if [[ "${SCRIPT_PATH}" == "${PROJECT_PATH}/"* ]]; then
+        SCRIPT_PATH="${SCRIPT_PATH#${PROJECT_PATH}/}"
+    fi
+    
+    echo "${SCRIPT_PATH}"
+}
+
+# 取得階段的 Docker 映像
+# 參數：$1 - 階段名稱
+# 返回：Docker 映像名稱
+get_stage_image() {
+    local STAGE_NAME=$1
+    local NORMALIZED_NAME=$(normalize_stage_name "${STAGE_NAME}")
+    
+    # 檢查 KDE_STAGE_{stage}_IMAGE 環境變數
+    local IMAGE_VAR="KDE_STAGE_${NORMALIZED_NAME}_IMAGE"
+    local IMAGE="${!IMAGE_VAR}"
+    
+    # 如果未設定，使用 DEPLOY_IMAGE
+    if [[ -z "${IMAGE}" ]]; then
+        IMAGE="${DEPLOY_IMAGE}"
+    fi
+    
+    echo "${IMAGE}"
+}
+
+# 檢查階段是否應該被跳過
+# 參數：$1 - 階段名稱
+# 返回：true 或 false
+should_skip_stage() {
+    local STAGE_NAME=$1
+    local NORMALIZED_NAME=$(normalize_stage_name "${STAGE_NAME}")
+    
+    # 檢查 KDE_STAGE_{stage}_SKIP 環境變數
+    local SKIP_VAR="KDE_STAGE_${NORMALIZED_NAME}_SKIP"
+    local SKIP="${!SKIP_VAR}"
+    
+    if [[ "${SKIP}" == "true" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
+# 執行單一 Pipeline 階段
+# 參數：$1 - 專案名稱, $2 - 階段名稱, $3 - 專案路徑
+# 返回：0 成功, 1 失敗, 2 跳過
+execute_pipeline_stage() {
+    local PROJECT_NAME=$1
+    local STAGE_NAME=$2
+    local PROJECT_PATH=$3
+    
+    local SCRIPT_PATH=$(get_stage_script "${STAGE_NAME}" "${PROJECT_PATH}")
+    local IMAGE=$(get_stage_image "${STAGE_NAME}")
+    local FULL_SCRIPT_PATH="${PROJECT_PATH}/${SCRIPT_PATH}"
+    
+    # 檢查是否應該跳過
+    if [[ $(should_skip_stage "${STAGE_NAME}") == "true" ]]; then
+        echo "⏭️  跳過階段: ${STAGE_NAME} (KDE_STAGE_${STAGE_NAME}_SKIP=true)"
+        return 2
+    fi
+    
+    # 檢查映像是否設定
+    if [[ -z "${IMAGE}" ]]; then
+        echo "⏭️  跳過階段: ${STAGE_NAME} (未設定 Docker 映像)"
+        return 2
+    fi
+    
+    # 檢查腳本是否存在
+    if [[ ! -f "${FULL_SCRIPT_PATH}" ]]; then
+        echo "⏭️  跳過階段: ${STAGE_NAME} (腳本 ${SCRIPT_PATH} 不存在)"
+        return 2
+    fi
+    
+    echo ""
+    echo "🔄 執行階段: ${STAGE_NAME}"
+    echo "   📄 腳本: ${SCRIPT_PATH}"
+    echo "   🐳 映像: ${IMAGE}"
+    echo ""
+    
+    # 執行腳本
+    exec_script_in_container_with_project "${PROJECT_NAME}" "${IMAGE}" "./${SCRIPT_PATH}"
+    local RESULT=$?
+    
+    if [[ ${RESULT} -ne 0 ]]; then
+        echo "❌ 階段 ${STAGE_NAME} 執行失敗 (exit code: ${RESULT})"
+        return 1
+    fi
+    
+    echo "✅ 階段 ${STAGE_NAME} 執行完成"
+    return 0
+}
+
+# 執行自定義 Pipeline
+# 參數：$1 - 專案名稱, $2 - 專案路徑
+# 返回：0 成功, 1 失敗
+execute_custom_pipeline() {
+    local PROJECT_NAME=$1
+    local PROJECT_PATH=$2
+    
+    # 解析階段列表（支援空格或逗號分隔）
+    local STAGES_STR="${KDE_PIPELINE_STAGES}"
+    # 將逗號替換為空格
+    STAGES_STR="${STAGES_STR//,/ }"
+    # 轉換為陣列
+    read -ra STAGES <<< "${STAGES_STR}"
+    
+    if [[ ${#STAGES[@]} -eq 0 ]]; then
+        echo "❌ 錯誤：KDE_PIPELINE_STAGES 為空"
+        return 1
+    fi
+    
+    echo ""
+    echo "🚀 執行自定義 Pipeline..."
+    echo "📋 階段列表: ${STAGES[*]}"
+    echo ""
+    
+    local EXECUTED_STAGES=()
+    local FAILED_STAGE=""
+    
+    for STAGE in "${STAGES[@]}"; do
+        # 移除前後空白
+        STAGE=$(echo "${STAGE}" | xargs)
+        
+        if [[ -z "${STAGE}" ]]; then
+            continue
+        fi
+        
+        execute_pipeline_stage "${PROJECT_NAME}" "${STAGE}" "${PROJECT_PATH}"
+        local RESULT=$?
+        
+        if [[ ${RESULT} -eq 1 ]]; then
+            FAILED_STAGE="${STAGE}"
+            
+            # 檢查是否啟用 Fail Fast
+            if [[ "${KDE_DEVOPS_FAIL_FAST}" == "true" ]]; then
+                echo ""
+                echo "🛑 Fail Fast 模式：Pipeline 已停止"
+                
+                # 檢查是否需要自動回滾
+                if [[ "${KDE_DEVOPS_AUTO_ROLLBACK}" == "true" && "${STAGE}" == *"deploy"* ]]; then
+                    echo "🔄 嘗試自動回滾..."
+                    # 執行 undeploy 腳本（如果存在）
+                    if [[ -f "${PROJECT_PATH}/undeploy.sh" ]]; then
+                        exec_script_in_container_with_project "${PROJECT_NAME}" "${DEPLOY_IMAGE}" "./undeploy.sh"
+                        echo "✅ 回滾完成"
+                    else
+                        echo "⚠️  未找到 undeploy.sh，跳過回滾"
+                    fi
+                fi
+                
+                return 1
+            fi
+        elif [[ ${RESULT} -eq 0 ]]; then
+            EXECUTED_STAGES+=("${STAGE}")
+        fi
+    done
+    
+    echo ""
+    if [[ -n "${FAILED_STAGE}" ]]; then
+        echo "⚠️  Pipeline 完成，但有階段失敗"
+        return 1
+    else
+        echo "✅ Pipeline 執行完成"
+        echo "   已執行階段: ${EXECUTED_STAGES[*]}"
+    fi
+    
+    return 0
+}
+
+# 檢查是否使用自定義 Pipeline
+# 返回：true 或 false
+is_custom_pipeline_enabled() {
+    if [[ -n "${KDE_PIPELINE_STAGES}" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 build_project() {
     PROJECT_NAME=$1
     PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     pull_if_project_repo_not_exist ${PROJECT_NAME}
     source ${PROJECT_PATH}/project.env
-
+    
+    # 如果有專案本地 .env 檔案，也載入它
+    if [[ -f "${PROJECT_PATH}/.env" ]]; then
+        source ${PROJECT_PATH}/.env
+    fi
+    
+    # 檢查是否使用自定義 Pipeline
+    # 當使用自定義 Pipeline 時，build 階段會在 deploy_project 中一起執行
+    if [[ $(is_custom_pipeline_enabled) == "true" ]]; then
+        echo "ℹ️  使用自定義 Pipeline 模式，build 階段將在 deploy 時一起執行"
+        echo "   如需單獨執行 build，請使用: kde project deploy ${PROJECT_NAME}"
+        return 0
+    fi
+    
+    # 標準 DevOps Loops 模式（向後相容）
     # 解析要執行的腳本，檢查返回狀態
     local PRE_BUILD_SCRIPT
     PRE_BUILD_SCRIPT=$(resolve_cicd_script "pre-build.sh" "${KDE_PROJECT_PRE_BUILD_SCRIPT}" "${PROJECT_PATH}")
@@ -363,6 +590,18 @@ deploy_project() {
     pull_if_project_repo_not_exist ${PROJECT_NAME}
     source ${PROJECT_PATH}/project.env
     
+    # 如果有專案本地 .env 檔案，也載入它
+    if [[ -f "${PROJECT_PATH}/.env" ]]; then
+        source ${PROJECT_PATH}/.env
+    fi
+    
+    # 檢查是否使用自定義 Pipeline
+    if [[ $(is_custom_pipeline_enabled) == "true" ]]; then
+        execute_custom_pipeline "${PROJECT_NAME}" "${PROJECT_PATH}"
+        return $?
+    fi
+    
+    # 標準 DevOps Loops 模式（向後相容）
     # 解析要執行的腳本，檢查返回狀態
     local PRE_DEPLOY_SCRIPT
     PRE_DEPLOY_SCRIPT=$(resolve_cicd_script "pre-deploy.sh" "${KDE_PROJECT_PRE_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
