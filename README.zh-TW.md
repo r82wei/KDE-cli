@@ -162,8 +162,16 @@ source ~/.bashrc  # 或 source ~/.zshrc
 
 4. **執行 CI/CD 部署**
 
+   KDE 支援靈活的 Pipeline 機制：
+
+   - **標準 CICD**（預設）：Build → Test → Release → Deploy
+   - **自定義 Pipeline**：靈活定義階段、順序和執行環境
+   - **傳統模式**（向後相容）：傳統的 build/deploy 流程
+
+   **快速開始 - 傳統模式**（向後相容）：
+
    - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，執行部署時會自動注入 container 環境內
-   - 如果檔案存在，將會依序執行專案下的 shell 腳本，每個 shell 可以在 project.env 自訂執行環境的 docker image
+   - 如果檔案存在，將會依序執行專案下的 shell 腳本：
 
      | 執行順序 | 腳本           | 預設 Image    | 自訂 Image 環境變數 (project.env) |
      | -------- | -------------- | ------------- | --------------------------------- |
@@ -174,15 +182,48 @@ source ~/.bashrc  # 或 source ~/.zshrc
      | 5        | deploy.sh      | DEPLOY_IMAGE  | DEPLOY_IMAGE                      |
      | 6        | post-deploy.sh | DEPLOY_IMAGE  | POST_DEPLOY_IMAGE                 |
 
-   - 可以透過在 `project.env` 中設定環境變數來自訂 CI/CD 腳本：
-     - `KDE_PROJECT_BUILD_SCRIPT=build-xxx.sh` - 自訂 build 腳本
-     - `KDE_PROJECT_DEPLOY_SCRIPT=deploy-xxx.sh` - 自訂 deploy 腳本
-     - 同樣適用於其他所有 CI/CD 階段（pre-build, build, post-build, pre-deploy, deploy, post-deploy, undeploy）
+   **標準 CICD**：
+
+   - 如果腳本存在：`build.sh`、`test.sh`、`release.sh`、`deploy.sh`
+   - 系統自動執行這些階段
+   - 所有階段預設使用 `DEPLOY_IMAGE`
+
+   **自定義 Pipeline**：
+
+   - 在 `project.env` 中定義自定義階段：
+
+     ```bash
+     # 定義要執行的階段
+     KDE_CICD_STAGES="lint,security,build,test,deploy,monitor"
+
+     # 配置每個階段
+     KDE_CICD_STAGE_lint_SCRIPT=lint.sh
+     KDE_CICD_STAGE_lint_IMAGE=node:20
+
+     KDE_CICD_STAGE_security_SCRIPT=security-scan.sh
+     KDE_CICD_STAGE_security_IMAGE=aquasec/trivy:latest
+     # ... 其他階段
+     ```
+
+   - 錯誤處理選項：
+     - `KDE_DEVOPS_FAIL_FAST=true` - 任何階段失敗立即停止
+     - `KDE_DEVOPS_AUTO_ROLLBACK=true` - 部署失敗時自動回滾
+
+   **執行**：
 
    ```bash
+   # 執行完整 Pipeline
    kde project deploy <project-name>
 
+   # 僅執行建置（CI 階段）
+   kde project build <project-name>
    ```
+
+   📚 **了解更多**：
+
+   - [自定義 Pipeline 指南](./docs/custom-pipeline.md)
+   - [Pipeline 遷移指南](./docs/pipeline-migration-guide.md)
+   - [自定義 Pipeline 範例](./docs/examples/custom-pipeline-example.md)
 
 5. **開啟 Dashboard 開發/除錯**
 

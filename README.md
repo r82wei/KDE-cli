@@ -142,8 +142,16 @@ flowchart LR
 
 4. **Run CI/CD deployment**
 
+   KDE supports flexible Pipeline mechanisms:
+
+   - **Standard CICD** (Default): Build → Test → Release → Deploy
+   - **Custom Pipeline**: Flexibly define stages, order, and execution environment
+   - **Legacy Mode** (Backward compatible): Traditional build/deploy process
+
+   **Quick Start - Legacy Mode** (Backward compatible):
+
    - Define environment variables required for **build**/**deploy** in `project.env`. They will be automatically injected during execution.
-   - If the files exist, the following shell scripts under the project will be executed in order. Each shell can specify its runtime Docker image via environment variables in `project.env`.
+   - If the files exist, the following shell scripts under the project will be executed in order:
 
      | Order | Script         | Default Image | Custom Image Env (project.env) |
      | ----- | -------------- | ------------- | ------------------------------ |
@@ -154,15 +162,48 @@ flowchart LR
      | 5     | deploy.sh      | DEPLOY_IMAGE  | DEPLOY_IMAGE                   |
      | 6     | post-deploy.sh | DEPLOY_IMAGE  | POST_DEPLOY_IMAGE              |
 
-   - You can customize CI/CD scripts by setting environment variables in `project.env`:
-     - `KDE_PROJECT_BUILD_SCRIPT=build-xxx.sh` - Custom build script
-     - `KDE_PROJECT_DEPLOY_SCRIPT=deploy-xxx.sh` - Custom deploy script
-     - Applicable to all CI/CD stages (pre-build, build, post-build, pre-deploy, deploy, post-deploy, undeploy)
+   **Standard CICD**:
+
+   - If scripts exist: `build.sh`, `test.sh`, `release.sh`, `deploy.sh`
+   - System automatically executes these stages
+   - All stages use `DEPLOY_IMAGE` by default
+
+   **Custom Pipeline**:
+
+   - Define custom stages in `project.env`:
+
+     ```bash
+     # Define stages to execute
+     KDE_CICD_STAGES="lint,security,build,test,deploy,monitor"
+
+     # Configure each stage
+     KDE_CICD_STAGE_lint_SCRIPT=lint.sh
+     KDE_CICD_STAGE_lint_IMAGE=node:20
+
+     KDE_CICD_STAGE_security_SCRIPT=security-scan.sh
+     KDE_CICD_STAGE_security_IMAGE=aquasec/trivy:latest
+     # ... other stages
+     ```
+
+   - Error handling options:
+     - `KDE_DEVOPS_FAIL_FAST=true` - Stop immediately on any failure
+     - `KDE_DEVOPS_AUTO_ROLLBACK=true` - Auto rollback on deploy failure
+
+   **Execution**:
 
    ```bash
+   # Execute complete pipeline
    kde project deploy <project-name>
 
+   # Execute build only (CI stages)
+   kde project build <project-name>
    ```
+
+   📚 **Learn More**:
+
+   - [Custom Pipeline Guide](./docs/custom-pipeline.md)
+   - [Pipeline Migration Guide](./docs/pipeline-migration-guide.md)
+   - [Custom Pipeline Example](./docs/examples/custom-pipeline-example.md)
 
 5. **Open dashboards for development/debugging**
 

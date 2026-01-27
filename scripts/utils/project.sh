@@ -317,42 +317,25 @@ build_project() {
     PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     pull_if_project_repo_not_exist ${PROJECT_NAME}
+    
+    # 載入 Pipeline 工具函數
+    source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
+    
+    # 載入專案環境變數以檢查 Pipeline 配置
     source ${PROJECT_PATH}/project.env
-
-    # 解析要執行的腳本，檢查返回狀態
-    local PRE_BUILD_SCRIPT
-    PRE_BUILD_SCRIPT=$(resolve_cicd_script "pre-build.sh" "${KDE_PROJECT_PRE_BUILD_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 建置失敗：pre-build 腳本解析錯誤" >&2
-        return 1
-    fi
     
-    local BUILD_SCRIPT
-    BUILD_SCRIPT=$(resolve_cicd_script "build.sh" "${KDE_PROJECT_BUILD_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 建置失敗：build 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    local POST_BUILD_SCRIPT
-    POST_BUILD_SCRIPT=$(resolve_cicd_script "post-build.sh" "${KDE_PROJECT_POST_BUILD_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 建置失敗：post-build 腳本解析錯誤" >&2
-        return 1
-    fi
-
-    if [[ -f ${PROJECT_PATH}/${PRE_BUILD_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${PRE_BUILD_SCRIPT}
-    fi
-    if [[ -f ${PROJECT_PATH}/${BUILD_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${BUILD_SCRIPT}
-    fi
-    if [[ -f ${PROJECT_PATH}/${POST_BUILD_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${POST_BUILD_SCRIPT}
-    fi
-
-    if [[ -f ${PROJECT_PATH}/${PRE_BUILD_SCRIPT} || -f ${PROJECT_PATH}/${BUILD_SCRIPT} || -f ${PROJECT_PATH}/${POST_BUILD_SCRIPT} ]]; then
-        echo "專案 ${PROJECT_NAME} 已建置完成"
+    # 檢查是否使用新的 Pipeline 機制
+    # 如果定義了 KDE_CICD_STAGES 或標準 CICD 階段檔案存在，使用新機制
+    if [[ -n "${KDE_CICD_STAGES}" ]] || \
+       [[ -f "${PROJECT_PATH}/build.sh" && -f "${PROJECT_PATH}/test.sh" ]] || \
+       [[ -f "${PROJECT_PATH}/release.sh" && -f "${PROJECT_PATH}/deploy.sh" ]]; then
+        # 使用新的 Pipeline 機制
+        execute_pipeline ${PROJECT_NAME} "build"
+        return $?
+    else
+        # 使用舊的 build 流程（向後相容）
+        execute_legacy_build ${PROJECT_NAME}
+        return $?
     fi
 }
 
@@ -361,42 +344,23 @@ deploy_project() {
     PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     pull_if_project_repo_not_exist ${PROJECT_NAME}
+    
+    # 載入 Pipeline 工具函數
+    source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
+    
+    # 載入專案環境變數以檢查 Pipeline 配置
     source ${PROJECT_PATH}/project.env
     
-    # 解析要執行的腳本，檢查返回狀態
-    local PRE_DEPLOY_SCRIPT
-    PRE_DEPLOY_SCRIPT=$(resolve_cicd_script "pre-deploy.sh" "${KDE_PROJECT_PRE_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 部署失敗：pre-deploy 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    local DEPLOY_SCRIPT
-    DEPLOY_SCRIPT=$(resolve_cicd_script "deploy.sh" "${KDE_PROJECT_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 部署失敗：deploy 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    local POST_DEPLOY_SCRIPT
-    POST_DEPLOY_SCRIPT=$(resolve_cicd_script "post-deploy.sh" "${KDE_PROJECT_POST_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 部署失敗：post-deploy 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    if [[ -f ${PROJECT_PATH}/${PRE_DEPLOY_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${PRE_DEPLOY_SCRIPT}
-    fi
-    if [[ -f ${PROJECT_PATH}/${DEPLOY_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./${DEPLOY_SCRIPT}
-    fi
-    if [[ -f ${PROJECT_PATH}/${POST_DEPLOY_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${POST_DEPLOY_SCRIPT}
-    fi
-
-    if [[ -f ${PROJECT_PATH}/${PRE_DEPLOY_SCRIPT} || -f ${PROJECT_PATH}/${DEPLOY_SCRIPT} || -f ${PROJECT_PATH}/${POST_DEPLOY_SCRIPT} ]]; then
-        echo "專案 ${PROJECT_NAME} 已部署完成"
+    # 檢查是否使用新的 Pipeline 機制
+    # 如果定義了 KDE_CICD_STAGES，使用新機制
+    if [[ -n "${KDE_CICD_STAGES}" ]]; then
+        # 使用新的 Pipeline 機制
+        execute_pipeline ${PROJECT_NAME} "deploy"
+        return $?
+    else
+        # 使用舊的 deploy 流程（向後相容）
+        execute_legacy_deploy ${PROJECT_NAME}
+        return $?
     fi
 }
 
