@@ -254,83 +254,17 @@ execute_pipeline() {
 execute_quick_pipeline() {
     local PROJECT_NAME=$1
     local PIPELINE_TYPE=$2
-    local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     
     echo ""
     echo "📋 執行快速 CICD Pipeline"
     echo ""
     
-    # 標準階段：build deploy
-    local ALL_STAGES="build deploy"
+    # 設定固定的標準階段：build deploy
+    export KDE_PIPELINE_STAGES="build,deploy"
     
-    # 過濾階段（根據 --from, --to, --only 選項）
-    local STAGES=$(filter_pipeline_stages "${ALL_STAGES}")
-    
-    # 顯示將要執行的階段
-    echo "📋 階段列表: ${STAGES}"
-    if [[ -n "${PIPELINE_ONLY_STAGE}" ]]; then
-        echo "   模式: 僅執行 ${PIPELINE_ONLY_STAGE}"
-    elif [[ -n "${PIPELINE_FROM_STAGE}" || -n "${PIPELINE_TO_STAGE}" ]]; then
-        [[ -n "${PIPELINE_FROM_STAGE}" ]] && echo "   從: ${PIPELINE_FROM_STAGE}"
-        [[ -n "${PIPELINE_TO_STAGE}" ]] && echo "   到: ${PIPELINE_TO_STAGE}"
-    fi
-    [[ "${PIPELINE_MANUAL_MODE}" == "true" ]] && echo "   模式: 手動模式"
-    echo ""
-    
-    # 執行每個階段
-    local EXECUTED_COUNT=0
-    for STAGE in ${STAGES}; do
-        # 檢查是否跳過
-        if [[ $(is_stage_skip ${STAGE}) == "true" ]]; then
-            echo "⏭️  跳過階段: ${STAGE}"
-            continue
-        fi
-        
-        # 取得腳本名稱
-        local SCRIPT=$(get_stage_script ${STAGE} ${PROJECT_PATH})
-        
-        # 如果腳本不存在，跳過
-        if [[ -z "${SCRIPT}" ]]; then
-            echo "⏭️  階段 ${STAGE} 的腳本不存在，跳過"
-            continue
-        fi
-        
-        # 取得映像名稱（預設使用 DEPLOY_IMAGE）
-        local IMAGE=$(get_stage_image ${STAGE} ${DEPLOY_IMAGE})
-        
-        # 執行階段
-        execute_stage ${PROJECT_NAME} ${STAGE} ${SCRIPT} ${IMAGE}
-        local EXIT_CODE=$?
-        
-        EXECUTED_COUNT=$((EXECUTED_COUNT + 1))
-        
-        # 檢查是否失敗
-        if [[ ${EXIT_CODE} -ne 0 ]]; then
-            # 手動模式不算失敗
-            if [[ "${PIPELINE_MANUAL_MODE}" == "true" ]]; then
-                continue
-            fi
-            
-            # 檢查是否停用 Fail Fast（預設為啟用）
-            if [[ "${KDE_PIPELINE_FAIL_FAST}" != "false" ]]; then
-                echo ""
-                echo "❌ Pipeline 執行失敗（Fail Fast 模式）"
-                return ${EXIT_CODE}
-            else
-                echo ""
-                echo "⚠️  階段 ${STAGE} 執行失敗，但繼續執行後續階段"
-            fi
-        fi
-    done
-    
-    if [[ ${EXECUTED_COUNT} -eq 0 ]]; then
-        echo "⚠️  沒有執行任何階段"
-        return 0
-    fi
-    
-    echo ""
-    echo "✅ Pipeline 執行完成（執行了 ${EXECUTED_COUNT} 個階段）"
-    return 0
+    # 呼叫自定義 Pipeline 執行邏輯
+    execute_custom_pipeline "${PROJECT_NAME}"
+    return $?
 }
 
 # 執行自定義 Pipeline
@@ -376,7 +310,7 @@ execute_custom_pipeline() {
         
         # 如果腳本不存在，顯示錯誤
         if [[ -z "${SCRIPT}" ]]; then
-            echo "❌ 階段 ${STAGE} 的腳本不存在"
+            echo "❌ 階段 ${STAGE} 的腳本不存在，請檢查 project.env 內的 KDE_PIPELINE_STAGE_${STAGE}_SCRIPT 是否設定"
             if [[ "${KDE_PIPELINE_FAIL_FAST}" != "false" ]]; then
                 return 1
             else
