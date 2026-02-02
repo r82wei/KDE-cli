@@ -172,18 +172,34 @@ exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} bash
 - 所有現有呼叫點都不需要修改
 - 包裝函式確保 API 穩定性
 
-## 未來建議
+## 遷移狀態
 
-### 1. 逐步遷移
-建議逐步將 `exec_script_in_container_with_project_for_stage` 的呼叫改為直接呼叫 `exec_script_in_container_with_project`：
+### ✅ 遷移已完成
+
+所有核心程式碼已從包裝函式遷移到直接呼叫：
 
 ```bash
-# 舊寫法
+# 舊寫法（已不再使用）
 exec_script_in_container_with_project_for_stage ${PROJECT_NAME} ${STAGE} ${IMAGE} "${SCRIPT}"
 
-# 新寫法（更清晰）
+# 新寫法（目前使用）
 exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "${SCRIPT}" ${STAGE}
 ```
+
+**遷移完成日期**：2026-02-02
+
+**遷移範圍**：
+- ✅ `scripts/utils/pipeline.sh`：2 處
+- ✅ `test/test-exec-integration.sh`：1 處
+
+詳細資訊請參閱：`docs/dev/migration-complete.md`
+
+## 未來建議
+
+### 1. 包裝函式保留
+包裝函式 `exec_script_in_container_with_project_for_stage` 將繼續保留，以確保：
+- 外部腳本的向後相容性
+- 第三方插件的正常運作
 
 ### 2. 文件更新
 更新相關文件，說明 `exec_script_in_container_with_project` 的第 4 個參數用途。

@@ -139,19 +139,28 @@ export KDE_PIPELINE_STAGE_test_MOUNT_1="/test/data:/data"
 export KDE_PIPELINE_STAGE_pre_build_MOUNT_1="/prebuild/data:/data"
 ```
 
-## 未來建議
+## 遷移完成 ✅
 
-### 1. 逐步遷移（可選）
+### 已完成的遷移
 
-可以考慮將包裝函式的呼叫改為直接呼叫：
+所有核心程式碼已從包裝函式遷移到直接呼叫：
 
 ```bash
-# 舊寫法（仍然有效）
+# 舊寫法（已移除）
 exec_script_in_container_with_project_for_stage ${PROJECT_NAME} ${STAGE} ${IMAGE} "${SCRIPT}"
 
-# 新寫法（更清晰）
+# 新寫法（目前使用）
 exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "${SCRIPT}" ${STAGE}
 ```
+
+### 遷移範圍
+
+- ✅ `scripts/utils/pipeline.sh`：2 處已遷移
+- ✅ `test/test-exec-integration.sh`：1 處已遷移
+- ✅ 所有測試通過
+- ✅ 無 linter 錯誤
+
+詳細資訊請參閱：`docs/dev/migration-complete.md`
 
 ### 2. 文件更新
 

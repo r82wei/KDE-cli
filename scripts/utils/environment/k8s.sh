@@ -458,17 +458,6 @@ exec_script_in_container_with_project() {
     fi
 }
 
-# Pipeline 專用：支援階段特定掛載的容器執行函數（向後相容的包裝函數）
-# 參數：
-#   $1 - 專案名稱
-#   $2 - 階段名稱（用於解析階段特定掛載）
-#   $3 - Docker 映像
-#   $4 - 要執行的腳本或命令
-exec_script_in_container_with_project_for_stage() {
-    # 直接呼叫整合後的函式，傳入 STAGE 參數
-    exec_script_in_container_with_project "$1" "$3" "$4" "$2"
-}
-
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
 exec_k8s_node() {
     docker exec -it ${K8S_CONTAINER_NAME} bash

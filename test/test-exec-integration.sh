@@ -114,20 +114,20 @@ else
 fi
 echo ""
 
-# 測試 4：exec_script_in_container_with_project_for_stage 包裝函式
-echo "測試 4：exec_script_in_container_with_project_for_stage 包裝函式"
-echo "---------------------------------------------------------------"
+# 測試 4：直接使用新的呼叫方式（推薦）
+echo "測試 4：直接使用新的呼叫方式（推薦）"
+echo "----------------------------------------"
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
-output=$(exec_script_in_container_with_project_for_stage "test-project" "build" "test-image" "echo test" 2>&1)
+output=$(exec_script_in_container_with_project "test-project" "test-image" "echo test" "build" 2>&1)
 echo "${output}"
 
 if echo "${output}" | grep -q "/tmp/test1:/data1" && \
    echo "${output}" | grep -q "/tmp/build1:/build1"; then
-    echo "✅ 通過：包裝函式正確呼叫"
+    echo "✅ 通過：新的呼叫方式正確"
     PASSED_TESTS=$((PASSED_TESTS + 1))
 else
-    echo "❌ 失敗：包裝函式呼叫不正確"
+    echo "❌ 失敗：新的呼叫方式不正確"
     FAILED_TESTS=$((FAILED_TESTS + 1))
 fi
 echo ""

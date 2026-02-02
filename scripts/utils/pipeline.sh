@@ -192,7 +192,7 @@ execute_stage() {
         echo "   提示：執行 ./${SCRIPT} 來手動運行腳本，或執行其他命令進行調試"
         echo "   退出環境後將自動進入下一階段（如果有的話）"
         echo ""
-        exec_script_in_container_with_project_for_stage ${PROJECT_NAME} ${STAGE} ${IMAGE} "bash"
+        exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "bash" ${STAGE}
         local EXIT_CODE=$?
         echo ""
         echo "✅ 已退出階段 ${STAGE} 的執行環境"
@@ -207,7 +207,7 @@ execute_stage() {
     fi
     
     # 執行腳本
-    exec_script_in_container_with_project_for_stage ${PROJECT_NAME} ${STAGE} ${IMAGE} "${LOAD_PIPELINE_ENV}./${SCRIPT}"
+    exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "${LOAD_PIPELINE_ENV}./${SCRIPT}" ${STAGE}
     local EXIT_CODE=$?
     
     if [[ ${EXIT_CODE} -ne 0 ]]; then
