@@ -319,34 +319,40 @@ undeploy_project() {
     PROJECT_NAME=$1
 
     exit_if_project_not_exist ${PROJECT_NAME}
-    source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     
-    # 解析要執行的腳本，檢查返回狀態
+    # 載入 Pipeline 工具函數
+    source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
+    
+    # 載入專案環境變數
     local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-    local UNDEPLOY_SCRIPT
-    UNDEPLOY_SCRIPT=$(resolve_cicd_script "undeploy.sh" "${KDE_PROJECT_UNDEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 解除部署失敗：undeploy 腳本解析錯誤" >&2
-        return 1
-    fi
+    source ${PROJECT_PATH}/project.env
     
-    if [[ -f ${PROJECT_PATH}/${UNDEPLOY_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${UNDEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${UNDEPLOY_SCRIPT}
+    # 使用 Pipeline 的腳本解析機制
+    local UNDEPLOY_SCRIPT=$(get_stage_script "undeploy" ${PROJECT_PATH})
+    
+    # 如果 undeploy.sh 存在，使用 Pipeline 執行
+    if [[ -n "${UNDEPLOY_SCRIPT}" ]]; then
+        export PIPELINE_ONLY_STAGE="undeploy"
+        execute_pipeline ${PROJECT_NAME}
         local EXIT_CODE=$?
-        if [[ ${EXIT_CODE} -ne 0 ]]; then
-            echo "❌ 解除部署失敗（退出碼：${EXIT_CODE}）" >&2
-            return ${EXIT_CODE}
+        unset PIPELINE_ONLY_STAGE
+        
+        if [[ ${EXIT_CODE} -eq 0 ]]; then
+            echo "專案 ${PROJECT_NAME} 已解除部署"
         fi
+        return ${EXIT_CODE}
     else
+        # 如果 undeploy.sh 不存在，執行預設動作：刪除 namespace
+        echo "⚠️  undeploy.sh 不存在，執行預設動作：刪除 namespace ${PROJECT_NAME}"
         exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
         local EXIT_CODE=$?
         if [[ ${EXIT_CODE} -ne 0 ]]; then
             echo "❌ 解除部署失敗（退出碼：${EXIT_CODE}）" >&2
             return ${EXIT_CODE}
         fi
+        echo "專案 ${PROJECT_NAME} 已解除部署"
+        return 0
     fi
-    echo "專案 ${PROJECT_NAME} 已解除部署"
-    return 0
 }
 
 remove_project() {
