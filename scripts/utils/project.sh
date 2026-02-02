@@ -315,48 +315,6 @@ resolve_cicd_script() {
     return 0
 }
 
-build_project() {
-    PROJECT_NAME=$1
-    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-
-    pull_if_project_repo_not_exist ${PROJECT_NAME}
-    
-    # 載入 Pipeline 工具函數
-    source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
-    
-    # 載入專案環境變數
-    source ${PROJECT_PATH}/project.env
-    
-    # 統一使用 Pipeline 機制，但只執行到 build 階段
-    export PIPELINE_TO_STAGE="build"
-    execute_pipeline ${PROJECT_NAME}
-    local EXIT_CODE=$?
-    unset PIPELINE_TO_STAGE
-    
-    return ${EXIT_CODE}
-}
-
-deploy_project() {
-    PROJECT_NAME=$1
-    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-
-    pull_if_project_repo_not_exist ${PROJECT_NAME}
-    
-    # 載入 Pipeline 工具函數
-    source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
-    
-    # 載入專案環境變數
-    source ${PROJECT_PATH}/project.env
-    
-    # 統一使用 Pipeline 機制，但只執行 deploy 階段
-    export PIPELINE_ONLY_STAGE="deploy"
-    execute_pipeline ${PROJECT_NAME}
-    local EXIT_CODE=$?
-    unset PIPELINE_ONLY_STAGE
-    
-    return ${EXIT_CODE}
-}
-
 undeploy_project() {
     PROJECT_NAME=$1
 
