@@ -374,10 +374,21 @@ undeploy_project() {
     
     if [[ -f ${PROJECT_PATH}/${UNDEPLOY_SCRIPT} ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${UNDEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${UNDEPLOY_SCRIPT}
+        local EXIT_CODE=$?
+        if [[ ${EXIT_CODE} -ne 0 ]]; then
+            echo "❌ 解除部署失敗（退出碼：${EXIT_CODE}）" >&2
+            return ${EXIT_CODE}
+        fi
     else
         exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
+        local EXIT_CODE=$?
+        if [[ ${EXIT_CODE} -ne 0 ]]; then
+            echo "❌ 解除部署失敗（退出碼：${EXIT_CODE}）" >&2
+            return ${EXIT_CODE}
+        fi
     fi
     echo "專案 ${PROJECT_NAME} 已解除部署"
+    return 0
 }
 
 remove_project() {

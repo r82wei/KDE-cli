@@ -142,18 +142,14 @@ case "${COMMAND}" in
     undeploy)
         # 檢查專案名稱（如果未提供，會跳出選單讓使用者選擇）
         check_project_name ${PROJECT_NAME}
-        # 驗證專案是否存在
-        exit_if_project_not_exist ${PROJECT_NAME}
-        # 解除部署專案
+        # 解除部署專案（undeploy_project 內部會檢查專案是否存在）
         undeploy_project ${PROJECT_NAME}
         ;;
     redeploy)
         # 檢查專案名稱（如果未提供，會跳出選單讓使用者選擇）
         check_project_name ${PROJECT_NAME}
-        # 驗證專案是否存在
-        exit_if_project_not_exist ${PROJECT_NAME}
-        # 解除部署專案
-        undeploy_project ${PROJECT_NAME}
+        # 解除部署專案（undeploy_project 內部會檢查專案是否存在）
+        undeploy_project ${PROJECT_NAME} || exit 1
         # 執行 Pipeline
         execute_pipeline ${PROJECT_NAME}
         ;;
