@@ -331,14 +331,6 @@ execute_custom_pipeline() {
             if [[ "${KDE_PIPELINE_FAIL_FAST}" != "false" ]]; then
                 echo ""
                 echo "❌ Pipeline 執行失敗（Fail Fast 模式）"
-                
-                # 檢查是否需要自動回滾（僅針對 deploy 相關階段）
-                if [[ "${KDE_PIPELINE_AUTO_ROLLBACK}" == "true" && "${STAGE}" == *"deploy"* ]]; then
-                    echo ""
-                    echo "🔄 自動回滾中..."
-                    # 這裡可以加入回滾邏輯
-                fi
-                
                 return ${EXIT_CODE}
             else
                 echo ""
