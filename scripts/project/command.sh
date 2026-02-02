@@ -50,7 +50,7 @@ fi
 
 case "${COMMAND}" in
     ls|list)
-        ls ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}
+        list_projects | sed 's/^/  - /'
         exit 0
         ;;
     create)

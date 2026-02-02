@@ -54,7 +54,7 @@ exit_if_project_not_exist() {
         echo "❌ 錯誤：專案 '${PROJECT_NAME}' 不存在於當前環境 '${CUR_ENV}' 的 namespaces 內" >&2
         echo "" >&2
         echo "可用的專案列表：" >&2
-        kde project list | sed 's/^/  - /' >&2
+        list_projects | sed 's/^/  - /' >&2
         exit 1
     fi
 }
