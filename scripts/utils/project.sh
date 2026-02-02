@@ -51,7 +51,10 @@ exit_if_project_not_exist() {
     PROJECT_NAME=$1
 
     if [[ $(is_project_exist ${PROJECT_NAME}) == "false" ]]; then
-        echo "專案 ${1} 不存在"
+        echo "❌ 錯誤：專案 '${PROJECT_NAME}' 不存在於當前環境 '${CUR_ENV}' 的 namespaces 內" >&2
+        echo "" >&2
+        echo "可用的專案列表：" >&2
+        kde project list | sed 's/^/  - /' >&2
         exit 1
     fi
 }
@@ -321,22 +324,16 @@ build_project() {
     # 載入 Pipeline 工具函數
     source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
     
-    # 載入專案環境變數以檢查 Pipeline 配置
+    # 載入專案環境變數
     source ${PROJECT_PATH}/project.env
     
-    # 檢查是否使用新的 Pipeline 機制
-    # 如果定義了 KDE_PIPELINE_STAGES 或標準 CICD 階段檔案存在，使用新機制
-    if [[ -n "${KDE_PIPELINE_STAGES}" ]] || \
-       [[ -f "${PROJECT_PATH}/build.sh" && -f "${PROJECT_PATH}/test.sh" ]] || \
-       [[ -f "${PROJECT_PATH}/release.sh" && -f "${PROJECT_PATH}/deploy.sh" ]]; then
-        # 使用新的 Pipeline 機制
-        execute_pipeline ${PROJECT_NAME}
-        return $?
-    else
-        # 使用舊的 build 流程（向後相容）
-        execute_legacy_build ${PROJECT_NAME}
-        return $?
-    fi
+    # 統一使用 Pipeline 機制，但只執行到 build 階段
+    export PIPELINE_TO_STAGE="build"
+    execute_pipeline ${PROJECT_NAME}
+    local EXIT_CODE=$?
+    unset PIPELINE_TO_STAGE
+    
+    return ${EXIT_CODE}
 }
 
 deploy_project() {
@@ -348,20 +345,16 @@ deploy_project() {
     # 載入 Pipeline 工具函數
     source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
     
-    # 載入專案環境變數以檢查 Pipeline 配置
+    # 載入專案環境變數
     source ${PROJECT_PATH}/project.env
     
-    # 檢查是否使用新的 Pipeline 機制
-    # 如果定義了 KDE_PIPELINE_STAGES，使用新機制
-    if [[ -n "${KDE_PIPELINE_STAGES}" ]]; then
-        # 使用新的 Pipeline 機制
-        execute_pipeline ${PROJECT_NAME}
-        return $?
-    else
-        # 使用舊的 deploy 流程（向後相容）
-        execute_legacy_deploy ${PROJECT_NAME}
-        return $?
-    fi
+    # 統一使用 Pipeline 機制，但只執行 deploy 階段
+    export PIPELINE_ONLY_STAGE="deploy"
+    execute_pipeline ${PROJECT_NAME}
+    local EXIT_CODE=$?
+    unset PIPELINE_ONLY_STAGE
+    
+    return ${EXIT_CODE}
 }
 
 undeploy_project() {

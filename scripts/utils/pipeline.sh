@@ -3,9 +3,6 @@
 # Pipeline 執行工具
 # 支援快速 CICD 流程和自定義 Pipeline
 
-# 快速 CICD 階段定義
-readonly STANDARD_CICD_STAGES="build test release deploy"
-
 # Pipeline 選項變數（全局變數，由 parse_pipeline_args 設置）
 PIPELINE_FROM_STAGE=""
 PIPELINE_TO_STAGE=""
@@ -361,11 +358,13 @@ execute_custom_pipeline() {
 }
 
 # 相容性函數：執行標準的 build 流程（pre-build, build, post-build）
+# ⚠️  已棄用：請使用 execute_pipeline 代替
 # 這個函數用於向後相容，當沒有使用 Pipeline 機制時使用
 # 參數：
 #   $1 - 專案名稱
 # 返回：執行狀態（0 成功，非 0 失敗）
 execute_legacy_build() {
+    echo "⚠️  警告：execute_legacy_build 已棄用，請使用 execute_pipeline" >&2
     local PROJECT_NAME=$1
     local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     
@@ -419,11 +418,13 @@ execute_legacy_build() {
 }
 
 # 相容性函數：執行標準的 deploy 流程（pre-deploy, deploy, post-deploy）
+# ⚠️  已棄用：請使用 execute_pipeline 代替
 # 這個函數用於向後相容，當沒有使用 Pipeline 機制時使用
 # 參數：
 #   $1 - 專案名稱
 # 返回：執行狀態（0 成功，非 0 失敗）
 execute_legacy_deploy() {
+    echo "⚠️  警告：execute_legacy_deploy 已棄用，請使用 execute_pipeline" >&2
     local PROJECT_NAME=$1
     local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     
