@@ -79,44 +79,49 @@ load_project_env() {
 # 建立專案資料夾、namespace
 create_project() {
     PROJECT_NAME=$1
+    local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     exit_if_project_exist ${PROJECT_NAME}
-    mkdir -p ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+    mkdir -p ${PROJECT_PATH}
     read -p "是否需要從 Git 遠端倉庫抓取專案程式碼？(y/n): " IS_GIT_REMOTE_REPO
     if [[ ${IS_GIT_REMOTE_REPO} == "y" ]]; then
         set_git_repo ${PROJECT_NAME}
-        source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+        source ${PROJECT_PATH}/project.env
         REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/$(git_repo_name ${GIT_REPO_URL})
         download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${REPO_PATH}
     else
-        echo "GIT_REPO_URL=./${PROJECT_NAME}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-        echo "GIT_REPO_BRANCH=main" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+        echo "GIT_REPO_URL=./${PROJECT_NAME}" >> ${PROJECT_PATH}/project.env
+        echo "GIT_REPO_BRANCH=main" >> ${PROJECT_PATH}/project.env
         REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${PROJECT_NAME}
         mkdir -p ${REPO_PATH}
     fi
-    read -p "請輸入開發環境 Image（用於本地開發容器和執行 build.sh，例如: node:20, python:3.11）: " DEVELOP_IMAGE
-    echo "DEVELOP_IMAGE=${DEVELOP_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    read -p "請輸入部署環境 Image（用於執行 deploy.sh，包含 kubectl/helm 等工具，預設為 ${KDE_DEPLOY_ENV_IMAGE}）: " DEPLOY_IMAGE
+    read -p "請輸入開發環境 Image（用於本地開發環境容器和 Pipeline build 階段，例如: node:20, python:3.11）: " DEVELOP_IMAGE
+    echo "DEVELOP_IMAGE=${DEVELOP_IMAGE}" >> ${PROJECT_PATH}/project.env
+    read -p "請輸入部署環境 Image（用於本地部署環境容器和 Pipeline deploy 階段，包含 kubectl/helm 等工具，預設為 ${KDE_DEPLOY_ENV_IMAGE}）: " DEPLOY_IMAGE
     DEPLOY_IMAGE=${DEPLOY_IMAGE:-${KDE_DEPLOY_ENV_IMAGE}}
-    echo "DEPLOY_IMAGE=${DEPLOY_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo "DEPLOY_IMAGE=${DEPLOY_IMAGE}" >> ${PROJECT_PATH}/project.env
     # 匯出常用變數
-    echo 'HELM_CONFIG_HOME=${PROJECT_PATH}/.helm/config' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'HELM_CACHE_HOME=${PROJECT_PATH}/.helm/cache' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'HELM_DATA_HOME=${PROJECT_PATH}/.helm/data' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'HELM_PLUGINS=${PROJECT_PATH}/.helm/plugins' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo 'HELM_CONFIG_HOME=${PROJECT_PATH}/.helm/config' >> ${PROJECT_PATH}/project.env
+    echo 'HELM_CACHE_HOME=${PROJECT_PATH}/.helm/cache' >> ${PROJECT_PATH}/project.env
+    echo 'HELM_DATA_HOME=${PROJECT_PATH}/.helm/data' >> ${PROJECT_PATH}/project.env
+    echo 'HELM_PLUGINS=${PROJECT_PATH}/.helm/plugins' >> ${PROJECT_PATH}/project.env
     # 配置快速 Pipeline 模式 (build → deploy)
-    echo '' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo '# Pipeline 配置（快速模式：build → deploy）' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'KDE_PIPELINE_STAGES="build,deploy"' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo '' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo '# Build 階段配置' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'KDE_PIPELINE_STAGE_build_SCRIPT=build.sh' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'KDE_PIPELINE_STAGE_build_IMAGE=${DEVELOP_IMAGE}' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo '' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo '# Deploy 階段配置' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'KDE_PIPELINE_STAGE_deploy_IMAGE=${DEPLOY_IMAGE}' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    init_project_deploy_script ${PROJECT_NAME}
+    echo '' >> ${PROJECT_PATH}/project.env
+    echo '# Pipeline 配置（快速模式：build → deploy）' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGES="build,deploy"' >> ${PROJECT_PATH}/project.env
+    echo '' >> ${PROJECT_PATH}/project.env
+    echo '# Build 階段配置' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGE_build_SCRIPT=build.sh' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGE_build_IMAGE=${DEVELOP_IMAGE}' >> ${PROJECT_PATH}/project.env
+    echo '' >> ${PROJECT_PATH}/project.env
+    echo '# Deploy 階段配置' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGE_deploy_IMAGE=${DEPLOY_IMAGE}' >> ${PROJECT_PATH}/project.env
+    # 建立 build.sh 和 deploy.sh 檔案
+    touch ${PROJECT_PATH}/build.sh
+    chmod +x ${PROJECT_PATH}/build.sh
+    touch ${PROJECT_PATH}/deploy.sh
+    chmod +x ${PROJECT_PATH}/deploy.sh
     echo "專案 ${PROJECT_NAME} 已建立"
 }
 
@@ -178,16 +183,6 @@ pull_if_project_repo_not_exist() {
     fi
 }
 
-init_project_deploy_script() {
-    PROJECT_NAME=$1
-    PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-
-    touch ${PROJECT_REPO_PATH}/build.sh
-    chmod +x ${PROJECT_REPO_PATH}/build.sh
-    touch ${PROJECT_REPO_PATH}/deploy.sh
-    chmod +x ${PROJECT_REPO_PATH}/deploy.sh
-}
-
 git_repo_name() {
     GIT_REPO_URL=$1
 
@@ -196,12 +191,13 @@ git_repo_name() {
 
 set_git_repo() {
     PROJECT_NAME=$1
+    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     exit_if_project_not_exist ${PROJECT_NAME}
     read -p "請輸入 Git 倉庫網址 (支援 HTTPS 或 SSH，例如: https://github.com/user/repo.git 或 git@github.com:user/repo.git): " GIT_REPO_URL
-    echo "GIT_REPO_URL=${GIT_REPO_URL}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo "GIT_REPO_URL=${GIT_REPO_URL}" >> ${PROJECT_PATH}/project.env
     read -p "請輸入分支名稱(default: main): " GIT_REPO_BRANCH
-    echo "GIT_REPO_BRANCH=${GIT_REPO_BRANCH:-main}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo "GIT_REPO_BRANCH=${GIT_REPO_BRANCH:-main}" >> ${PROJECT_PATH}/project.env
 }
 
 download_git_repo() {
