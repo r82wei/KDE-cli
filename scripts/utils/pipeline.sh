@@ -311,8 +311,8 @@ execute_quick_pipeline() {
                 continue
             fi
             
-            # 檢查是否啟用 Fail Fast
-            if [[ "${KDE_DEVOPS_FAIL_FAST}" == "true" ]]; then
+            # 檢查是否停用 Fail Fast（預設為啟用）
+            if [[ "${KDE_PIPELINE_FAIL_FAST}" != "false" ]]; then
                 echo ""
                 echo "❌ Pipeline 執行失敗（Fail Fast 模式）"
                 return ${EXIT_CODE}
@@ -377,7 +377,7 @@ execute_custom_pipeline() {
         # 如果腳本不存在，顯示錯誤
         if [[ -z "${SCRIPT}" ]]; then
             echo "❌ 階段 ${STAGE} 的腳本不存在"
-            if [[ "${KDE_DEVOPS_FAIL_FAST}" == "true" ]]; then
+            if [[ "${KDE_PIPELINE_FAIL_FAST}" != "false" ]]; then
                 return 1
             else
                 continue
@@ -400,13 +400,13 @@ execute_custom_pipeline() {
                 continue
             fi
             
-            # 檢查是否啟用 Fail Fast
-            if [[ "${KDE_DEVOPS_FAIL_FAST}" == "true" ]]; then
+            # 檢查是否停用 Fail Fast（預設為啟用）
+            if [[ "${KDE_PIPELINE_FAIL_FAST}" != "false" ]]; then
                 echo ""
                 echo "❌ Pipeline 執行失敗（Fail Fast 模式）"
                 
                 # 檢查是否需要自動回滾（僅針對 deploy 相關階段）
-                if [[ "${KDE_DEVOPS_AUTO_ROLLBACK}" == "true" && "${STAGE}" == *"deploy"* ]]; then
+                if [[ "${KDE_PIPELINE_AUTO_ROLLBACK}" == "true" && "${STAGE}" == *"deploy"* ]]; then
                     echo ""
                     echo "🔄 自動回滾中..."
                     # 這裡可以加入回滾邏輯

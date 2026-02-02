@@ -26,6 +26,24 @@
     - 各階段的 Artifact 可以直接輸出在 `專案資料夾` 底下
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_MOUNT_[自定義名稱]=${PROJECT_PATH}/libs:${PROJECT_PATH}/libs` 掛載 CICD pipeline 特定階段的特定檔案或資料夾
     - 可以透過 project.env 定義 `KDE_MOUNT_[自定義名稱]=${}/.ssh:${PROJECT_PATH}/.ssh` CICD pipeline 全部階段掛載特定檔案或資料夾
+- 錯誤處理選項：
+    - 預設啟用 Fail Fast 模式（任何階段失敗立即停止），可以透過 project.env 定義 `KDE_PIPELINE_FAIL_FAST=false` 停用
+    - 可以透過 project.env 定義 `KDE_PIPELINE_AUTO_ROLLBACK=true` 部署失敗時自動回滾
+
+### 功能總整理
+| 環境變數 | 說明 | 範例 |
+|---------|------|------|
+| `KDE_PIPELINE_STAGES` | 自定義 CICD pipeline 流程階段 | `KDE_PIPELINE_STAGES=build,test,release,deploy` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_IMAGE` | 指定特定階段使用的容器映像檔 | `KDE_PIPELINE_STAGE_BUILD_IMAGE=node:24` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_SCRIPT` | 指定特定階段執行的腳本檔案 | `KDE_PIPELINE_STAGE_BUILD_SCRIPT=build.sh` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_MOUNT_[自定義名稱]` | 掛載特定階段的檔案或資料夾 | `KDE_PIPELINE_STAGE_BUILD_MOUNT_LIBS=${PROJECT_PATH}/libs:${PROJECT_PATH}/libs` |
+| `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline（預設：true） | `KDE_PIPELINE_FAIL_FAST=false` 停用 |
+| `KDE_PIPELINE_AUTO_ROLLBACK` | 部署失敗時自動回滾到前一版本 | `KDE_PIPELINE_AUTO_ROLLBACK=true` |
+| `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
+| `KDE_PATH` | 預設環境變數，KDE 系統路徑 | 系統自動設定 |
+
+
+
 ## 使用說明
 - 透過指令執行 CICD pipeline 
     ```

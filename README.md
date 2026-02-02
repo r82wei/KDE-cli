@@ -186,8 +186,8 @@ flowchart LR
      ```
 
    - Error handling options:
-     - `KDE_DEVOPS_FAIL_FAST=true` - Stop immediately on any failure
-     - `KDE_DEVOPS_AUTO_ROLLBACK=true` - Auto rollback on deploy failure
+     - Fail Fast mode is enabled by default (stops immediately on any failure). Set `KDE_PIPELINE_FAIL_FAST=false` to disable
+     - `KDE_PIPELINE_AUTO_ROLLBACK=true` - Auto rollback on deploy failure
 
    **Execution**:
 

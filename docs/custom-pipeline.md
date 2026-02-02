@@ -205,25 +205,28 @@ KDE_PIPELINE_STAGE_deploy_production_IMAGE=r82wei/deploy-env:1.0.0
 KDE_PIPELINE_STAGE_monitor_SCRIPT=monitor.sh
 KDE_PIPELINE_STAGE_monitor_IMAGE=grafana/grafana:latest
 
-# 錯誤處理
-KDE_DEVOPS_FAIL_FAST=true
-KDE_DEVOPS_AUTO_ROLLBACK=true
+# 錯誤處理（Fail Fast 預設已啟用，這裡只設定自動回滾）
+KDE_PIPELINE_AUTO_ROLLBACK=true
 ```
 
 ## 錯誤處理
 
 ### Fail Fast 模式
 
+預設啟用 Fail Fast 模式，任何階段失敗會立即停止整個 Pipeline。
+
+如需停用此功能，可以在 project.env 中設定：
+
 ```bash
 # project.env
-KDE_DEVOPS_FAIL_FAST=true  # 任何階段失敗立即停止
+KDE_PIPELINE_FAIL_FAST=false  # 停用 Fail Fast，階段失敗後繼續執行
 ```
 
 ### 自動回滾
 
 ```bash
 # project.env
-KDE_DEVOPS_AUTO_ROLLBACK=true  # deploy 相關階段失敗時自動回滾
+KDE_PIPELINE_AUTO_ROLLBACK=true  # deploy 相關階段失敗時自動回滾
 ```
 
 ### 跳過特定階段
@@ -293,7 +296,7 @@ KDE_PIPELINE_STAGE_deploy_production_SKIP=true
 
 # 生產環境 (.env)
 DEPLOY_ENV=production
-KDE_DEVOPS_AUTO_ROLLBACK=true
+KDE_PIPELINE_AUTO_ROLLBACK=true
 ```
 
 ### 4. 漸進式採用
