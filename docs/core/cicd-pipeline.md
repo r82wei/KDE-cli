@@ -11,16 +11,19 @@
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_IMAGE=node:24` CICD pipeline 特定階段容器映像檔
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_SCRIPT=build.sh` CICD pipeline 特定階段腳本
 - 環境變數
-    - 預設環境變數
-        - `KDE_PATH`
-    - 自訂環境變數
-        - 可以透過 project.env 定義 CICD pipeline 的環境變數(每個階段都會載入 project.env 作為環境變數定義檔)，例如:
-            ```bash
-            # project.env
-            
-            NAMESPACE=my-app
-            REPO_DIR=my-app
-            ```
+    - 預設環境變數：
+        - `KDE_PATH` - workspace 目錄路徑
+        - `ENVIROMENTS_PATH` - 環境目錄路徑
+        - `CUR_ENV` - 當前環境名稱
+        - `KUBECONFIG` - K8s 配置檔案路徑
+        - `PROJECT_PATH` - 專案路徑
+    - 預設依序載入環境變數設定檔：
+        - `${KDE_PATH}/kde.env` - KDE 系統主配置檔包含 KDE 相關的全域設定，如各種 Image 版本 (提交到版本控制)
+        - `${ENVIROMENTS_PATH}/${CUR_ENV}/k8s.env` - 環境基本配置，包含環境基本資訊: ENV_NAME、ENV_TYPE、K8S_CONTAINER_NAME 等 (提交到版本控制)
+        - `${ENVIROMENTS_PATH}/${CUR_ENV}/.env` - 環境本地配置，環境特定的本地設定（不提交到版本控制）
+        - `${PROJECT_PATH}/project.env` - 專案配置檔，專案的所有配置，包括 Pipeline 設定 (提交到版本控制)
+        - `${PROJECT_PATH}/.env` - 專案本地配置，專案特定的本地設定（不提交到版本控制）
+        - `${PROJECT_PATH}/.pipeline.env` - Pipeline 階段間傳遞的環境變數上一階段輸出的環境變數（如果存在）
 - 檔案掛載
     - CICD pipeline 各階段執行環境會自動掛載 `專案資料夾` 作為 workdir
     - 各階段的 Artifact 可以直接輸出在 `專案資料夾` 底下
@@ -40,7 +43,6 @@
 | `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline（預設：true） | `KDE_PIPELINE_FAIL_FAST=false` 停用 |
 | `KDE_PIPELINE_AUTO_ROLLBACK` | 部署失敗時自動回滾到前一版本 | `KDE_PIPELINE_AUTO_ROLLBACK=true` |
 | `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
-| `KDE_PATH` | 預設環境變數，KDE 系統路徑 | 系統自動設定 |
 
 
 
@@ -59,6 +61,21 @@
             
 ## Best Practice
 - 使用專案名稱作為 K8S 部署目標 namespace
+- 依據環境變數是否適合納入版本控制，選擇在 project.env（可納入版控）或 .env（不納入版控）中定義 CICD pipeline 相關的環境變數，例如：
+    ```bash
+    # project.env
+    
+    NAMESPACE=my-app
+    REPO_DIR=my-app
+    PORT=8088
+    BUILD_SCRIPT_PATH=${PROJECT_PATH}/build.sh
+    ```
+    ```bash
+    # .env
+    
+    JWT_SECRET_KEY=xxxxxxx
+    API_TOKEN=xxxxx
+    ```
 - 各階段環境變數傳遞方式
     - 環境變數可以透過下列範例使用的方式傳遞 (`release` -> `deploy`) :
         - `release` 階段 
