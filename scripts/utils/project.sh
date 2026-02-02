@@ -266,55 +266,6 @@ create_link() {
     ln -s ${DIR_PATH} ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${DIR_NAME}
 }
 
-# 解析要執行的 CICD 腳本（支援自訂腳本）
-# 參數：
-#   $1 - 標準腳本名稱（如 build.sh）
-#   $2 - 自訂腳本環境變數的值（如 ${KDE_PROJECT_BUILD_SCRIPT}）
-#   $3 - 專案路徑
-# 返回：實際要執行的腳本名稱（透過 echo 輸出）
-resolve_cicd_script() {
-    local STANDARD_SCRIPT=$1
-    local CUSTOM_SCRIPT=$2
-    local PROJECT_PATH=$3
-    
-    local RESOLVED_SCRIPT="${STANDARD_SCRIPT}"
-    
-    # 如果設定了自訂腳本
-    if [[ -n "${CUSTOM_SCRIPT}" ]]; then
-        # 檢查使用者是否已經加上 ./ 前綴，如果是，就把 ./ 去掉
-        if [[ "${CUSTOM_SCRIPT}" == "./"* ]]; then
-            CUSTOM_SCRIPT="${CUSTOM_SCRIPT#./}"
-        fi
-        # 檢查使用者是否已經加上 ${PROJECT_PATH} 前綴，如果是，就把 ${PROJECT_PATH} 前綴去掉
-        if [[ "${CUSTOM_SCRIPT}" == "${PROJECT_PATH}/"* ]]; then
-            CUSTOM_SCRIPT="${CUSTOM_SCRIPT#${PROJECT_PATH}/}"
-        fi
-
-        echo "CUSTOM_SCRIPT: ${CUSTOM_SCRIPT}" >&2
-        
-        # 檢查自訂腳本是否存在
-        if [[ -f "${PROJECT_PATH}/${CUSTOM_SCRIPT}" ]]; then
-            # Guardrail: 如果標準腳本也存在，給予警告
-            if [[ -f "${PROJECT_PATH}/${STANDARD_SCRIPT}" && "${CUSTOM_SCRIPT}" != "${STANDARD_SCRIPT}" ]]; then
-                echo "⚠️  警告：檢測到同時存在 ${STANDARD_SCRIPT} 和 ${CUSTOM_SCRIPT}" >&2
-                echo "    將使用 project.env 中指定的: ${CUSTOM_SCRIPT}" >&2
-                echo "    如果這不是預期行為，請移除 project.env 中的相關環境變數設定" >&2
-                echo "" >&2
-            fi
-            RESOLVED_SCRIPT="${CUSTOM_SCRIPT}"
-        else
-            echo "❌ 錯誤：自訂腳本 ${CUSTOM_SCRIPT} 不存在" >&2
-            echo "    請確認自訂腳本是否存在" >&2
-            # 返回空字符串並標記錯誤
-            echo ""
-            return 1
-        fi
-    fi
-    
-    echo "${RESOLVED_SCRIPT}"
-    return 0
-}
-
 undeploy_project() {
     PROJECT_NAME=$1
 
