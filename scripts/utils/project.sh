@@ -94,9 +94,9 @@ create_project() {
         REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${PROJECT_NAME}
         mkdir -p ${REPO_PATH}
     fi
-    read -p "請輸入專案開發(建置)環境 Image (執行 build.sh 的環境): " DEVELOP_IMAGE
+    read -p "請輸入開發環境 Image（用於本地開發容器和執行 build.sh，例如: node:20, python:3.11）: " DEVELOP_IMAGE
     echo "DEVELOP_IMAGE=${DEVELOP_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    read -p "請輸入專案部署環境 Image (執行 deploy 相關 shell 的環境，預設為 ${KDE_DEPLOY_ENV_IMAGE}): " DEPLOY_IMAGE
+    read -p "請輸入部署環境 Image（用於執行 deploy.sh，包含 kubectl/helm 等工具，預設為 ${KDE_DEPLOY_ENV_IMAGE}）: " DEPLOY_IMAGE
     DEPLOY_IMAGE=${DEPLOY_IMAGE:-${KDE_DEPLOY_ENV_IMAGE}}
     echo "DEPLOY_IMAGE=${DEPLOY_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     # 匯出常用變數
@@ -104,6 +104,18 @@ create_project() {
     echo 'HELM_CACHE_HOME=${PROJECT_PATH}/.helm/cache' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     echo 'HELM_DATA_HOME=${PROJECT_PATH}/.helm/data' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     echo 'HELM_PLUGINS=${PROJECT_PATH}/.helm/plugins' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    # 配置快速 Pipeline 模式 (build → deploy)
+    echo '' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo '# Pipeline 配置（快速模式：build → deploy）' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo 'KDE_PIPELINE_STAGES="build,deploy"' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo '' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo '# Build 階段配置' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo 'KDE_PIPELINE_STAGE_build_SCRIPT=build.sh' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo 'KDE_PIPELINE_STAGE_build_IMAGE=${DEVELOP_IMAGE}' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo '' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo '# Deploy 階段配置' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo 'KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo 'KDE_PIPELINE_STAGE_deploy_IMAGE=${DEPLOY_IMAGE}' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     init_project_deploy_script ${PROJECT_NAME}
     echo "專案 ${PROJECT_NAME} 已建立"
 }
