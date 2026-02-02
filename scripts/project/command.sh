@@ -223,7 +223,7 @@ case "${COMMAND}" in
         fi
         
         # 執行 Pipeline
-        execute_pipeline ${PROJECT_NAME} "pipeline"
+        execute_pipeline ${PROJECT_NAME}
         ;;
     ingress)
         check_project_name ${PROJECT_NAME}

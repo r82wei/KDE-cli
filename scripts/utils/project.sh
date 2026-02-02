@@ -330,7 +330,7 @@ build_project() {
        [[ -f "${PROJECT_PATH}/build.sh" && -f "${PROJECT_PATH}/test.sh" ]] || \
        [[ -f "${PROJECT_PATH}/release.sh" && -f "${PROJECT_PATH}/deploy.sh" ]]; then
         # 使用新的 Pipeline 機制
-        execute_pipeline ${PROJECT_NAME} "build"
+        execute_pipeline ${PROJECT_NAME}
         return $?
     else
         # 使用舊的 build 流程（向後相容）
@@ -355,7 +355,7 @@ deploy_project() {
     # 如果定義了 KDE_PIPELINE_STAGES，使用新機制
     if [[ -n "${KDE_PIPELINE_STAGES}" ]]; then
         # 使用新的 Pipeline 機制
-        execute_pipeline ${PROJECT_NAME} "deploy"
+        execute_pipeline ${PROJECT_NAME}
         return $?
     else
         # 使用舊的 deploy 流程（向後相容）

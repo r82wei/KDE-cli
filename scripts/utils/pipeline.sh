@@ -224,11 +224,9 @@ execute_stage() {
 # 執行 Pipeline
 # 參數：
 #   $1 - 專案名稱
-#   $2 - Pipeline 類型（build 或 deploy）
 # 返回：執行狀態（0 成功，非 0 失敗）
 execute_pipeline() {
     local PROJECT_NAME=$1
-    local PIPELINE_TYPE=$2
     local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     
     # 載入專案環境變數
@@ -237,7 +235,7 @@ execute_pipeline() {
     # 檢查是否使用自定義 Pipeline
     if [[ $(is_standard_cicd_pipeline "${KDE_PIPELINE_STAGES}") == "true" ]]; then
         # 使用快速流程
-        execute_quick_pipeline ${PROJECT_NAME} ${PIPELINE_TYPE}
+        execute_quick_pipeline ${PROJECT_NAME}
         return $?
     else
         # 使用自定義 Pipeline
@@ -249,11 +247,9 @@ execute_pipeline() {
 # 執行快速 CICD Pipeline
 # 參數：
 #   $1 - 專案名稱
-#   $2 - Pipeline 類型（build 或 deploy）
 # 返回：執行狀態（0 成功，非 0 失敗）
 execute_quick_pipeline() {
     local PROJECT_NAME=$1
-    local PIPELINE_TYPE=$2
     
     echo ""
     echo "📋 執行快速 CICD Pipeline"
