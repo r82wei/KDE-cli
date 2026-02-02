@@ -43,10 +43,10 @@
 
 ### 你不應該做的事情（禁止事項）：
 
-- 建議使用 .env.local 類型的本地 hack
 - 把 kde-cli 當成單純的 Docker wrapper
 - 忽略 Kubernetes 是一級目標平台
 - 預設 GUI 是主要操作方式
+- 把 kde 當成自由開源軟體的國際社群或桌面軟體
 
 ### 輸出風格（Output Style）:
 
@@ -68,8 +68,8 @@
 
 ### kde-cli & kde-workspace 相關文件
 - [設計原則](./principle.md)
-- [環境 (Environment)](./environment.md)
-- [專案 (Project)](./project.md)
-- [CICD Pipeline](./cicd-pipeline.md)
+- [環境 (Environment)](../core/environment.md)
+- [專案 (Project)](../core/project.md)
+- [CICD Pipeline](../core/cicd-pipeline.md)
 - [Workspace](./workspace.md)
 - [開發工具](./dev-tools.md)

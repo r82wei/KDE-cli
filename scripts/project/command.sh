@@ -14,14 +14,14 @@ show_help() {
     echo "  fetch           透過 git url 抓取專案"
     echo "  pull            透過 project.env 內的 git repo 設定更新專案（git pull）"
     echo "                  使用 --force 或 -f 參數可刪除 repo 目錄並重新 clone"
-    echo "  build           建置專案"
-    echo "  deploy          建置 & 部署專案"
-    echo "  deploy-only     不執行建置，只部署專案"
-    echo "  undeploy        卸載專案"
-    echo "  redeploy        重新部署專案"
+    echo "  build           建置專案 (預設 CICD pipeline 的 build 階段)"
+    echo "  deploy          部署專案 (預設 CICD pipeline 的 deploy 階段)"
+    echo "  redeploy        重新部署專案 (預設 CICD pipeline 的 deploy 階段)"
+    echo "  pipeline        執行自定義的 CICD Pipeline（支援 --from, --to, --only, --manual）"
+    echo "  undeploy        解除部署專案 (預設 CICD pipeline 的 undeploy 階段)"
     echo "  tail            查看 pod 的 log，預設查看最後 100 行"
     echo "  remove, rm      刪除專案"
-    echo "  exec            進入專案"
+    echo "  exec            進入專案 container"
     echo "  ingress         建立 ingress"
 }
 
@@ -183,6 +183,47 @@ case "${COMMAND}" in
                 exit 1
                 ;;
         esac
+        ;;
+    pipeline)
+        # 載入 pipeline 工具
+        source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
+        
+        # 重置 PROJECT_NAME，避免使用到前面 $2 的值
+        PROJECT_NAME=""
+        
+        # 解析命令行參數（直接調用，不使用 $()，以便全局變數能正確設置）
+        shift  # 移除 "pipeline" 指令
+        parse_pipeline_args "$@"
+        PARSE_EXIT_CODE=$?
+        
+        # 檢查參數解析結果
+        if [[ ${PARSE_EXIT_CODE} -eq 2 ]]; then
+            # 顯示了說明，正常退出
+            exit 0
+        elif [[ ${PARSE_EXIT_CODE} -ne 0 ]]; then
+            # 參數錯誤
+            exit 1
+        fi
+        
+        # 從 REMAINING_ARGS（由 parse_pipeline_args 設置）中取得專案名稱
+        if [[ ${#REMAINING_ARGS[@]} -gt 0 ]]; then
+            PROJECT_NAME="${REMAINING_ARGS[0]}"
+        fi
+        
+        # 檢查專案名稱（如果未提供，會跳出選單讓使用者選擇）
+        check_project_name ${PROJECT_NAME}
+        
+        # 防呆檢查：驗證專案是否存在於當前環境的 namespaces 內
+        if [[ $(is_project_exist ${PROJECT_NAME}) == "false" ]]; then
+            echo "❌ 錯誤：專案 '${PROJECT_NAME}' 不存在於當前環境 '${CUR_ENV}' 的 namespaces 內" >&2
+            echo "" >&2
+            echo "可用的專案列表：" >&2
+            kde project list | sed 's/^/  - /' >&2
+            exit 1
+        fi
+        
+        # 執行 Pipeline
+        execute_pipeline ${PROJECT_NAME} "pipeline"
         ;;
     ingress)
         check_project_name ${PROJECT_NAME}

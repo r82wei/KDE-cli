@@ -194,14 +194,14 @@ source ~/.bashrc  # 或 source ~/.zshrc
 
      ```bash
      # 定義要執行的階段
-     KDE_CICD_STAGES="lint,security,build,test,deploy,monitor"
+     KDE_PIPELINE_STAGES="lint,security,build,test,deploy,monitor"
 
      # 配置每個階段
-     KDE_CICD_STAGE_lint_SCRIPT=lint.sh
-     KDE_CICD_STAGE_lint_IMAGE=node:20
+     KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
+     KDE_PIPELINE_STAGE_lint_IMAGE=node:20
 
-     KDE_CICD_STAGE_security_SCRIPT=security-scan.sh
-     KDE_CICD_STAGE_security_IMAGE=aquasec/trivy:latest
+     KDE_PIPELINE_STAGE_security_SCRIPT=security-scan.sh
+     KDE_PIPELINE_STAGE_security_IMAGE=aquasec/trivy:latest
      # ... 其他階段
      ```
 

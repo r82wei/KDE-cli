@@ -9,7 +9,7 @@ KDE 支援兩種 Pipeline 模式：
 
 ## 標準 CICD 流程（預設）
 
-不設定 `KDE_CICD_STAGES` 時，使用標準的 8 階段流程：
+不設定 `KDE_PIPELINE_STAGES` 時，使用標準的 8 階段流程：
 
 ```
 Build → Test → Release → Deploy
@@ -28,23 +28,23 @@ kde project deploy myapp
 
 ```bash
 # 定義要執行的階段（空格或逗號分隔）
-KDE_CICD_STAGES="code build test deploy monitor"
+KDE_PIPELINE_STAGES="code build test deploy monitor"
 
 # 每個階段的配置
-KDE_CICD_STAGE_code_SCRIPT=lint-strict.sh
-KDE_CICD_STAGE_code_IMAGE=node:20
+KDE_PIPELINE_STAGE_code_SCRIPT=lint-strict.sh
+KDE_PIPELINE_STAGE_code_IMAGE=node:20
 
-KDE_CICD_STAGE_build_SCRIPT=build.sh
-KDE_CICD_STAGE_build_IMAGE=node:20
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:20
 
-KDE_CICD_STAGE_test_SCRIPT=test-all.sh
-KDE_CICD_STAGE_test_IMAGE=node:20-test
+KDE_PIPELINE_STAGE_test_SCRIPT=test-all.sh
+KDE_PIPELINE_STAGE_test_IMAGE=node:20-test
 
-KDE_CICD_STAGE_deploy_SCRIPT=deploy.sh
-KDE_CICD_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
 
-KDE_CICD_STAGE_monitor_SCRIPT=healthcheck.sh
-KDE_CICD_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_monitor_SCRIPT=healthcheck.sh
+KDE_PIPELINE_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
 ```
 
 ### 階段配置變數
@@ -53,8 +53,8 @@ KDE_CICD_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
 
 | 變數模式 | 說明 | 範例 |
 |---------|------|------|
-| `KDE_CICD_STAGE_{stage}_SCRIPT` | 腳本路徑 | `KDE_CICD_STAGE_build_SCRIPT=build.sh` |
-| `KDE_CICD_STAGE_{stage}_IMAGE` | Docker 映像 | `KDE_CICD_STAGE_build_IMAGE=node:20` |
+| `KDE_PIPELINE_STAGE_{stage}_SCRIPT` | 腳本路徑 | `KDE_PIPELINE_STAGE_build_SCRIPT=build.sh` |
+| `KDE_PIPELINE_STAGE_{stage}_IMAGE` | Docker 映像 | `KDE_PIPELINE_STAGE_build_IMAGE=node:20` |
 
 ### 預設行為
 
@@ -70,13 +70,13 @@ KDE_CICD_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
 
 ```bash
 # project.env
-KDE_CICD_STAGES="build deploy"
+KDE_PIPELINE_STAGES="build deploy"
 
-KDE_CICD_STAGE_build_SCRIPT=build.sh
-KDE_CICD_STAGE_build_IMAGE=node:20
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:20
 
-KDE_CICD_STAGE_deploy_SCRIPT=deploy-quick.sh
-KDE_CICD_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy-quick.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
 ```
 
 ### 範例 2：安全優先模式
@@ -85,25 +85,25 @@ KDE_CICD_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
 
 ```bash
 # project.env
-KDE_CICD_STAGES="code build security-scan test deploy monitor"
+KDE_PIPELINE_STAGES="code build security-scan test deploy monitor"
 
-KDE_CICD_STAGE_code_SCRIPT=lint.sh
-KDE_CICD_STAGE_code_IMAGE=node:20
+KDE_PIPELINE_STAGE_code_SCRIPT=lint.sh
+KDE_PIPELINE_STAGE_code_IMAGE=node:20
 
-KDE_CICD_STAGE_build_SCRIPT=build.sh
-KDE_CICD_STAGE_build_IMAGE=node:20
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:20
 
-KDE_CICD_STAGE_security_scan_SCRIPT=security-scan.sh
-KDE_CICD_STAGE_security_scan_IMAGE=aquasec/trivy:latest
+KDE_PIPELINE_STAGE_security_scan_SCRIPT=security-scan.sh
+KDE_PIPELINE_STAGE_security_scan_IMAGE=aquasec/trivy:latest
 
-KDE_CICD_STAGE_test_SCRIPT=test.sh
-KDE_CICD_STAGE_test_IMAGE=node:20
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+KDE_PIPELINE_STAGE_test_IMAGE=node:20
 
-KDE_CICD_STAGE_deploy_SCRIPT=deploy.sh
-KDE_CICD_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
 
-KDE_CICD_STAGE_monitor_SCRIPT=monitor.sh
-KDE_CICD_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_monitor_SCRIPT=monitor.sh
+KDE_PIPELINE_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
 ```
 
 ### 範例 3：多環境配置
@@ -113,11 +113,11 @@ KDE_CICD_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
 ```bash
 # project.env（共用配置）
 DEPLOY_ENV=development
-KDE_CICD_STAGES="lint build test deploy"
+KDE_PIPELINE_STAGES="lint build test deploy"
 
 # 根據環境使用不同腳本
-KDE_CICD_STAGE_deploy_SCRIPT=deploy-${DEPLOY_ENV}.sh
-KDE_CICD_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy-${DEPLOY_ENV}.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
 ```
 
 然後在 `.env` 中覆寫環境：
@@ -133,25 +133,25 @@ DEPLOY_ENV=production
 
 ```bash
 # project.env
-KDE_CICD_STAGES="build test deploy-canary verify-canary deploy-full monitor"
+KDE_PIPELINE_STAGES="build test deploy-canary verify-canary deploy-full monitor"
 
-KDE_CICD_STAGE_build_SCRIPT=build.sh
-KDE_CICD_STAGE_build_IMAGE=node:20
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:20
 
-KDE_CICD_STAGE_test_SCRIPT=test.sh
-KDE_CICD_STAGE_test_IMAGE=node:20
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+KDE_PIPELINE_STAGE_test_IMAGE=node:20
 
-KDE_CICD_STAGE_deploy_canary_SCRIPT=deploy-canary.sh
-KDE_CICD_STAGE_deploy_canary_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_canary_SCRIPT=deploy-canary.sh
+KDE_PIPELINE_STAGE_deploy_canary_IMAGE=r82wei/deploy-env:1.0.0
 
-KDE_CICD_STAGE_verify_canary_SCRIPT=verify-canary.sh
-KDE_CICD_STAGE_verify_canary_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_verify_canary_SCRIPT=verify-canary.sh
+KDE_PIPELINE_STAGE_verify_canary_IMAGE=r82wei/deploy-env:1.0.0
 
-KDE_CICD_STAGE_deploy_full_SCRIPT=deploy-full.sh
-KDE_CICD_STAGE_deploy_full_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_full_SCRIPT=deploy-full.sh
+KDE_PIPELINE_STAGE_deploy_full_IMAGE=r82wei/deploy-env:1.0.0
 
-KDE_CICD_STAGE_monitor_SCRIPT=monitor.sh
-KDE_CICD_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_monitor_SCRIPT=monitor.sh
+KDE_PIPELINE_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
 ```
 
 ### 範例 5：完整的自定義 Pipeline
@@ -159,51 +159,51 @@ KDE_CICD_STAGE_monitor_IMAGE=r82wei/deploy-env:1.0.0
 ```bash
 # project.env
 # 定義完整的自定義 Pipeline
-KDE_CICD_STAGES="validate,lint,security,build,unit-test,integration-test,package,deploy-staging,smoke-test,deploy-production,monitor"
+KDE_PIPELINE_STAGES="validate,lint,security,build,unit-test,integration-test,package,deploy-staging,smoke-test,deploy-production,monitor"
 
 # Validate 階段
-KDE_CICD_STAGE_validate_SCRIPT=validate-config.sh
-KDE_CICD_STAGE_validate_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_validate_SCRIPT=validate-config.sh
+KDE_PIPELINE_STAGE_validate_IMAGE=r82wei/deploy-env:1.0.0
 
 # Lint 階段
-KDE_CICD_STAGE_lint_SCRIPT=lint.sh
-KDE_CICD_STAGE_lint_IMAGE=node:20
+KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
+KDE_PIPELINE_STAGE_lint_IMAGE=node:20
 
 # Security 階段
-KDE_CICD_STAGE_security_SCRIPT=security-scan.sh
-KDE_CICD_STAGE_security_IMAGE=aquasec/trivy:latest
+KDE_PIPELINE_STAGE_security_SCRIPT=security-scan.sh
+KDE_PIPELINE_STAGE_security_IMAGE=aquasec/trivy:latest
 
 # Build 階段
-KDE_CICD_STAGE_build_SCRIPT=build.sh
-KDE_CICD_STAGE_build_IMAGE=node:20
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:20
 
 # Unit Test 階段
-KDE_CICD_STAGE_unit_test_SCRIPT=unit-test.sh
-KDE_CICD_STAGE_unit_test_IMAGE=node:20
+KDE_PIPELINE_STAGE_unit_test_SCRIPT=unit-test.sh
+KDE_PIPELINE_STAGE_unit_test_IMAGE=node:20
 
 # Integration Test 階段
-KDE_CICD_STAGE_integration_test_SCRIPT=integration-test.sh
-KDE_CICD_STAGE_integration_test_IMAGE=node:20
+KDE_PIPELINE_STAGE_integration_test_SCRIPT=integration-test.sh
+KDE_PIPELINE_STAGE_integration_test_IMAGE=node:20
 
 # Package 階段
-KDE_CICD_STAGE_package_SCRIPT=package.sh
-KDE_CICD_STAGE_package_IMAGE=node:20
+KDE_PIPELINE_STAGE_package_SCRIPT=package.sh
+KDE_PIPELINE_STAGE_package_IMAGE=node:20
 
 # Deploy Staging 階段
-KDE_CICD_STAGE_deploy_staging_SCRIPT=deploy-staging.sh
-KDE_CICD_STAGE_deploy_staging_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_staging_SCRIPT=deploy-staging.sh
+KDE_PIPELINE_STAGE_deploy_staging_IMAGE=r82wei/deploy-env:1.0.0
 
 # Smoke Test 階段
-KDE_CICD_STAGE_smoke_test_SCRIPT=smoke-test.sh
-KDE_CICD_STAGE_smoke_test_IMAGE=node:20
+KDE_PIPELINE_STAGE_smoke_test_SCRIPT=smoke-test.sh
+KDE_PIPELINE_STAGE_smoke_test_IMAGE=node:20
 
 # Deploy Production 階段
-KDE_CICD_STAGE_deploy_production_SCRIPT=deploy-production.sh
-KDE_CICD_STAGE_deploy_production_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_production_SCRIPT=deploy-production.sh
+KDE_PIPELINE_STAGE_deploy_production_IMAGE=r82wei/deploy-env:1.0.0
 
 # Monitor 階段
-KDE_CICD_STAGE_monitor_SCRIPT=monitor.sh
-KDE_CICD_STAGE_monitor_IMAGE=grafana/grafana:latest
+KDE_PIPELINE_STAGE_monitor_SCRIPT=monitor.sh
+KDE_PIPELINE_STAGE_monitor_IMAGE=grafana/grafana:latest
 
 # 錯誤處理
 KDE_DEVOPS_FAIL_FAST=true
@@ -230,7 +230,7 @@ KDE_DEVOPS_AUTO_ROLLBACK=true  # deploy 相關階段失敗時自動回滾
 
 ```bash
 # project.env 或 .env
-KDE_CICD_STAGE_test_SKIP=true  # 跳過 test 階段
+KDE_PIPELINE_STAGE_test_SKIP=true  # 跳過 test 階段
 ```
 
 ## 執行和除錯
@@ -288,8 +288,8 @@ namespaces/myapp/
 ```bash
 # 開發環境 (.env)
 DEPLOY_ENV=development
-KDE_CICD_STAGE_deploy_staging_SKIP=true
-KDE_CICD_STAGE_deploy_production_SKIP=true
+KDE_PIPELINE_STAGE_deploy_staging_SKIP=true
+KDE_PIPELINE_STAGE_deploy_production_SKIP=true
 
 # 生產環境 (.env)
 DEPLOY_ENV=production
@@ -301,16 +301,16 @@ KDE_DEVOPS_AUTO_ROLLBACK=true
 從簡單開始：
 ```bash
 # 階段 1：基本
-KDE_CICD_STAGES="build deploy"
+KDE_PIPELINE_STAGES="build deploy"
 
 # 階段 2：加入測試
-KDE_CICD_STAGES="build test deploy"
+KDE_PIPELINE_STAGES="build test deploy"
 
 # 階段 3：加入安全檢查
-KDE_CICD_STAGES="security build test deploy"
+KDE_PIPELINE_STAGES="security build test deploy"
 
 # 階段 4：完整流程
-KDE_CICD_STAGES="lint security build test deploy monitor"
+KDE_PIPELINE_STAGES="lint security build test deploy monitor"
 ```
 
 ## 與標準 CICD 流程對照
@@ -330,11 +330,11 @@ KDE_CICD_STAGES="lint security build test deploy monitor"
 
 ### Q: 如何回到標準 CICD 流程？
 
-A: 移除或註解 `KDE_CICD_STAGES`：
+A: 移除或註解 `KDE_PIPELINE_STAGES`：
 
 ```bash
 # project.env
-# KDE_CICD_STAGES="build test deploy"  # 註解掉
+# KDE_PIPELINE_STAGES="build test deploy"  # 註解掉
 ```
 
 ### Q: 可以混用標準和自定義階段嗎？
@@ -342,7 +342,7 @@ A: 移除或註解 `KDE_CICD_STAGES`：
 A: 可以，在自定義 Pipeline 中使用標準階段名稱：
 
 ```bash
-KDE_CICD_STAGES="code build test deploy monitor"
+KDE_PIPELINE_STAGES="code build test deploy monitor"
 # 這些會執行標準的 code.sh, build.sh 等
 ```
 
@@ -352,7 +352,7 @@ A: 定義只包含該階段的 Pipeline：
 
 ```bash
 # .env（臨時覆寫）
-KDE_CICD_STAGES="test"
+KDE_PIPELINE_STAGES="test"
 ```
 
 ### Q: 階段名稱有限制嗎？
@@ -371,9 +371,9 @@ IS_PRODUCTION=${IS_PRODUCTION:-false}
 
 # 根據環境決定階段
 if [[ "${IS_PRODUCTION}" == "true" ]]; then
-    KDE_CICD_STAGES="lint security build test deploy-production monitor"
+    KDE_PIPELINE_STAGES="lint security build test deploy-production monitor"
 else
-    KDE_CICD_STAGES="lint build test deploy-staging"
+    KDE_PIPELINE_STAGES="lint build test deploy-staging"
 fi
 ```
 
@@ -383,7 +383,7 @@ fi
 
 ```bash
 # 未來可能的語法
-KDE_CICD_STAGES="build, (unit-test + integration-test), deploy"
+KDE_PIPELINE_STAGES="build, (unit-test + integration-test), deploy"
 ```
 
 ## 總結

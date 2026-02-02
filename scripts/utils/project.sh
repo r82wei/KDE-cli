@@ -325,8 +325,8 @@ build_project() {
     source ${PROJECT_PATH}/project.env
     
     # 檢查是否使用新的 Pipeline 機制
-    # 如果定義了 KDE_CICD_STAGES 或標準 CICD 階段檔案存在，使用新機制
-    if [[ -n "${KDE_CICD_STAGES}" ]] || \
+    # 如果定義了 KDE_PIPELINE_STAGES 或標準 CICD 階段檔案存在，使用新機制
+    if [[ -n "${KDE_PIPELINE_STAGES}" ]] || \
        [[ -f "${PROJECT_PATH}/build.sh" && -f "${PROJECT_PATH}/test.sh" ]] || \
        [[ -f "${PROJECT_PATH}/release.sh" && -f "${PROJECT_PATH}/deploy.sh" ]]; then
         # 使用新的 Pipeline 機制
@@ -352,8 +352,8 @@ deploy_project() {
     source ${PROJECT_PATH}/project.env
     
     # 檢查是否使用新的 Pipeline 機制
-    # 如果定義了 KDE_CICD_STAGES，使用新機制
-    if [[ -n "${KDE_CICD_STAGES}" ]]; then
+    # 如果定義了 KDE_PIPELINE_STAGES，使用新機制
+    if [[ -n "${KDE_PIPELINE_STAGES}" ]]; then
         # 使用新的 Pipeline 機制
         execute_pipeline ${PROJECT_NAME} "deploy"
         return $?
