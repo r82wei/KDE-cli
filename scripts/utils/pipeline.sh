@@ -123,6 +123,27 @@ is_stage_skip() {
     fi
 }
 
+# 檢查階段是否只能手動觸發
+# 參數：
+#   $1 - 階段名稱
+# 返回：true 或 false
+is_stage_manual_only() {
+    local STAGE=$1
+    
+    # 將 stage 中的連字號轉換為底線（環境變數命名規則）
+    local STAGE_VAR=$(echo "${STAGE}" | tr '-' '_')
+    
+    # 取得只能手動觸發標記
+    local VAR_NAME="KDE_PIPELINE_STAGE_${STAGE_VAR}_MANUAL_ONLY"
+    local MANUAL_ONLY="${!VAR_NAME}"
+    
+    if [[ "${MANUAL_ONLY}" == "true" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 # 過濾階段列表（根據 --from, --to, --only 選項）
 # 參數：
 #   $1 - 原始階段列表（空格分隔）
@@ -294,7 +315,13 @@ execute_custom_pipeline() {
     for STAGE in ${STAGES}; do
         # 檢查是否跳過
         if [[ $(is_stage_skip ${STAGE}) == "true" ]]; then
-            echo "⏭️  跳過階段: ${STAGE}"
+            echo "⏭️  跳過階段: ${STAGE} (KDE_PIPELINE_STAGE_${STAGE}_SKIP=true)"
+            continue
+        fi
+        
+        # 檢查是否只能手動觸發
+        if [[ $(is_stage_manual_only ${STAGE}) == "true" && "${PIPELINE_MANUAL_MODE}" != "true" ]]; then
+            echo "⏭️  跳過階段: ${STAGE} (僅手動模式，請使用 --manual 參數)"
             continue
         fi
         
@@ -458,9 +485,14 @@ show_pipeline_help() {
     echo "  --manual          進入每個階段的執行環境手動測試"
     echo "  -h, --help        顯示此說明"
     echo ""
+    echo "環境變數配置："
+    echo "  KDE_PIPELINE_STAGE_<stage>_MANUAL_ONLY=true"
+    echo "                    設定該階段只能透過 --manual 參數手動觸發（預設：false）"
+    echo ""
     echo "注意："
     echo "  - 所有選項都從命令行參數讀取，不會從環境變數繼承"
     echo "  - 支持空格和等號兩種語法：--only test 或 --only=test"
+    echo "  - 設定為 MANUAL_ONLY 的階段在非手動模式下會被跳過"
     echo ""
     echo "範例："
     echo "  # 執行完整 Pipeline"
@@ -481,4 +513,9 @@ show_pipeline_help() {
     echo ""
     echo "  # 從 build 到 test，手動模式"
     echo "  kde proj pipeline myapp --from=build --to=test --manual"
+    echo ""
+    echo "  # 設定 lint 階段只能手動觸發"
+    echo "  export KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true"
+    echo "  kde proj pipeline myapp              # lint 階段會被跳過"
+    echo "  kde proj pipeline myapp --manual     # lint 階段會執行"
 }

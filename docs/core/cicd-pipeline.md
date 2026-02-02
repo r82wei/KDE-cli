@@ -31,6 +31,9 @@
     - 可以透過 project.env 定義 `KDE_MOUNT_[自定義名稱]=${}/.ssh:${PROJECT_PATH}/.ssh` CICD pipeline 全部階段掛載特定檔案或資料夾
 - 錯誤處理選項：
     - 預設啟用 Fail Fast 模式（任何階段失敗立即停止），可以透過 project.env 定義 `KDE_PIPELINE_FAIL_FAST=false` 停用
+- 階段控制選項：
+    - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_SKIP=true` 跳過特定階段（預設：false）
+    - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY=true` 設定特定階段只能透過 `--manual` 參數手動觸發（預設：false）
 
 ### 功能總整理
 | 環境變數 | 說明 | 範例 |
@@ -39,6 +42,8 @@
 | `KDE_PIPELINE_STAGE_[階段名稱]_IMAGE` | 指定特定階段使用的容器映像檔 | `KDE_PIPELINE_STAGE_BUILD_IMAGE=node:24` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_SCRIPT` | 指定特定階段執行的腳本檔案 | `KDE_PIPELINE_STAGE_BUILD_SCRIPT=build.sh` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_MOUNT_[自定義名稱]` | 掛載特定階段的檔案或資料夾 | `KDE_PIPELINE_STAGE_BUILD_MOUNT_LIBS=${PROJECT_PATH}/libs:${PROJECT_PATH}/libs` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_SKIP` | 跳過特定階段（預設：false） | `KDE_PIPELINE_STAGE_lint_SKIP=true` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY` | 只能透過 --manual 參數手動觸發（預設：false） | `KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true` |
 | `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline（預設：true） | `KDE_PIPELINE_FAIL_FAST=false` 停用 |
 | `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
 
@@ -149,4 +154,45 @@ KDE_PIPELINE_STAGE_build_IMAGE=node:24
 
 KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
 KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+```
+
+### 範例 4：階段控制 - 手動觸發與跳過
+
+設定部分階段只能手動觸發，跳過某些階段：
+
+```bash
+# project.env
+KDE_PIPELINE_STAGES="build,lint,test,security-scan,deploy"
+
+# 一般階段
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:24
+
+# lint 階段只能手動觸發
+KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
+KDE_PIPELINE_STAGE_lint_IMAGE=node:24
+KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true
+
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+KDE_PIPELINE_STAGE_test_IMAGE=node:24
+
+# security-scan 階段預設跳過
+KDE_PIPELINE_STAGE_security-scan_SCRIPT=security-scan.sh
+KDE_PIPELINE_STAGE_security-scan_IMAGE=aquasec/trivy:latest
+KDE_PIPELINE_STAGE_security-scan_SKIP=true
+
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+```
+
+執行方式：
+```bash
+# 一般執行：會跳過 lint（MANUAL_ONLY）和 security-scan（SKIP）
+kde proj pipeline myapp
+
+# 手動模式：會執行 lint，但仍跳過 security-scan（SKIP）
+kde proj pipeline myapp --manual
+
+# 只執行 lint 階段（手動模式）
+kde proj pipeline myapp --only lint --manual
 ```
