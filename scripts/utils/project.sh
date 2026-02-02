@@ -82,7 +82,7 @@ create_project() {
 
     exit_if_project_exist ${PROJECT_NAME}
     mkdir -p ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-    read -p "Is this project a git remote repo? (y/n): " IS_GIT_REMOTE_REPO
+    read -p "是否需要從 Git 遠端倉庫抓取專案程式碼？(y/n): " IS_GIT_REMOTE_REPO
     if [[ ${IS_GIT_REMOTE_REPO} == "y" ]]; then
         set_git_repo ${PROJECT_NAME}
         source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
@@ -186,7 +186,7 @@ set_git_repo() {
     PROJECT_NAME=$1
 
     exit_if_project_not_exist ${PROJECT_NAME}
-    read -p "請輸入 git repo HTTPS URL: " GIT_REPO_URL
+    read -p "請輸入 Git 倉庫網址 (支援 HTTPS 或 SSH，例如: https://github.com/user/repo.git 或 git@github.com:user/repo.git): " GIT_REPO_URL
     echo "GIT_REPO_URL=${GIT_REPO_URL}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     read -p "請輸入分支名稱(default: main): " GIT_REPO_BRANCH
     echo "GIT_REPO_BRANCH=${GIT_REPO_BRANCH:-main}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
