@@ -34,6 +34,7 @@
 - 階段控制選項：
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_SKIP=true` 跳過特定階段（預設：false）
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY=true` 設定特定階段只能透過 `--manual` 參數手動觸發（預設：false）
+    - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_ALLOW_FAILURE=true` 設定特定階段允許失敗但不影響後續階段執行（預設：false）
 
 ### 功能總整理
 | 環境變數 | 說明 | 範例 |
@@ -44,6 +45,7 @@
 | `KDE_PIPELINE_STAGE_[階段名稱]_MOUNT_[自定義名稱]` | 掛載特定階段的檔案或資料夾 | `KDE_PIPELINE_STAGE_BUILD_MOUNT_LIBS=${PROJECT_PATH}/libs:${PROJECT_PATH}/libs` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_SKIP` | 跳過特定階段（預設：false） | `KDE_PIPELINE_STAGE_lint_SKIP=true` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY` | 只能透過 --manual 參數手動觸發（預設：false） | `KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_ALLOW_FAILURE` | 允許該階段失敗但不影響後續階段（預設：false） | `KDE_PIPELINE_STAGE_lint_ALLOW_FAILURE=true` |
 | `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline（預設：true） | `KDE_PIPELINE_FAIL_FAST=false` 停用 |
 | `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
 
@@ -195,4 +197,43 @@ kde proj pipeline myapp --manual
 
 # 只執行 lint 階段（手動模式）
 kde proj pipeline myapp --only lint --manual
+```
+
+### 範例 5：錯誤處理 - Allow Failure
+
+允許某些階段失敗但不影響整體流程：
+
+```bash
+# project.env
+KDE_PIPELINE_STAGES="lint,test,build,security-scan,deploy"
+
+# lint 階段允許失敗（代碼風格問題不應阻止部署）
+KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
+KDE_PIPELINE_STAGE_lint_IMAGE=node:24
+KDE_PIPELINE_STAGE_lint_ALLOW_FAILURE=true
+
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+KDE_PIPELINE_STAGE_test_IMAGE=node:24
+
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:24
+
+# security-scan 階段允許失敗（安全掃描發現問題時可繼續部署到測試環境）
+KDE_PIPELINE_STAGE_security-scan_SCRIPT=security-scan.sh
+KDE_PIPELINE_STAGE_security-scan_IMAGE=aquasec/trivy:latest
+KDE_PIPELINE_STAGE_security-scan_ALLOW_FAILURE=true
+
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+```
+
+執行結果：
+```bash
+# 一般執行
+kde proj pipeline myapp
+
+# 執行情況：
+# - lint 失敗 → 顯示警告，繼續執行 test
+# - security-scan 失敗 → 顯示警告，繼續執行 deploy
+# - build 失敗 → Pipeline 立即停止（預設 Fail Fast 行為）
 ```

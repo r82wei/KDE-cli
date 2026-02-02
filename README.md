@@ -187,6 +187,7 @@ flowchart LR
 
    - Error handling options:
      - Fail Fast mode is enabled by default (stops immediately on any failure). Set `KDE_PIPELINE_FAIL_FAST=false` to disable
+     - Allow specific stages to fail: Set `KDE_PIPELINE_STAGE_<stage>_ALLOW_FAILURE=true` for stages that can fail without blocking the pipeline
 
    **Execution**:
 

@@ -207,6 +207,7 @@ source ~/.bashrc  # 或 source ~/.zshrc
 
    - 錯誤處理選項：
      - 預設啟用 Fail Fast 模式（任何階段失敗立即停止），設定 `KDE_PIPELINE_FAIL_FAST=false` 可停用
+     - 允許特定階段失敗：設定 `KDE_PIPELINE_STAGE_<stage>_ALLOW_FAILURE=true` 讓該階段失敗不阻擋 pipeline
 
    **執行**：
 

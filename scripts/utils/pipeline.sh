@@ -144,6 +144,27 @@ is_stage_manual_only() {
     fi
 }
 
+# 檢查階段是否允許失敗
+# 參數：
+#   $1 - 階段名稱
+# 返回：true 或 false
+is_stage_allow_failure() {
+    local STAGE=$1
+    
+    # 將 stage 中的連字號轉換為底線（環境變數命名規則）
+    local STAGE_VAR=$(echo "${STAGE}" | tr '-' '_')
+    
+    # 取得允許失敗標記
+    local VAR_NAME="KDE_PIPELINE_STAGE_${STAGE_VAR}_ALLOW_FAILURE"
+    local ALLOW_FAILURE="${!VAR_NAME}"
+    
+    if [[ "${ALLOW_FAILURE}" == "true" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 # 過濾階段列表（根據 --from, --to, --only 選項）
 # 參數：
 #   $1 - 原始階段列表（空格分隔）
@@ -354,6 +375,13 @@ execute_custom_pipeline() {
                 continue
             fi
             
+            # 檢查該階段是否允許失敗
+            if [[ $(is_stage_allow_failure ${STAGE}) == "true" ]]; then
+                echo ""
+                echo "⚠️  階段 ${STAGE} 執行失敗，但該階段設定為允許失敗（ALLOW_FAILURE），繼續執行後續階段"
+                continue
+            fi
+            
             # 檢查是否停用 Fail Fast（預設為啟用）
             if [[ "${KDE_PIPELINE_FAIL_FAST}" != "false" ]]; then
                 echo ""
@@ -361,7 +389,7 @@ execute_custom_pipeline() {
                 return ${EXIT_CODE}
             else
                 echo ""
-                echo "⚠️  階段 ${STAGE} 執行失敗，但繼續執行後續階段"
+                echo "⚠️  階段 ${STAGE} 執行失敗，但繼續執行後續階段（Fail Fast 已停用）"
             fi
         fi
     done
@@ -488,11 +516,14 @@ show_pipeline_help() {
     echo "環境變數配置："
     echo "  KDE_PIPELINE_STAGE_<stage>_MANUAL_ONLY=true"
     echo "                    設定該階段只能透過 --manual 參數手動觸發（預設：false）"
+    echo "  KDE_PIPELINE_STAGE_<stage>_ALLOW_FAILURE=true"
+    echo "                    允許該階段失敗但不影響後續階段執行（預設：false）"
     echo ""
     echo "注意："
     echo "  - 所有選項都從命令行參數讀取，不會從環境變數繼承"
     echo "  - 支持空格和等號兩種語法：--only test 或 --only=test"
     echo "  - 設定為 MANUAL_ONLY 的階段在非手動模式下會被跳過"
+    echo "  - 設定為 ALLOW_FAILURE 的階段失敗時不會停止 Pipeline"
     echo ""
     echo "範例："
     echo "  # 執行完整 Pipeline"
