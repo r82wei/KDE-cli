@@ -1,5 +1,5 @@
-# CI/CD 交付流程
-**透過 shell script 及 docker image，定義專案到環境的交付流程**
+# Script 驅動的 CI/CD 交付流程
+**透過 shell script 與 docker image，定義專案到環境的交付流程**
 
 ## 功能說明
 -  快速 CICD pipeline（預設）
