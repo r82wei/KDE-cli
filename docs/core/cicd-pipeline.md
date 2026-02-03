@@ -37,17 +37,17 @@
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_ALLOW_FAILURE=true` 設定特定階段允許失敗但不影響後續階段執行（預設：false）
 
 ### 功能總整理
-| 環境變數 | 說明 | 範例 |
-|---------|------|------|
-| `KDE_PIPELINE_STAGES` | 自定義 CICD pipeline 流程階段 | `KDE_PIPELINE_STAGES=build,test,release,deploy` |
-| `KDE_PIPELINE_STAGE_[階段名稱]_IMAGE` | 指定特定階段使用的容器映像檔 | `KDE_PIPELINE_STAGE_BUILD_IMAGE=node:24` |
-| `KDE_PIPELINE_STAGE_[階段名稱]_SCRIPT` | 指定特定階段執行的腳本檔案 | `KDE_PIPELINE_STAGE_BUILD_SCRIPT=build.sh` |
-| `KDE_PIPELINE_STAGE_[階段名稱]_MOUNT_[自定義名稱]` | 掛載特定階段的檔案或資料夾 | `KDE_PIPELINE_STAGE_BUILD_MOUNT_LIBS=${PROJECT_PATH}/libs:${PROJECT_PATH}/libs` |
-| `KDE_PIPELINE_STAGE_[階段名稱]_SKIP` | 跳過特定階段（預設：false） | `KDE_PIPELINE_STAGE_lint_SKIP=true` |
-| `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY` | 只能透過 --manual 參數手動觸發（預設：false） | `KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true` |
-| `KDE_PIPELINE_STAGE_[階段名稱]_ALLOW_FAILURE` | 允許該階段失敗但不影響後續階段（預設：false） | `KDE_PIPELINE_STAGE_lint_ALLOW_FAILURE=true` |
-| `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline（預設：true） | `KDE_PIPELINE_FAIL_FAST=false` 停用 |
-| `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
+| 環境變數 | 說明 | 預設值 | 範例 |
+|---------|------|--------|------|
+| `KDE_PIPELINE_STAGES` | 自定義 CICD pipeline 流程階段 | `build,deploy`（建立專案時自動產生） | `KDE_PIPELINE_STAGES=build,test,release,deploy` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_IMAGE` | 指定特定階段使用的容器映像檔 | `DEPLOY_IMAGE`（未指定時使用） | `KDE_PIPELINE_STAGE_build_IMAGE=node:24` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_SCRIPT` | 指定特定階段執行的腳本檔案 | `[階段名稱].sh`（檔案存在時使用） | `KDE_PIPELINE_STAGE_build_SCRIPT=build.sh` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_MOUNT_[自定義名稱]` | 掛載特定階段的檔案或資料夾 | 無 | `KDE_PIPELINE_STAGE_build_MOUNT_LIBS=${PROJECT_PATH}/libs:${PROJECT_PATH}/libs` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_SKIP` | 跳過特定階段 | `false` | `KDE_PIPELINE_STAGE_lint_SKIP=true` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY` | 只能透過 --manual 參數手動觸發 | `false` | `KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_ALLOW_FAILURE` | 允許該階段失敗但不影響後續階段 | `false` | `KDE_PIPELINE_STAGE_lint_ALLOW_FAILURE=true` |
+| `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline | `true` | `KDE_PIPELINE_FAIL_FAST=false` |
+| `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | 無 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
 
 
 
