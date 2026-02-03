@@ -10,6 +10,8 @@
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGES=build,test,release,deploy` CICD pipeline 流程
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_IMAGE=node:24` CICD pipeline 特定階段容器映像檔
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_SCRIPT=build.sh` CICD pipeline 特定階段腳本
+- 開發模式
+    - 透過執行 pipeline 的時候加入 `--manual` 參數，進入 stage 執行環境
 - 環境變數
     - 預設環境變數：
         - `KDE_PATH` - workspace 目錄路徑
@@ -60,41 +62,9 @@
         - `--from`: 階段過濾，允許使用者跳過部分流程，從某階段開始執行（例如：只跑 test 之後的流程），可與 `--to` 搭配使用。
         - `--to`: 階段過濾，允許使用者跳過部分流程，只執行到某階段（例如：只跑 test 之前的流程），可與 `--from` 搭配使用。
         - `--only`: 單獨執行某一階段，（例如：只跑 test），不可與 `--to`、`--from` 一起使用。
-        - `--manual`: 進入某一階段的執行環境手動測試，與 `--to`、`--from` 搭配使用時，在退出單一階段環境後會進入下一階段環境。
+        - `--manual`: 進入某一階段的執行環境，與 `--to`、`--from` 搭配使用時，在退出單一階段環境後會進入下一階段環境。
     - 防呆：
         - 應該要先判斷 kde proj pipeline 後面接的是不是存在於當前環境底下的 namespaces 內的資料夾，如果是直接接參數（例如: --only build），應該跳出錯誤警告並且停止動作。
-            
-## Best Practice
-- 使用專案名稱作為 K8S 部署目標 namespace
-- 依據環境變數是否適合納入版本控制，選擇在 project.env（可納入版控）或 .env（不納入版控）中定義 CICD pipeline 相關的環境變數，例如：
-    ```bash
-    # project.env
-    
-    NAMESPACE=my-app
-    REPO_DIR=my-app
-    PORT=8088
-    BUILD_SCRIPT_PATH=${PROJECT_PATH}/build.sh
-    ```
-    ```bash
-    # .env
-    
-    JWT_SECRET_KEY=xxxxxxx
-    API_TOKEN=xxxxx
-    ```
-- 各階段環境變數傳遞方式
-    - 環境變數可以透過下列範例使用的方式傳遞 (`release` -> `deploy`) :
-        - `release` 階段 
-            ```
-            # 將 APP_IMAGE 作為環境變數輸出到 .pipeline.env
-            echo "APP_IMAGE=my-app:1.0.0" >> .pipeline.env
-            ```
-        - `deploy` 階段 
-            ```
-            # 載入 .pipeline.env 內的環境變數
-            source .pipeline.env
-
-            # 印出 APP_IMAGE
-            echo $APP_IMAGE也可以直接在流程腳本內實作實際執行的步驟
 
 ## 使用範例
 
@@ -151,10 +121,10 @@ KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
 # project.env
 KDE_PIPELINE_STAGES="build,deploy"
 
-KDE_PIPELINE_STAGE_build_SCRIPT=[path to project ]/build.sh
+KDE_PIPELINE_STAGE_build_SCRIPT=${PROJECT_PATH}/my-app/build.sh
 KDE_PIPELINE_STAGE_build_IMAGE=node:24
 
-KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+KDE_PIPELINE_STAGE_deploy_SCRIPT=${PROJECT_PATH}/my-app/deploy.sh
 KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
 ```
 
@@ -237,3 +207,35 @@ kde proj pipeline myapp
 # - security-scan 失敗 → 顯示警告，繼續執行 deploy
 # - build 失敗 → Pipeline 立即停止（預設 Fail Fast 行為）
 ```
+
+## Best Practice
+- 使用專案名稱作為 K8S 部署目標 namespace
+- 依據環境變數是否適合納入版本控制，選擇在 project.env（可納入版控）或 .env（不納入版控）中定義 CICD pipeline 相關的環境變數，例如：
+    ```bash
+    # project.env
+    
+    NAMESPACE=my-app
+    REPO_DIR=my-app
+    PORT=8088
+    BUILD_SCRIPT_PATH=${PROJECT_PATH}/build.sh
+    ```
+    ```bash
+    # .env
+    
+    JWT_SECRET_KEY=xxxxxxx
+    API_TOKEN=xxxxx
+    ```
+- 各階段環境變數傳遞方式
+    - 環境變數可以透過下列範例使用的方式傳遞 (`release` -> `deploy`) :
+        - `release` 階段 
+            ```
+            # 將 APP_IMAGE 作為環境變數輸出到 .pipeline.env
+            echo "APP_IMAGE=my-app:1.0.0" >> .pipeline.env
+            ```
+        - `deploy` 階段 
+            ```
+            # 載入 .pipeline.env 內的環境變數
+            source .pipeline.env
+
+            # 印出 APP_IMAGE
+            echo $APP_IMAGE也可以直接在流程腳本內實作實際執行的步驟
