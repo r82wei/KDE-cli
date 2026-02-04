@@ -149,10 +149,17 @@ K8S_API_SERVER_PORT=6443
 K8S_INGRESS_NGINX_PORT=80
 當前 k8s 環境已變更為: test-env
 啟動 k3d 環境
-INFO[0000] Creating cluster "test-env"...
 ...
-安裝預設服務...
-✅ 環境 test-env 已成功啟動
+INFO[0005] All agents already running.                  
+INFO[0005] Starting helpers...                          
+INFO[0005] Starting node 'k3d-test-serverlb'            
+INFO[0011] Injecting records for hostAliases (incl. host.k3d.internal) and for 3 network members into CoreDNS configmap... 
+INFO[0013] Cluster 'test' created successfully!         
+INFO[0013] You can now use it like this:                
+kubectl cluster-info
+...
+k3d 初始化已完成
+
 ```
 
 ### 範例 2：CI/CD 環境快速建立與清理

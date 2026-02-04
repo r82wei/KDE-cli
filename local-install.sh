@@ -7,7 +7,7 @@ source ./uninstall.sh
 mkdir -p /usr/local/lib/kde
 cp -r kde.sh /usr/local/lib/kde/
 cp -r ./scripts /usr/local/lib/kde/
-cp -r ./docs /usr/local/lib/kde/
+cp -r ./documents /usr/local/lib/kde/
 cp -r ./templates /usr/local/lib/kde/
 ln -s /usr/local/lib/kde/kde.sh /usr/local/bin/kde
 
