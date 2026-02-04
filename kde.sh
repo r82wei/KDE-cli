@@ -143,7 +143,7 @@ if [[ -z ${K8S_UI_DASHBOARD_IMAGE} ]]; then
     echo "K8S_UI_DASHBOARD_IMAGE=${K8S_UI_DASHBOARD_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${K9S_IMAGE} ]]; then
-    export K9S_IMAGE=quay.io/derailed/k9s
+    export K9S_IMAGE=r82wei/k9s:v0.50.18
     echo "K9S_IMAGE=${K9S_IMAGE}" >> ${KDE_ENV_FILE}
 fi
 if [[ -z ${TELEPRESENCE_IMAGE} ]]; then
