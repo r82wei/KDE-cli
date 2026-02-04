@@ -7,22 +7,28 @@
     - 雲端 K8s：AWS EKS、Google GKE、Azure AKS、Alibaba ACK 等
     - 自建 K8s：on-premises 集群、裸機 K8s 等
     - 遠端 K8s：其他團隊或環境的 K8s 集群
-    - 支援 kubectl 指令直接操作遠端集群
 - **環境管理功能**
     - 連接、驗證 Kubernetes 集群
     - 支援多環境管理，可同時連接多個外部集群
     - 環境狀態檢查與監控
     - 環境切換與配置管理
-    - 與 KDE 所有工具深度整合（K9s、Dashboard、Telepresence 等）
 - **網路管理**
     - 使用 bridge 網路，透過 kubectl API 連接
     - 透過 `kubectl port-forward` 將服務端口轉發到本地
     - 支援 Ingress、LoadBalancer 進行外部存取
-    - 支援透過 cloudflare tunnel、Ngrok 對外開放服務
+    - 開發容器無法直接透過 Docker 網路存取 K8s 服務
+- **Kubernetes 整合**
+    - 自動讀取並配置 kubeconfig 檔案
+    - 支援 kubectl 指令直接操作遠端集群
+    - 與 KDE 所有工具深度整合（K9s、Dashboard、Telepresence 等）
 - **容器執行環境**
     - 在 DEPLOY_IMAGE 容器中執行 kubectl 指令
     - 自動掛載 kubeconfig
     - 與專案環境整合，支援遠端部署
+- **安全性**
+    - 支援多種認證方式（Token、Certificate、AWS IAM 等）
+    - 自動處理 kubeconfig 的複雜配置
+    - 保護 kubeconfig 檔案安全
 
 ### 與 Kind/K3D 的比較
 | 特性 | 外部 K8s | Kind/K3D |

@@ -133,6 +133,7 @@ kubectl get pods -A
 輸出範例：
 ```
 開始初始化 dev-env 環境...
+使用預設模板: /opt/kde/scripts/utils/environment/kind-config.yaml
 請輸入 K8S api server port (預設: 6443): 
 K8S_API_SERVER_PORT=6443
 請輸入 K8S ingress nginx port (預設: 80): 
@@ -141,15 +142,16 @@ K8S_INGRESS_NGINX_PORT=80
 啟動 kind 環境
 Creating cluster "dev-env" ...
 ...
-kind 初始化已完成
+安裝預設服務...
+✅ 環境 dev-env 已成功啟動
 ```
 
 ### 範例 2：使用自訂配置建立多節點 Kind 環境
 
 準備自訂的 Kind 配置檔案：
 ```bash
-# 建立自訂配置檔案 my-kind-config.template.yaml
-cat > my-kind-config.template.yaml <<EOF
+# 建立自訂配置檔案 my-kind-config.yaml
+cat > my-kind-config.yaml <<EOF
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: \${ENV_NAME}
@@ -241,7 +243,7 @@ extraMounts:
   - hostPath: ${ENV_PATH}/${VOLUMES_DIR}
     containerPath: /opt/local-path-provisioner
 ```
-將宿主機的 `environments/<env_name>/namespaces/` 掛載到 Kind 節點容器內的 `/opt/local-path-provisioner`
+將宿主機的 `environments/<env_name>/volumes/` 掛載到 Kind 節點容器內的 `/opt/local-path-provisioner`
 
 2. **Local-Path-Provisioner 配置修改**：
 ```bash
@@ -279,19 +281,19 @@ volumeBindingMode: Immediate
 ──────────────────────────────────────────────────────────────────────
 environments/
 └── dev-env/
-    └── namespaces/          ←→  /opt/local-path-provisioner/  ←→  PVC Storage
+    └── volumes/          ←→  /opt/local-path-provisioner/  ←→  PVC Storage
         └── myapp/            └── myapp/                        
             └── my-pvc/           └── my-pvc/                  
 ```
 
 **使用範例**：
 
-假設專案名稱為 `myapp`，專案路徑為 `environments/dev-env/namespaces/myapp/`
+假設專案名稱為 `myapp`，專案路徑為 `environments/dev-env/volumes/myapp/`
 
 1. 在專案資料夾下建立 PVC 對應的目錄：
 ```bash
 # 進入專案資料夾
-cd environments/dev-env/namespaces/myapp/
+cd environments/dev-env/volumes/myapp/
 
 # 建立與 PVC 同名的資料夾
 mkdir my-pvc
@@ -356,7 +358,7 @@ echo "Hello from Pod!" > /data/pod-data.txt
 exit
 
 # 在宿主機上查看資料
-cat environments/dev-env/namespaces/myapp/my-pvc/pod-data.txt
+cat environments/dev-env/volumes/myapp/my-pvc/pod-data.txt
 # 輸出：Hello from Pod!
 ```
 
@@ -365,7 +367,7 @@ cat environments/dev-env/namespaces/myapp/my-pvc/pod-data.txt
 **資料庫持久化**：
 ```bash
 # 在專案資料夾建立資料庫資料目錄
-mkdir -p environments/dev-env/namespaces/myapp/postgres-data
+mkdir -p environments/dev-env/volumes/myapp/postgres-data
 
 # 部署 PostgreSQL 使用 PVC
 # 資料庫資料會儲存在宿主機的 postgres-data/ 目錄
@@ -374,10 +376,10 @@ mkdir -p environments/dev-env/namespaces/myapp/postgres-data
 **應用程式檔案上傳**：
 ```bash
 # 建立上傳目錄
-mkdir -p environments/dev-env/namespaces/myapp/app-uploads
+mkdir -p environments/dev-env/volumes/myapp/app-uploads
 
 # 預先放置一些檔案
-cp ~/sample-files/* environments/dev-env/namespaces/myapp/app-uploads/
+cp ~/sample-files/* environments/dev-env/volumes/myapp/app-uploads/
 
 # 上傳的檔案會直接儲存在宿主機
 ```
@@ -385,7 +387,7 @@ cp ~/sample-files/* environments/dev-env/namespaces/myapp/app-uploads/
 **優勢**：
 1. **資料可見性**：可以直接在宿主機上查看和編輯 PVC 的資料
 2. **資料持久化**：環境重啟或 Pod 刪除，資料都不會遺失
-3. **備份方便**：直接備份 pvc 同名目錄即可
+3. **備份方便**：直接備份 `volumes/` 目錄即可
 4. **除錯便利**：可以直接在宿主機上檢查資料內容
 5. **資料預置**：可以在建立 PVC 前先準備好資料
 
