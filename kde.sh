@@ -4,9 +4,15 @@ set -eo pipefail
 
 # 設定 KDE 版本
 export KDE_VERSION=v1.0.0-rc.4
+# 設定 KDE cli 根目錄路徑
+export KDE_CLI_PATH=$(dirname $(readlink -f "$0"))
+# 設定 KDE 文件路徑
+export KDE_DOCS_PATH=${KDE_CLI_PATH}/docs
+# 設定 KDE 模板路徑
+export KDE_TEMPLATES_PATH=${KDE_CLI_PATH}/templates
 # 設定 KDE scripts 路徑
-export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
-# 設定 KDE 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
+export KDE_SCRIPTS_PATH=${KDE_CLI_PATH}/scripts
+# 設定 KDE workspace 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
 export KDE_PATH=$PWD
 while [[ ! -f ${KDE_PATH}/kde.env && ${KDE_PATH} != "/" ]]; do
     KDE_PATH=$(dirname ${KDE_PATH})
@@ -66,6 +72,8 @@ fi
 case "$1" in
     --init|init)
         touch ${KDE_ENV_FILE}
+        cp -r ${KDE_TEMPLATES_PATH}/init/. ${KDE_PATH}/
+        cp -r ${KDE_DOCS_PATH} ${KDE_PATH}/
         exit 0
         ;;
     -v|version|--version)
