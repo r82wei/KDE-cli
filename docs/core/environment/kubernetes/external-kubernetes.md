@@ -242,12 +242,12 @@ kde use prod-env
 docker build -t registry.example.com/myapp:v1.0.0 .
 docker push registry.example.com/myapp:v1.0.0
 
-# 3. 建立專案
+# 3. 建立專案（會在 namespaces 目錄下建立 myapp 專案）
 kde proj create myapp
 
 # 4. 配置專案
-# 在 project.env 中設定映像
-echo "APP_IMAGE=registry.example.com/myapp:v1.0.0" >> environments/prod-env/volumes/myapp/project.env
+# 在 project.env 中設定映像（專案配置檔放在 namespaces/<project_name> 目錄）
+echo "APP_IMAGE=registry.example.com/myapp:v1.0.0" >> environments/prod-env/namespaces/myapp/project.env
 
 # 5. 部署
 kde proj deploy myapp
@@ -257,45 +257,14 @@ kubectl get pods -n myapp
 kubectl get svc -n myapp
 ```
 
-### 範例 8：使用 Pipeline 進行 CI/CD
+### 範例 8：使用 Pipeline 進行 CI/CD（簡略流程）
 
-在遠端集群中執行 CI/CD Pipeline：
-```bash
-# 專案配置（project.env）
-cat > project.env <<EOF
-# Docker Registry 配置
-DOCKER_REGISTRY=registry.example.com
-DOCKER_USERNAME=myuser
-DOCKER_PASSWORD=mypassword
+執行 CI/CD Pipeline 的典型步驟為：
 
-# 應用配置
-APP_NAME=myapp
-VERSION=1.0.0
+1. 在 `project.env` 中配置 Pipeline 相關變數與階段。
+2. 執行 `kde proj pipeline <project_name>`。
 
-# Pipeline 配置
-KDE_PIPELINE_STAGES="build,test,deploy"
-
-# Build 階段（在本地或 CI 環境執行）
-KDE_PIPELINE_STAGE_build_IMAGE=docker:latest
-KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
-
-# Test 階段
-KDE_PIPELINE_STAGE_test_IMAGE=node:18
-KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
-
-# Deploy 階段（部署到遠端 K8s）
-KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
-KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
-EOF
-
-# 執行 Pipeline
-kde proj pipeline myapp
-
-# Pipeline 會自動：
-# 1. 建置映像並推送到 Registry
-# 2. 執行測試
-# 3. 部署到遠端 K8s 集群
-```
+詳細的 Pipeline 設定與完整範例請參考 `docs/core/cicd-pipeline.md`，以避免在此文件重複大量 CI/CD 細節。
 
 ### 範例 9：團隊協作開發
 
@@ -485,6 +454,8 @@ kubectl get nodes
 ```
 
 ## TODO 待新增功能
+
+> 注意：本節為未來功能構想，**目前尚未在 KDE CLI 中實作**。以下內容僅供 roadmap 參考，請不要依賴其中提到的參數或指令。
 
 ### 1. 支援 IaC 工具建立 K8s 叢集
 

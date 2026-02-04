@@ -232,8 +232,13 @@ curl http://nginx:80
 
 ### 範例 5：PVC 自動掛載專案資料夾
 
-**功能說明**：
-在 Kind 環境中，KDE 透過修改 `local-path-provisioner` 的 StorageClass 配置，實現了 PVC 自動掛載到專案資料夾的功能。當你建立 PVC 時，只需在專案資料夾（`$PROJECT_PATH`）下建立與 PVC 同名的資料夾，PVC 就會自動掛載到這個資料夾，實現資料持久化。
+**快速說明（你真正需要做的事）**：
+
+1. 在 `專案` 同名的 namespace 中，建立 PVC 並掛載到對應的 Pod
+2. 在 `專案` 的目錄下，找到與 PVC 名稱相同的資料夾：`environments/<env_name>/namespaces/<project_name>/<pvc_name>`。
+3. Pod 內寫入的檔案會出現在這個資料夾裡，而你在宿主機這個資料夾中放的檔案，Pod 也能看到。
+
+> 一般使用者只需要依照上述步驟操作即可；下面的內容是這個機制在 Kind 環境中的實作原理，主要提供進階使用者與維護者參考。
 
 **技術原理**：
 
@@ -275,7 +280,7 @@ volumeBindingMode: Immediate
 **關鍵設定**：
 - `pathPattern: "{{ .PVC.Namespace }}/{{ .PVC.Name }}"` - 這個設定讓 PVC 的儲存路徑遵循 `namespace/pvc-name` 的目錄結構
 
-**資料流向**：
+**資料流向與路徑結構**：
 ```
 宿主機                    Kind 節點容器                  Kubernetes PVC
 ──────────────────────────────────────────────────────────────────────
@@ -288,11 +293,17 @@ environments/
 
 **使用範例**：
 
-假設專案名稱為 `myapp`，專案路徑為 `environments/dev-env/volumes/myapp/`
+假設 namespace 為 `myapp`，對應的 Volume 根目錄為：
 
-1. 在專案資料夾下建立 PVC 對應的目錄：
 ```bash
-# 進入專案資料夾
+environments/dev-env/volumes/myapp/
+```
+
+> 注意：專案原始碼目錄通常為 `environments/<env_name>/namespaces/<project_name>/`，而這裡的 `volumes/myapp` 是用來存放該 namespace 內 PVC 資料的目錄，兩者用途不同。
+
+1. 在對應 namespace 的 Volume 目錄下建立 PVC 對應的子目錄：
+```bash
+# 進入對應 namespace 的 Volume 目錄
 cd environments/dev-env/volumes/myapp/
 
 # 建立與 PVC 同名的資料夾
@@ -439,59 +450,18 @@ kde use dev-env
 kde use test-env
 ```
 
-## Best Practice
+## Best Practice（Kind 特有建議）
 
-- **環境配置**
-    - API Server Port: 建議使用預設值 6443，多環境時使用 6443、6444、6445 等
-    - Ingress Nginx Port: 本地開發可使用 80，多環境時使用 80、8080、8081 等
-    - 避免端口衝突，確保每個環境使用不同的端口
+共用的 Kubernetes 環境命名、工作流程與除錯建議已整理在 `docs/core/environment/kubernetes.md` 的「共通 Best Practice」章節，這裡只補充 Kind 環境特有或差異較大的部分：
+
 - **節點配置**
-    - 一般開發：1 個 control-plane 節點即可
-    - 複雜應用：可添加 1-2 個 worker 節點
-    - 避免過多節點，影響效能和啟動速度
-- **網路整合**
-    - 充分利用 Docker 網路，開發容器可直接存取 K8s 服務
-    - 使用服務名稱進行內部通訊（如：`http://backend-service:8080`）
-    - 開發容器與 K8s 在同一個 Docker 網路，無需 Port Forward
-- **儲存管理**
-    - Volume 資料存放在 `environments/<env_name>/volumes/`
-    - PVC 名稱必須與專案資料夾下的子目錄名稱完全相同
-    - 目錄結構：`environments/<env_name>/volumes/<namespace>/<pvc-name>/`
-    - 可以在建立 PVC 前預先準備資料
-    - 資料會自動持久化到宿主機，即使刪除 PVC 也不會遺失
-    - 建議將 `volumes/` 加入 `.gitignore`，避免提交大量資料
-- **映像管理**
-    - 使用 `kde load-image` 載入本地映像，無需推送到 Registry
-    - 建置映像後立即載入，加速開發流程
-    - 部署時設定 `imagePullPolicy: Never` 或 `imagePullPolicy: IfNotPresent`
-- **自訂配置**
-    - 將自訂的 `kind-config.yaml` 放在專案或環境目錄
-    - 配置檔案使用版本控制管理
-    - 團隊共用配置模板，確保環境一致性
-    - 使用環境變數替換（`envsubst`）提高配置靈活性
-- **效能優化**
-    - 適當配置節點數量，避免過多 worker 節點
-    - 限制容器資源使用（CPU、Memory）
-    - 定期清理未使用的映像和容器（`docker system prune`）
-    - 監控系統資源使用情況
-- **開發工作流程**
-    1. 建立 Kind 環境：`kde start dev-env kind`
-    2. 建立專案：`kde proj create myapp`
-    3. 建置並載入映像：`docker build -t myapp:dev . && kde load-image myapp:dev`
-    4. 部署專案：`kde proj deploy myapp`
-    5. 使用 K9s 監控：`kde k9s`
-    6. 進行開發與測試
-    7. 完成後清理：`kde remove dev-env`
-- **除錯技巧**
-    - 使用 `kubectl get events -A` 查看集群事件
-    - 使用 `kubectl describe` 查看資源詳細資訊
-    - 使用 `kubectl logs` 查看 Pod 日誌
-    - 進入節點容器檢查：`kde exec`
-    - 使用 K9s 進行即時監控和操作
-    - 檢查 Volume 目錄：`ls -la environments/<env_name>/volumes/`
-- **故障處理**
-    - 環境無法啟動：檢查 Docker 狀態和端口佔用
-    - 節點未就緒：使用 `kde exec` 進入容器檢查
-    - 網路問題：檢查 Docker 網路配置（`docker network ls`）
-    - 儲存問題：檢查 Volume 目錄權限和空間
-    - 映像問題：使用 `kde exec` 檢查映像是否已載入
+    - 一般開發：1 個 control-plane 節點即可。
+    - 需要模擬多節點/排程行為時：可額外新增 1–2 個 worker 節點，避免過多節點影響啟動速度與資源。
+- **自訂 kind-config**
+    - 建議將自訂的 `kind-config.template.yaml` 放在專案或環境目錄並納入版本控制，團隊共用同一份模板以確保一致性。
+- **儲存與 Volume**
+    - Volume 資料實際存放在 `environments/<env_name>/namespaces/<namespace>/<pvc-name>/`，可直接在宿主機上檢查與備份。
+    - 在 Kind 環境中預先建立這些資料夾，可以方便預置資料或檢查 PVC 掛載內容。
+- **映像與載入**
+    - 開發迭代時，優先使用 `kde load-image` 將本地映像載入 Kind，避免頻繁推送到 Registry。
+    - 部署到 Kind 時，通常會搭配 `imagePullPolicy: IfNotPresent` 或 `Never`，以優先使用本地已載入映像。

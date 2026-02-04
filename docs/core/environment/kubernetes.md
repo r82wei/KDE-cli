@@ -161,18 +161,19 @@ kde dashboard
 
 ## 共通功能說明
 ## 共通環境變數
-| 環境變數 | 說明 | 範例 |
-|---------|------|------|
-| `ENV_NAME` | 環境名稱 | `ENV_NAME=dev-env` |
-| `ENV_TYPE` | 環境類型（kind/k3d/k8s） | `ENV_TYPE=kind` |
-| `K8S_CONTAINER_NAME` | K8s 容器名稱（Kind/K3D）或 API Server IP（外部 K8s） | `K8S_CONTAINER_NAME=dev-env-control-plane` |
-| `DOCKER_NETWORK` | Docker 網路名稱 | `DOCKER_NETWORK=kde-dev-env` |
-| `STORAGE_CLASS` | 預設儲存類別（Kind/K3D） | `STORAGE_CLASS=local-path` |
-| `K8S_API_SERVER_PORT` | K8s API Server 端口（Kind/K3D） | `K8S_API_SERVER_PORT=6443` |
-| `K8S_INGRESS_NGINX_PORT` | Ingress Nginx 端口（Kind/K3D） | `K8S_INGRESS_NGINX_PORT=80` |
-| `KUBECONFIG` | Kubeconfig 檔案路徑 | `KUBECONFIG=/opt/kde/environments/dev-env/kubeconfig/config` |
-| `VOLUMES_PATH` | Volume 資料夾路徑（Kind/K3D） | `VOLUMES_PATH=/opt/kde/environments/dev-env/volumes` |
+| 環境變數 | 說明 | 適用環境 | 範例 |
+|---------|------|----------|------|
+| `ENV_NAME` | 環境名稱 | 全部（Kind/K3D/外部 K8s） | `ENV_NAME=dev-env` |
+| `ENV_TYPE` | 環境類型（kind/k3d/k8s） | 全部 | `ENV_TYPE=kind` |
+| `K8S_CONTAINER_NAME` | Kind/K3D：節點容器名稱；外部 K8s：API Server 位址（內部使用，一般不需手動修改） | 全部 | `K8S_CONTAINER_NAME=dev-env-control-plane` |
+| `DOCKER_NETWORK` | Docker 網路名稱 | Kind/K3D | `DOCKER_NETWORK=kde-dev-env` |
+| `STORAGE_CLASS` | 預設儲存類別 | Kind/K3D | `STORAGE_CLASS=local-path` |
+| `K8S_API_SERVER_PORT` | K8s API Server 端口 | Kind/K3D | `K8S_API_SERVER_PORT=6443` |
+| `K8S_INGRESS_NGINX_PORT` | Ingress Nginx 端口 | Kind/K3D | `K8S_INGRESS_NGINX_PORT=80` |
+| `KUBECONFIG` | Kubeconfig 檔案路徑 | 全部 | `KUBECONFIG=/opt/kde/environments/dev-env/kubeconfig/config` |
+| `VOLUMES_PATH` | Volume 資料夾路徑 | Kind/K3D | `VOLUMES_PATH=/opt/kde/environments/dev-env/volumes` |
 
+> 一般情況下，這些環境變數會由 `kde start` 自動產生並維護，**不需要手動修改**；只有在客製化環境腳本或除錯時才需要特別關注。
 
 ## 共通 Best Practice
 

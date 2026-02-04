@@ -245,8 +245,13 @@ kubectl apply -f deploy.yaml
 
 ### 範例 5：PVC 自動掛載專案資料夾
 
-**功能說明**：
-在 K3D 環境中，KDE 透過修改 `local-path-provisioner` 的 StorageClass 配置，實現了 PVC 自動掛載到專案資料夾的功能。當你建立 PVC 時，只需在專案資料夾（`$PROJECT_PATH`）下建立與 PVC 同名的資料夾，PVC 就會自動掛載到這個資料夾，實現資料持久化。
+**快速說明（你真正需要做的事）**：
+
+1. 在 `專案` 同名的 namespace 中，建立 PVC 並掛載到對應的 Pod
+2. 在 `專案` 的目錄下，找到與 PVC 名稱相同的資料夾：`environments/<env_name>/namespaces/<project_name>/<pvc_name>`。
+3. Pod 內寫入的檔案會出現在這個資料夾裡，而你在宿主機這個資料夾中放的檔案，Pod 也能看到。
+
+> 一般使用者只需要依照上述步驟操作即可；下面的內容是這個機制在 K3D 環境中的實作原理，主要提供進階使用者與維護者參考。
 
 **技術原理**：
 
@@ -365,62 +370,18 @@ kubectl create deployment nginx --image=nginx:alpine
 kubectl expose deployment nginx --port=80
 ```
 
-## Best Practice
+## Best Practice（K3D 特有建議）
 
-- **環境配置**
-    - API Server Port: 建議使用預設值 6443，多環境時使用 6443、6444、6445 等
-    - Ingress Nginx Port: 本地開發可使用 80，多環境時使用 80、8080、8081 等
-    - 避免端口衝突，確保每個環境使用不同的端口
-- **資源配置**
-    - K3D 預設配置已經很輕量，通常不需要額外調整
-    - 如需高可用，可配置 3 個 server 節點
-    - Agent 節點通常不需要，server 節點也可以運行工作負載
-- **網路整合**
-    - 充分利用 Docker 網路，開發容器可直接存取 K8s 服務
-    - 使用服務名稱進行內部通訊（如：`http://backend-service:8080`）
-    - 開發容器與 K8s 在同一個 Docker 網路，無需 Port Forward
-- **儲存管理**
-    - Volume 資料存放在 `environments/<env_name>/volumes/`
-    - PVC 名稱必須與專案資料夾下的子目錄名稱完全相同
-    - 目錄結構：`environments/<env_name>/volumes/<namespace>/<pvc-name>/`
-    - 可以在建立 PVC 前預先準備資料
-    - 資料會自動持久化到宿主機，即使刪除 PVC 也不會遺失
-    - 建議將 `volumes/` 加入 `.gitignore`，避免提交大量資料
-- **映像管理**
-    - 使用 `kde load-image` 載入本地映像，無需推送到 Registry
-    - 建置映像後立即載入，加速開發流程
-    - 部署時設定 `imagePullPolicy: Never` 或 `imagePullPolicy: IfNotPresent`
+共用的 Kubernetes 環境命名、工作流程與除錯建議已整理在 `docs/core/environment/kubernetes.md` 的「共通 Best Practice」章節，這裡只補充 K3D 環境特有或差異較大的部分：
+
+- **資源與環境配置**
+    - K3D 預設配置已經很輕量，適合在筆電、開發 VM 或 CI runner 上頻繁建立/刪除環境。
+    - 如需高可用，可配置多個 server 節點；一般開發與測試場景通常 1 個 server 即可。
 - **CI/CD 整合**
-    - K3D 非常適合 CI/CD 流程，啟動和清理都極快
-    - 在 CI pipeline 中使用 K3D 進行整合測試
-    - 測試完成後立即清理環境，節省資源
+    - 在 CI pipeline 中使用 K3D 進行整合測試，可以將「建環境 → 測試 → 清理」控制在數分鐘內完成。
+    - 測試完成後建議直接 `kde remove <env_name>` 釋放資源，避免留下長時間閒置的集群。
+- **儲存與 Volume**
+    - Volume 資料實際存放在 `environments/<env_name>/namespaces/<namespace>/<pvc-name>/`，可直接在宿主機上檢查與備份。
+    - 若你的 CI 需要保留測試輸出或快取，可善用這個目錄結構進行快取掛載。
 - **快速迭代**
-    - 利用 K3D 的快速啟動特性進行快速迭代
-    - 遇到環境問題時，快速重建環境
-    - 測試不同配置時，快速建立多個環境
-- **開發工作流程**
-    1. 建立 K3D 環境：`kde start test-env k3d`（5-10 秒）
-    2. 建立專案：`kde proj create myapp`
-    3. 建置並載入映像：`docker build -t myapp:test . && kde load-image myapp:test`
-    4. 部署專案：`kde proj deploy myapp`
-    5. 執行測試
-    6. 清理環境：`kde remove test-env`（2-3 秒）
-- **除錯技巧**
-    - 使用 `kubectl get events -A` 查看集群事件
-    - 使用 `kubectl logs` 查看 Pod 日誌
-    - 進入節點容器檢查：`kde exec`
-    - 使用 K9s 進行即時監控：`kde k9s`
-    - 檢查 Volume 目錄：`ls -la environments/<env_name>/volumes/`
-- **故障處理**
-    - 環境無法啟動：檢查 Docker 狀態和端口佔用
-    - 節點未就緒：使用 `kde exec` 進入容器檢查
-    - 網路問題：檢查 Docker 網路配置（`docker network ls`）
-    - 儲存問題：檢查 Volume 目錄權限和空間
-    - 快速修復：直接刪除並重建環境（只需 10-15 秒）
-- **何時選擇 K3D**
-    - 快速開發與測試
-    - CI/CD 整合測試
-    - 資源受限環境
-    - 需要快速環境重建
-    - 不需要完整 K8s 組件
-    - 學習 Kubernetes 基礎
+    - 當遇到疑難雜症或懷疑環境髒掉時，最簡單的做法通常是：`kde remove <env_name>` 後重新 `kde start` 一個乾淨的 K3D 環境。
