@@ -10,12 +10,15 @@ KDE-cli 將分散的 Kubernetes 開發工具整合為統一的指令介面：
 
 ```bash
 # 不需要分別學習每個工具的指令
-kde start           # 建立/啟動環境
-kde k9s             # 啟動 K9s
-kde dashboard       # 啟動 Headlamp Web UI
-kde telepresence    # 啟動 Telepresence
-kde ngrok           # 啟動 Ngrok
-kde expose          # Port Forward
+kde start               # 建立/啟動環境 (kind/k3d/k8s)
+kde k9s                 # 啟動 K9s
+kde headlamp            # 啟動 Headlamp Web UI
+kde dashboard           # 啟動 Kubernetes Web UI
+kde telepresence        # 啟動 Telepresence
+kde code-server         # 啟動 code-server (VSCode)
+kde cloudflare-tunnel   # 啟動 cloudflare tunnel
+kde ngrok               # 啟動 Ngrok
+kde expose              # Port Forward
 ```
 
 **價值**：降低學習曲線，開發者只需學習一套指令。
@@ -25,7 +28,7 @@ kde expose          # Port Forward
 KDE-cli 自動處理工具與 K8s 環境的連接：
 
 - K9s / Headlamp 自動連接到當前環境的 `KUBECONFIG`
-- Telepresence 自動連接到 K8s 並整合開發容器
+- Telepresence 自動連接到當前環境的 K8s 並整合開發容器
 - Ngrok / Cloudflare Tunnel 自動連接到 Ingress 或 Service
 
 **價值**：省去手動配置的繁瑣步驟。
@@ -34,7 +37,11 @@ KDE-cli 自動處理工具與 K8s 環境的連接：
 
 - 開發環境與生產環境都在 Kubernetes 內運行
 - 透過 local-path-provisioner + PVC 掛載實現即時開發
+- 透過 Pod 流量攔截實現遠端 K8s 的本地即時開發
+- 透過容器及 volume 掛載快速啟動開發環境
+- 透過容器及 shell script 實現本地 CICD 流程開發
 - 無需重新 build image，即可看到程式碼變更
+- 所有工具都在容器內執行
 
 **價值**：減少「在我機器上可以跑」的問題。
 
@@ -42,6 +49,8 @@ KDE-cli 自動處理工具與 K8s 環境的連接：
 
 - 環境配置（k8s.env）可納入版本控制
 - 專案配置（project.env）可納入版本控制
+- CICD pipeline 配置（project.env 內的 KDE_PIPELINE_STAGES）可納入版本控制
+- 工具版本配置（kde.env）可納入版本控制
 - 團隊成員可快速複製相同的開發環境
 
 **價值**：新成員 onboarding 只需一行指令。
@@ -56,7 +65,7 @@ KDE-cli 自動處理工具與 K8s 環境的連接：
 | **K8s 管理** | K9s | TUI 終端機圖形化操作介面 |
 | | Headlamp | Web UI 圖形化管理介面 |
 | **開發整合** | 開發容器 | DEVELOP_IMAGE 容器環境 |
-| | K8s + PVC 掛載 | 透過 local-path-provisioner 實現 Hot Reload |
+| | Kind/K3D + PVC 掛載 | 透過 local-path-provisioner 實現程式碼即時同步 |
 | | Telepresence | 遠端 Pod 流量轉接與環境模擬 |
 | | code-server | Web UI 的 VSCode 開發環境 |
 | | Port Forward | Service/Pod 端口轉發到本地 |
@@ -145,24 +154,24 @@ kde proj exec <project-name> develop
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  本地開發機器                            │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │  environments/<env>/namespaces/<project>/       │   │
-│  │  └── source-code/  ← 開發者編輯的程式碼           │   │
-│  └─────────────────────────────────────────────────┘   │
+│                  本地開發機器                             │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │  environments/<env>/namespaces/<project>/       │    │
+│  │  └── source-code/  ← 開發者編輯的程式碼            │    │
+│  └─────────────────────────────────────────────────┘    │
 │                         │                               │
 │                         │ local-path-provisioner        │
-│                         │ (PVC 自動掛載)                │
+│                         │ (PVC 自動掛載)                 │
 │                         ▼                               │
-│  ┌─────────────────────────────────────────────────┐   │
-│  │              Kind/K3D 環境                       │   │
-│  │  ┌─────────────────────────────────────────┐   │   │
-│  │  │              Pod                         │   │   │
-│  │  │  /app/source-code ← 即時同步             │   │   │
-│  │  │                                          │   │   │
-│  │  │  檔案變更 → Hot Reload 自動重載          │   │   │
-│  │  └─────────────────────────────────────────┘   │   │
-│  └─────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │              Kind/K3D 環境                       │    │
+│  │  ┌─────────────────────────────────────────┐    │    │
+│  │  │              Pod                        │    │    │
+│  │  │  /app/source-code ← 即時同步             │    │    │
+│  │  │                                         │    │    │
+│  │  │  檔案變更 → Hot Reload 自動重載            │    │    │
+│  │  └─────────────────────────────────────────┘    │    │
+│  └─────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -172,21 +181,21 @@ kde proj exec <project-name> develop
 3. 本地修改 source code → Pod 內即時同步
 4. 應用自動 Hot Reload
 
-**適用場景**：接近生產環境的開發、需要 K8s 網路/Service Discovery/ConfigMap 等功能
+**適用場景**：接近生產環境的開發、希望開發環境對齊正式環境、需要 K8s 網路/Service Discovery/ConfigMap 等功能
 
 ### 模式 3：Telepresence 模式
 
-攔截遠端 K8s Pod 的流量到本地開發容器。
+攔截遠端 K8s Pod 的流量到本地開發容器，並且將專案資料夾掛載進入本地開發容器。
 
 ```bash
-kde telepresence intercept <namespace> <workload>
+kde telepresence replace <namespace> <workload>
 ```
 
 **適用場景**：連接遠端 K8s 開發、需要存取遠端服務
 
 ### 模式比較
 
-| 模式 | 環境 | Hot Reload | K8s 功能 | 適用場景 |
+| 模式 | 環境 | 程式碼即時同步 | K8s 功能 | 適用場景 |
 |------|------|------------|----------|----------|
 | 開發容器 | 本地容器 | ✅ | ❌ | 快速開發、單元測試 |
 | K8s + PVC 掛載 | Kind/K3D | ✅ | ✅ | 整合測試、接近生產環境 |
@@ -196,7 +205,7 @@ kde telepresence intercept <namespace> <workload>
 
 ## 核心定位
 
-> **KDE-cli 是一個 Kubernetes 開發工具的「瑞士刀」**
+> **KDE-cli 是一個以 Kubernetes 為目標平台的開發環境與交付流程管理工具**
 
 它的價值不只是單一工具，而是：
 
