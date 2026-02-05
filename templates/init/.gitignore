@@ -21,6 +21,7 @@ environments/*/namespaces/*/gitlab.env
 environments/*/namespaces/*/*.release.tgz
 environments/*/namespaces/*/release.env
 environments/*/namespaces/*/.env
+environments/*/namespaces/*/.pipeline.env
 
 
 # npm cache
