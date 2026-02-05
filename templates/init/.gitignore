@@ -7,10 +7,10 @@ ngrok.env
 # K8S environment
 environments/*/.telepresence
 environments/*/kubeconfig
-!environments/*-ay/kubeconfig
 environments/*/pki
 environments/*/.env
 environments/*/kind-config.yaml
+environments/*/k3d-config.yaml
 environments/*/namespaces/*/*.doc
 environments/*/namespaces/*/*.tar
 
