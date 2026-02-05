@@ -301,16 +301,24 @@ undeploy_project() {
         fi
         return ${EXIT_CODE}
     else
-        # 如果 undeploy.sh 不存在，執行預設動作：刪除 namespace
-        echo "⚠️  undeploy.sh 不存在，執行預設動作：刪除 namespace ${PROJECT_NAME}"
-        exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
-        local EXIT_CODE=$?
-        if [[ ${EXIT_CODE} -ne 0 ]]; then
-            echo "❌ 解除部署失敗（退出碼：${EXIT_CODE}）" >&2
-            return ${EXIT_CODE}
+        # 如果 undeploy.sh 不存在，根據環境類型執行預設動作
+        if [[ "${ENV_TYPE}" == "kind" || "${ENV_TYPE}" == "k3d" ]]; then
+            # 本地環境（kind/k3d）：執行預設動作刪除 namespace
+            echo "⚠️  undeploy.sh 不存在，執行預設動作：刪除 namespace ${PROJECT_NAME}"
+            exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
+            local EXIT_CODE=$?
+            if [[ ${EXIT_CODE} -ne 0 ]]; then
+                echo "❌ 解除部署失敗（退出碼：${EXIT_CODE}）" >&2
+                return ${EXIT_CODE}
+            fi
+            echo "專案 ${PROJECT_NAME} 已解除部署"
+            return 0
+        else
+            # 外部 K8s 環境：不執行預設刪除動作，避免危險操作
+            echo "❌ undeploy.sh 不存在且環境為外部 K8s (${ENV_TYPE})，為安全考量不執行預設刪除動作" >&2
+            echo "   請建立 undeploy.sh 腳本來明確定義解除部署流程" >&2
+            return 1
         fi
-        echo "專案 ${PROJECT_NAME} 已解除部署"
-        return 0
     fi
 }
 
