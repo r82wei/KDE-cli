@@ -204,15 +204,15 @@ KDE_DEBUG=true kde restart dev-env
 ```
 
 詳細的除錯說明請參考：
-- [概述文檔中的除錯章節](./overview.md#除錯與故障排除)
-- [專案管理文檔中的故障排除章節](./project.md#故障排除)
+- [概述文檔中的除錯章節](../overview.md#除錯與故障排除)
+- [專案管理文檔中的故障排除章節](../project.md#故障排除)
 
 ---
 
 ## 相關文件
 
-- [KDE-cli 概述](./overview.md) - 核心價值與開發生命週期
-- [Kubernetes 環境詳細說明](./environment/kubernetes.md) - Kind、K3D、外部 K8s 詳細說明
-- [開發容器詳細說明](./environment/dev-container.md) - 開發容器詳細說明
+- [KDE-cli 概述](../overview.md) - 核心價值與開發生命週期
+- [Kubernetes 環境詳細說明](./kubernetes.md) - Kind、K3D、外部 K8s 詳細說明
+- [開發容器詳細說明](./dev-container.md) - 開發容器詳細說明
 
 
