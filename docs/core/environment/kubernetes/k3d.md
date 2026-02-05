@@ -36,6 +36,10 @@
     - 自動安裝 Ingress Nginx Controller
     - 自動配置 local-path-provisioner
     - 自動設定 PKI 憑證
+- **環境初始化腳本**
+    - 支援 `init.sh` 自動執行環境初始化任務
+    - 可用於安裝額外的 K8s 組件（Prometheus、Grafana、ArgoCD 等）
+    - 在 DEPLOY_IMAGE 容器環境中執行，可使用 kubectl、helm 等工具
 
 ### 與 Kind 的比較
 | 特性 | K3D | Kind |
@@ -79,6 +83,7 @@ kde start <env_name> k3d [config_path]
 7. 啟動 K3D 集群（極快速度）
 8. 安裝預設服務（Ingress Nginx、local-path StorageClass）
 9. 配置 kubeconfig
+10. 執行環境初始化腳本（如果 `init.sh` 存在）
 
 ### 其他管理指令
 ```bash
@@ -327,7 +332,118 @@ kubectl exec test -n myapp -- cat /data/test.txt
 # 輸出：Hello from host!
 ```
 
-### 範例 6：多環境並行開發
+### 範例 6：使用 init.sh 自動安裝額外組件
+
+環境啟動後自動執行初始化任務：
+
+```bash
+# 建立環境
+kde start test-env k3d
+
+# 建立 init.sh 腳本
+cat > environments/test-env/init.sh <<'EOF'
+#!/bin/bash
+set -e
+
+echo "開始執行環境初始化..."
+
+# 安裝 Metrics Server（K3D 不像 K3s 預設安裝）
+echo "安裝 Metrics Server..."
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# 修改 Metrics Server 部署（跳過 TLS 驗證，適合開發環境）
+kubectl patch deployment metrics-server -n kube-system --type='json' \
+  -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+
+# 安裝 Istio
+echo "安裝 Istio..."
+curl -L https://istio.io/downloadIstio | sh -
+cd istio-*/
+export PATH=$PWD/bin:$PATH
+istioctl install --set profile=demo -y
+
+# 啟用 Istio injection
+kubectl label namespace default istio-injection=enabled
+
+echo "環境初始化完成！"
+EOF
+
+# 設定執行權限
+chmod +x environments/test-env/init.sh
+
+# 重新啟動環境（會自動執行 init.sh）
+kde restart test-env
+
+# init.sh 會在環境啟動後自動執行
+# 安裝 Metrics Server 和 Istio
+
+# 驗證安裝結果
+kubectl get pods -n kube-system | grep metrics
+kubectl get pods -n istio-system
+```
+
+**init.sh 特點**：
+- 在 `DEPLOY_IMAGE` 容器環境中執行，預設包含 kubectl、helm、docker 等工具
+- 自動載入環境變數（`kde.env`、`k8s.env`、`.env`）
+- 可以執行任何 shell 指令
+- 適合安裝額外的 K8s 組件或進行環境配置
+
+**CI/CD 環境初始化範例**：
+```bash
+#!/bin/bash
+# init.sh for CI environment
+
+set -e
+
+echo "設定 CI 環境..."
+
+# 1. 建立測試 Namespace
+kubectl create namespace ci-test
+kubectl create namespace ci-staging
+
+# 2. 安裝測試資料庫
+helm install test-db bitnami/postgresql \
+    --namespace ci-test \
+    --set auth.database=testdb \
+    --set auth.username=testuser \
+    --set auth.password=testpass
+
+# 3. 建立 ImagePullSecret（如果需要）
+kubectl create secret docker-registry regcred \
+    --docker-server=${REGISTRY_URL} \
+    --docker-username=${REGISTRY_USER} \
+    --docker-password=${REGISTRY_PASS} \
+    -n ci-test
+
+# 4. 設定資源配額（避免測試吃掉太多資源）
+cat <<YAML | kubectl apply -f -
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ci-quota
+  namespace: ci-test
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.cpu: "4"
+    limits.memory: 8Gi
+YAML
+
+echo "CI 環境初始化完成！"
+```
+
+**除錯 init.sh**：
+```bash
+# 如果 init.sh 執行失敗，可以手動執行
+kde proj exec deploy
+
+# 在容器內
+cd ${ENV_PATH}
+bash -x init.sh  # 使用 -x 顯示執行過程
+```
+
+### 範例 7：多環境並行開發
 
 利用 K3D 的輕量特性同時運行多個環境：
 ```bash
@@ -355,7 +471,7 @@ kubectl apply -f staging-config.yaml
 kde list
 ```
 
-### 範例 7：資源受限環境
+### 範例 8：資源受限環境
 
 K3D 非常適合資源受限的開發環境：
 ```bash

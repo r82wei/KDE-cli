@@ -144,7 +144,73 @@ kde telepresence intercept <namespace> <workload>
 
 - 透過 Docker 啟動 kind(Kubernetes in Docker)，快速啟動 Kubernetes 環境
 - 透過 Docker 啟動 k3d(K3S in Docker)，快速啟動 K3S 環境
-- 透過 `environment/[環境名稱]/init.sh`，可以在 kind/k3d 啟動後執行對應的動作，例如：安裝 ingress、grafana、prometheus 等
+
+### 環境初始化腳本 (init.sh)
+
+Kind 和 K3D 環境支援自動執行初始化腳本，用於在環境啟動後自動安裝額外的 K8s 組件或進行環境配置。
+
+**位置**：`environments/<env_name>/init.sh`
+
+**執行時機**：
+- 環境啟動完成後自動執行
+- 在 `DEPLOY_IMAGE` 容器環境中執行（預設包含 kubectl、helm、docker 等工具）
+- 自動載入環境變數（`kde.env`、`k8s.env`、`.env`）
+
+**使用範例**：
+```bash
+# 建立環境
+kde start dev-env kind
+
+# 建立 init.sh
+cat > environments/dev-env/init.sh <<'EOF'
+#!/bin/bash
+set -e
+
+echo "開始環境初始化..."
+
+# 安裝 Prometheus
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install prometheus prometheus-community/kube-prometheus-stack \
+    --namespace monitoring --create-namespace --wait
+
+# 安裝 Grafana
+helm install grafana grafana/grafana \
+    --namespace monitoring --create-namespace
+
+# 建立自訂 Namespace
+kubectl create namespace production
+kubectl create namespace staging
+
+echo "環境初始化完成！"
+EOF
+
+# 設定執行權限
+chmod +x environments/dev-env/init.sh
+
+# 重新啟動環境（會自動執行 init.sh）
+kde restart dev-env
+```
+
+**常見使用場景**：
+- 安裝監控工具（Prometheus、Grafana）
+- 安裝服務網格（Istio、Linkerd）
+- 安裝 CI/CD 工具（ArgoCD、Tekton）
+- 建立自訂 Namespace 和 RBAC
+- 預先部署基礎服務
+- 設定資源配額和限制
+
+**除錯**：
+```bash
+# 手動執行 init.sh
+kde proj exec deploy
+cd ${ENV_PATH}
+bash -x init.sh  # -x 顯示執行過程
+```
+
+詳細範例請參考：
+- [Kind 環境 - init.sh 範例](./kubernetes/kind.md#範例-7使用-initsh-自動安裝額外組件)
+- [K3D 環境 - init.sh 範例](./kubernetes/k3d.md#範例-6使用-initsh-自動安裝額外組件)
 
 ### 自訂配置模板
 

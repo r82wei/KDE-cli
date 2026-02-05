@@ -36,6 +36,10 @@
     - 自動安裝 Ingress Nginx Controller
     - 自動配置 local-path-provisioner
     - 自動設定 PKI 憑證
+- **環境初始化腳本**
+    - 支援 `init.sh` 自動執行環境初始化任務
+    - 可用於安裝額外的 K8s 組件（Prometheus、Grafana、ArgoCD 等）
+    - 在 DEPLOY_IMAGE 容器環境中執行，可使用 kubectl、helm 等工具
 
 ### 環境變數
 | 環境變數 | 說明 | 範例 |
@@ -70,6 +74,7 @@ kde start <env_name> kind [config_path]
 7. 啟動 Kind 集群
 8. 安裝預設服務（Ingress Nginx、local-path StorageClass）
 9. 配置 kubeconfig
+10. 執行環境初始化腳本（如果 `init.sh` 存在）
 
 ### 其他管理指令
 ```bash
@@ -426,7 +431,98 @@ ls -la /opt/local-path-provisioner/
 df -h
 ```
 
-### 範例 7：多環境開發
+### 範例 7：使用 init.sh 自動安裝額外組件
+
+環境啟動後自動執行初始化任務：
+
+```bash
+# 建立環境
+kde start dev-env kind
+
+# 建立 init.sh 腳本
+cat > environments/dev-env/init.sh <<'EOF'
+#!/bin/bash
+set -e
+
+echo "開始執行環境初始化..."
+
+# 安裝 Prometheus
+echo "安裝 Prometheus..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install prometheus prometheus-community/kube-prometheus-stack \
+    --namespace monitoring \
+    --create-namespace \
+    --wait
+
+# 安裝 ArgoCD
+echo "安裝 ArgoCD..."
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# 等待 ArgoCD 準備就緒
+kubectl wait --for=condition=available --timeout=300s \
+    deployment/argocd-server -n argocd
+
+echo "環境初始化完成！"
+EOF
+
+# 設定執行權限
+chmod +x environments/dev-env/init.sh
+
+# 重新啟動環境（會自動執行 init.sh）
+kde restart dev-env
+
+# init.sh 會在環境啟動後自動執行
+# 安裝 Prometheus 和 ArgoCD
+
+# 驗證安裝結果
+kubectl get pods -n monitoring
+kubectl get pods -n argocd
+```
+
+**init.sh 特點**：
+- 在 `DEPLOY_IMAGE` 容器環境中執行，預設包含 kubectl、helm、docker 等工具
+- 自動載入環境變數（`kde.env`、`k8s.env`、`.env`）
+- 可以執行任何 shell 指令
+- 適合安裝額外的 K8s 組件或進行環境配置
+
+**常見使用場景**：
+```bash
+#!/bin/bash
+# init.sh 範例
+
+# 1. 安裝監控工具
+helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
+
+# 2. 安裝日誌收集
+helm install loki grafana/loki-stack -n logging --create-namespace
+
+# 3. 建立自訂 Namespace
+kubectl create namespace production
+kubectl create namespace staging
+
+# 4. 安裝 Cert Manager
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+
+# 5. 設定 RBAC
+kubectl apply -f ./k8s/rbac.yaml
+
+# 6. 預先部署基礎服務
+kubectl apply -f ./k8s/base-services/
+```
+
+**除錯 init.sh**：
+```bash
+# 如果 init.sh 執行失敗，可以手動執行
+kde proj exec deploy
+
+# 在容器內
+cd ${ENV_PATH}
+bash -x init.sh  # 使用 -x 顯示執行過程
+```
+
+### 範例 8：多環境開發
 
 建立多個 Kind 環境：
 ```bash
