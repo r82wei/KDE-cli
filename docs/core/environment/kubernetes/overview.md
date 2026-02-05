@@ -217,12 +217,24 @@ kde dashboard
 7. 完成後清理環境
 
 ### 除錯技巧
+
+**KDE CLI 層級除錯**：
+- 啟用除錯模式：`KDE_DEBUG=true kde start dev-env kind`
+- 追蹤 KDE 內部執行流程，查看每個執行的命令
+
+**Kubernetes 層級除錯**：
 - 使用 `kubectl get events -A` 查看集群事件
 - 使用 `kubectl describe` 查看資源詳細資訊
 - 使用 `kubectl logs` 查看 Pod 日誌
 - 進入節點容器檢查：`kde exec`（Kind/K3D）
-- 使用 K9s 進行即時監控和操作
+
+**監控工具**：
+- 使用 K9s 進行即時監控和操作：`kde k9s`
+- 使用 Headlamp Web UI：`kde headlamp`
+
+**配置檢查**：
 - 檢查環境配置檔案：`cat environments/<env_name>/k8s.env`
+- 檢查 kubeconfig：`cat environments/<env_name>/kubeconfig/config`
 
 ---
 

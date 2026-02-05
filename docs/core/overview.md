@@ -218,6 +218,31 @@ kde telepresence replace <namespace> <workload>
 
 ---
 
+## 除錯與故障排除
+
+### 啟用除錯模式
+
+當遇到問題時，可以啟用除錯模式來追蹤 KDE CLI 的執行流程：
+
+```bash
+# 方式 1：在指令前加上環境變數
+KDE_DEBUG=true kde start dev-env kind
+KDE_DEBUG=true kde proj pipeline myapp
+
+# 方式 2：在 kde.env 中永久啟用（用於持續除錯）
+echo "KDE_DEBUG=true" >> kde.env
+kde proj pipeline myapp
+```
+
+**除錯模式會顯示**：
+- KDE CLI 內部執行的每個 shell 命令
+- 變數值和函數調用
+- 幫助追蹤問題發生在哪個步驟
+
+**注意**：除錯模式會產生大量輸出，建議只在需要時使用。
+
+---
+
 ## 相關文件
 
 - [環境管理](./environment.md) - 環境建立與管理詳細說明

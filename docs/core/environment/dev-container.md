@@ -389,3 +389,40 @@ kde proj pipeline my-app --only build --manual
     - 開發容器執行完畢後會自動清理（`docker run --rm`）
     - 避免在容器內安裝過多不必要的套件，保持映像檔輕量
     - 定期更新 `DEVELOP_IMAGE` 到最新的穩定版本
+
+## 除錯容器環境
+
+### 啟用除錯模式
+
+當容器啟動或執行出現問題時：
+
+```bash
+# 追蹤容器啟動過程
+KDE_DEBUG=true kde proj exec myapp develop
+KDE_DEBUG=true kde proj exec myapp deploy
+
+# 追蹤 Pipeline 執行過程
+KDE_DEBUG=true kde proj pipeline myapp
+```
+
+### 常見問題
+
+**容器無法啟動**：
+- 檢查映像是否存在：`docker images | grep <image>`
+- 檢查 Docker 服務：`docker ps`
+- 檢查專案路徑是否正確
+- 使用 `KDE_DEBUG=true` 查看啟動命令
+
+**容器內無法存取 K8s**：
+- **Kind/K3D**：確認容器與 K8s 在同一個 Docker 網路
+- **外部 K8s**：確認 `KUBECONFIG` 路徑正確
+- 在容器內執行 `kubectl get nodes` 測試連線
+
+**檔案掛載問題**：
+- 檢查掛載路徑是否正確（使用絕對路徑）
+- 檢查檔案權限
+- 確認 Docker Socket 已正確掛載（用於 DooD）
+
+更多除錯資訊請參考：
+- [概述文檔中的除錯章節](../overview.md#除錯與故障排除)
+- [專案管理文檔中的故障排除](../project.md#故障排除)

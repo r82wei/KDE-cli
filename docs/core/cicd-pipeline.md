@@ -238,4 +238,40 @@ kde proj pipeline myapp
             source .pipeline.env
 
             # 印出 APP_IMAGE
-            echo $APP_IMAGE也可以直接在流程腳本內實作實際執行的步驟
+            echo $APP_IMAGE
+            ```
+
+## 除錯 Pipeline
+
+### 啟用除錯模式
+
+當 Pipeline 執行失敗或需要追蹤執行流程時：
+
+```bash
+# 顯示 KDE CLI 層級的執行命令
+KDE_DEBUG=true kde proj pipeline myapp
+
+# 使用 --manual 進入每個階段手動測試
+kde proj pipeline myapp --only build --manual
+
+# 在腳本內加上 set -x 追蹤腳本執行
+# 在 build.sh 或 deploy.sh 開頭加入：
+set -x  # 啟用腳本除錯模式
+```
+
+### 常見問題
+
+**Pipeline 執行失敗**：
+- 檢查腳本檔案是否存在且有執行權限（`chmod +x *.sh`）
+- 使用 `--manual` 進入環境手動測試
+- 檢查映像是否存在：`docker pull <image>`
+- 查看退出碼和錯誤訊息
+
+**環境變數問題**：
+- 確認 `project.env` 中的變數是否正確定義
+- 使用 `--manual` 進入環境後執行 `env` 查看所有環境變數
+- 檢查 `.pipeline.env` 是否正確生成（階段間傳遞）
+
+**階段跳過問題**：
+- 檢查是否設定了 `KDE_PIPELINE_STAGE_<stage>_SKIP=true`
+- 檢查是否設定了 `MANUAL_ONLY` 但未使用 `--manual` 參數

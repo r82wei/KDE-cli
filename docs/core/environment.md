@@ -192,6 +192,23 @@ kde telepresence intercept <namespace> <workload>
 
 ---
 
+## 除錯環境問題
+
+當環境啟動或運作出現問題時，可以啟用除錯模式：
+
+```bash
+# 啟用除錯模式查看環境管理指令的執行流程
+KDE_DEBUG=true kde start dev-env kind
+KDE_DEBUG=true kde stop dev-env
+KDE_DEBUG=true kde restart dev-env
+```
+
+詳細的除錯說明請參考：
+- [概述文檔中的除錯章節](./overview.md#除錯與故障排除)
+- [專案管理文檔中的故障排除章節](./project.md#故障排除)
+
+---
+
 ## 相關文件
 
 - [KDE-cli 概述](./overview.md) - 核心價值與開發生命週期
