@@ -271,9 +271,9 @@ execute_pipeline() {
     # 載入專案環境變數
     source ${PROJECT_PATH}/project.env
 
-    # 如果 .pipeline.env 存在，則刪除
+    # 如果 .pipeline.env 存在，則重置為空
     if [[ -f "${PROJECT_PATH}/.pipeline.env" ]]; then
-        rm ${PROJECT_PATH}/.pipeline.env
+        > ${PROJECT_PATH}/.pipeline.env
     fi
     
     # 檢查是否使用自定義 Pipeline
