@@ -53,20 +53,109 @@
 
 
 
-## 使用說明
-- 透過指令執行 CICD pipeline 
-    ```
-    kde proj pipeline [project-name] [options]
-    ```
-    - options：
-        - `--from`: 階段過濾，允許使用者跳過部分流程，從某階段開始執行（例如：只跑 test 之後的流程），可與 `--to` 搭配使用。
-        - `--to`: 階段過濾，允許使用者跳過部分流程，只執行到某階段（例如：只跑 test 之前的流程），可與 `--from` 搭配使用。
-        - `--only`: 單獨執行某一階段，（例如：只跑 test），不可與 `--to`、`--from` 一起使用。
-        - `--manual`: 進入某一階段的執行環境，與 `--to`、`--from` 搭配使用時，在退出單一階段環境後會進入下一階段環境。
-    - 防呆：
-        - 應該要先判斷 kde proj pipeline 後面接的是不是存在於當前環境底下的 namespaces 內的資料夾，如果是直接接參數（例如: --only build），應該跳出錯誤警告並且停止動作。
+## Pipeline 指令使用說明
 
-## 使用範例
+### 基本語法
+
+```bash
+kde proj pipeline <project_name> [options]
+# 或使用別名
+kde proj deploy <project_name> [options]
+```
+
+### 執行選項
+
+#### 執行完整 Pipeline
+```bash
+# 執行所有階段
+kde proj pipeline myapp
+```
+
+#### 從特定階段開始執行（--from）
+```bash
+# 從 test 階段開始執行（跳過前面的階段）
+kde proj pipeline myapp --from test
+
+# 等號語法
+kde proj pipeline myapp --from=test
+```
+
+#### 執行到特定階段（--to）
+```bash
+# 只執行到 build 階段（不執行後續階段）
+kde proj pipeline myapp --to build
+
+# 等號語法
+kde proj pipeline myapp --to=build
+```
+
+#### 組合使用 --from 和 --to
+```bash
+# 只執行 test 到 build 之間的階段
+kde proj pipeline myapp --from test --to build
+kde proj pipeline myapp --from=test --to=build
+```
+
+#### 只執行單一階段（--only）
+```bash
+# 只執行 build 階段
+kde proj pipeline myapp --only build
+
+# 等號語法
+kde proj pipeline myapp --only=build
+```
+
+**注意**：`--only` 不可與 `--from`、`--to` 一起使用
+
+#### 手動模式（--manual）
+```bash
+# 進入每個階段的執行環境（用於除錯和測試）
+kde proj pipeline myapp --manual
+
+# 只進入 build 階段的環境
+kde proj pipeline myapp --only build --manual
+
+# 從 test 到 deploy，逐個進入環境
+kde proj pipeline myapp --from test --to deploy --manual
+```
+
+在手動模式下，退出單一階段環境後會自動進入下一階段環境。
+
+### 使用場景說明
+
+**完整執行（適合 CI/CD）**：
+```bash
+kde proj pipeline myapp
+```
+
+**快速測試特定階段**：
+```bash
+# 只測試建置階段
+kde proj pipeline myapp --only build
+
+# 只測試部署階段
+kde proj pipeline myapp --only deploy
+```
+
+**跳過前期階段**：
+```bash
+# 已經完成 test 和 lint，只想重新執行 build 和 deploy
+kde proj pipeline myapp --from build
+```
+
+**除錯特定階段**：
+```bash
+# 進入 build 階段環境手動測試
+kde proj pipeline myapp --only build --manual
+```
+
+**部分流程測試**：
+```bash
+# 只測試從 test 到 build 的流程
+kde proj pipeline myapp --from test --to build
+```
+
+## 配置範例
 
 ### 範例 1：快速開發模式
 
@@ -240,6 +329,209 @@ kde proj pipeline myapp
             # 印出 APP_IMAGE
             echo $APP_IMAGE
             ```
+
+## 進階主題
+
+### 自訂 Pipeline 階段掛載
+
+可以為特定 Pipeline 階段設定額外的檔案掛載：
+
+```bash
+# project.env
+
+# 掛載共用函式庫到 build 階段
+KDE_PIPELINE_STAGE_build_MOUNT_LIBS=${HOME}/shared-libs:/workspace/libs:ro
+
+# 掛載測試資料到 test 階段
+KDE_PIPELINE_STAGE_test_MOUNT_DATA=${PROJECT_PATH}/test-data:/test-data:ro
+
+# 掛載 Docker config 到 release 階段
+KDE_PIPELINE_STAGE_release_MOUNT_DOCKER_CONFIG=${HOME}/.docker:/root/.docker:ro
+```
+
+**使用場景**：
+- 掛載共用的函式庫或工具
+- 掛載測試資料檔案
+- 掛載 Docker Registry 認證
+- 掛載 SSH 金鑰進行 Git 操作
+
+### Pipeline 階段間環境變數傳遞
+
+在 Pipeline 中，可以透過 `.pipeline.env` 在階段間傳遞環境變數：
+
+**build.sh**（建置並輸出變數）：
+```bash
+#!/bin/bash
+set -e
+
+echo "開始建置應用..."
+
+# 建置應用
+npm run build
+
+# 建置 Docker 映像
+VERSION=$(cat package.json | jq -r .version)
+docker build -t myapp:${VERSION} .
+
+# 推送到 Registry
+docker tag myapp:${VERSION} registry.example.com/myapp:${VERSION}
+docker push registry.example.com/myapp:${VERSION}
+
+# 將映像名稱輸出到 .pipeline.env 供後續階段使用
+echo "APP_IMAGE=registry.example.com/myapp:${VERSION}" >> .pipeline.env
+echo "APP_VERSION=${VERSION}" >> .pipeline.env
+
+echo "✅ 建置完成！映像: registry.example.com/myapp:${VERSION}"
+```
+
+**deploy.sh**（載入並使用變數）：
+```bash
+#!/bin/bash
+set -e
+
+# 載入上一階段的環境變數
+source .pipeline.env
+
+echo "開始部署應用..."
+echo "部署映像: ${APP_IMAGE}"
+echo "版本: ${APP_VERSION}"
+
+# 使用 APP_IMAGE 進行部署
+kubectl set image deployment/myapp myapp=${APP_IMAGE} -n myapp
+
+# 或使用 Helm
+helm upgrade --install myapp ./helm/myapp \
+    --set image.repository=${APP_IMAGE%:*} \
+    --set image.tag=${APP_VERSION} \
+    --namespace myapp
+
+echo "✅ 部署完成！"
+```
+
+**使用場景**：
+- 在 build 階段產生映像名稱，在 deploy 階段使用
+- 在 test 階段產生測試報告路徑，在後續階段上傳
+- 在 release 階段產生版本號，在 deploy 階段使用
+- 傳遞任何需要在階段間共享的資訊
+
+### 複雜 Pipeline 範例
+
+完整的 build → test → release → deploy 流程：
+
+**project.env**：
+```bash
+# Pipeline 配置
+KDE_PIPELINE_STAGES="build,test,release,deploy"
+
+# Build 階段
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:20
+
+# Test 階段
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+KDE_PIPELINE_STAGE_test_IMAGE=node:20
+
+# Release 階段（建置 Docker 映像）
+KDE_PIPELINE_STAGE_release_SCRIPT=release.sh
+KDE_PIPELINE_STAGE_release_IMAGE=docker:latest
+KDE_PIPELINE_STAGE_release_MOUNT_DOCKER_CONFIG=${HOME}/.docker:/root/.docker:ro
+
+# Deploy 階段
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+
+# Registry 配置
+DOCKER_REGISTRY=registry.example.com
+```
+
+**build.sh**：
+```bash
+#!/bin/bash
+set -e
+
+echo "安裝依賴..."
+npm install
+
+echo "建置應用..."
+npm run build
+
+echo "✅ 建置完成"
+```
+
+**test.sh**：
+```bash
+#!/bin/bash
+set -e
+
+echo "執行測試..."
+npm test
+
+echo "執行 Lint..."
+npm run lint
+
+echo "✅ 測試通過"
+```
+
+**release.sh**：
+```bash
+#!/bin/bash
+set -e
+
+# 取得版本號
+VERSION=$(cat package.json | jq -r .version)
+IMAGE_NAME="${DOCKER_REGISTRY}/myapp:${VERSION}"
+
+echo "建置 Docker 映像: ${IMAGE_NAME}"
+docker build -t ${IMAGE_NAME} .
+
+echo "推送映像到 Registry..."
+docker push ${IMAGE_NAME}
+
+# 輸出映像資訊供 deploy 階段使用
+echo "APP_IMAGE=${IMAGE_NAME}" >> .pipeline.env
+echo "APP_VERSION=${VERSION}" >> .pipeline.env
+
+echo "✅ Release 完成: ${IMAGE_NAME}"
+```
+
+**deploy.sh**：
+```bash
+#!/bin/bash
+set -e
+
+# 載入環境變數
+source .pipeline.env
+
+NAMESPACE=myapp
+
+echo "部署應用到 Kubernetes..."
+echo "映像: ${APP_IMAGE}"
+echo "版本: ${APP_VERSION}"
+
+# 建立或更新 Namespace
+kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+
+# 部署應用
+kubectl set image deployment/myapp myapp=${APP_IMAGE} -n ${NAMESPACE} || \
+    kubectl create deployment myapp --image=${APP_IMAGE} -n ${NAMESPACE}
+
+# 等待部署完成
+kubectl rollout status deployment/myapp -n ${NAMESPACE}
+
+echo "✅ 部署完成！"
+```
+
+**執行**：
+```bash
+# 執行完整流程
+kde proj pipeline myapp
+
+# 或分別測試各階段
+kde proj pipeline myapp --only build --manual
+kde proj pipeline myapp --only test --manual
+kde proj pipeline myapp --only release --manual
+kde proj pipeline myapp --only deploy --manual
+```
 
 ## 除錯 Pipeline
 
