@@ -1,6 +1,16 @@
 # Workspace（工作空間）
 
-**Workspace 是 KDE-cli 的核心組織單位，定義專案、CI/CD Pipeline、Kubernetes 環境三者之間的關係**
+**Workspace（工作空間）是 KDE-cli 的核心組織單位，用來統一管理專案程式碼、CI/CD Pipeline 和 Kubernetes 環境三者之間的關係**
+
+> **💡 名詞說明**  
+> **KDE** = **Kubernetes Development Environment** = **Workspace**  
+> 
+> 這三個名詞指的是同一個概念：
+> - **KDE** 是縮寫，代表整個開發環境
+> - **Kubernetes Development Environment** 是完整名稱
+> - **Workspace（工作空間）** 是實際的組織單位和目錄結構
+>
+> 在使用上，你可以將它們視為等價的概念。
 
 ## 核心概念
 
