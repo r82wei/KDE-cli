@@ -1,369 +1,449 @@
-# KDE-cli (Kubernetes Development Environment)
+# KDE-cli
 
-「Environment-as-Code」的 Kubernetes 開發環境
+> **Kubernetes Development Environment CLI** - 以 Kubernetes 為目標的開發環境與交付流程管理工具
 
-## KDE-cli 是什麼？
+KDE-cli 是一個 Kubernetes 開發環境的統一管理工具，整合完整的開發工具鏈，實現從環境建立到部署的全生命週期管理。它將分散的 Kubernetes 開發工具整合為統一的指令介面，讓開發者用**一套工具、一個指令介面**完成從環境建立、開發、測試到部署的完整 Kubernetes 開發流程。
 
-一個以 Kubernetes 為核心的輕量化 CLI-based 開發環境，協助快速打造 Kubernetes 開發環境，支援本地及遠端 Kubernetes 開發，同時支援 CI/CD 環境的模擬與驗證，並且能將相同部署流程一鍵部署到不同的遠端 Kubernetes。
+## ✨ 核心特性
 
-## 🔑 主要功能
-
-- ⚙️ `快速啟動本地 K8s 或連接遠端 K8s`
-  - [kind](https://kind.sigs.k8s.io/): Docker 中的 Kubernetes 集群 (預設)
-  - [k3d](https://k3d.io/stable/): 輕量級 K3s 集群
-  - 遠端 K8s: 透過 kubeconfig 連接現有的 Kubernetes 集群
-- 🧑🏻‍💻 `即時開發`
-  - 一鍵啟動 VS Code Web UI，隨時隨地透過瀏覽器開發 (使用 [code-server](https://github.com/coder/code-server)，可搭配 [Ngrok](https://ngrok.com/)、[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) 進行 https 加密連線)
-  - 本地 K8s 透過 pv 掛載原始碼到 Pod，進行 hot-reload 即時開發 (使用 [local-path-provisioner
-    ](https://github.com/rancher/local-path-provisioner))
-  - 遠端 K8s 透過流量轉發到本地容器化開發環境，進行開發除錯(使用 [Telepresence](https://telepresence.io/docs/quick-start))
-- 🚀 `簡易且彈性的 CI/CD`
-  - 自訂 shell 部署腳本，並且可以透過 project.env 設定執行時需要的環境變數
-  - 可自訂部署環境的 docker image，支援任何部署工具
-  - 一鍵部署，快速驗證部署腳本及部署到任何 K8s 環境
-- 🖥️ `監控和管理工具`
-  - [k9s](https://k9scli.io/): 終端 Kubernetes 管理界面，方便在 IDE 開發除錯
-  - [Headlamp](https://headlamp.dev/): 使用者友善的 Kubernetes Web UI
-  - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard): Web UI 管理界面
-- 🌐 `快速公開服務`
-  - [Ngrok](https://ngrok.com/): 將本地服務快速開放到外網進行測試
-  - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/): 通過 Cloudflare 建立安全隧道，快速對外開放服務進行測試
-  - Port Forward: 將 K8s Service/Pod 的 Port 轉發到本地
-- 🐳 `完全容器化`
-  - 所有操作都在 Docker 容器中執行
-  - 隔離的開發環境，支持多個專案同時開發
-  - 只需安裝 Docker 就可以建立一致的開發環境
-- 📦 `IaC 化的環境設定`
-  - 開發環境設定檔可透過 git 版本化
-  - 團隊同步的標準化開發環境
-
-## 為什麼選 KDE-cli？
-
-- 你是 Developer，想快速啟動本地開發環境？✅
-- 你是 Developer，想用本地開發環境代理遠端 K8S 上面的 Pod 除錯？✅
-- 你是 Ops/Infra/DevOps，要在執行 CI/CD 前先模擬部署？✅
-- 你是 QA，要驗證某個特定 Commit 的行為？✅
-- 你希望團隊使用相同的開發/測試環境？✅
-- 你想要減少開發環境與正式環境的差異？✅
-- 你希望用一個 Shell 工具就搞定？✅
-
-👉 KDE-cli 希望做到「簡化並整合這些工作流程」，讓使用者能夠在本地的命令列環境裡完成大部分開發、測試與部署驗證流程，並且能把環境版本化。
-
-## 使用流程
-
-```mermaid
-flowchart LR
-    create_workspace[建立 Workspace 環境]
-    create_local_k8s[建立本地K8s環境]
-    add_remote_k8s[連接現有K8s]
-    create_project[設定專案]
-    pull_repo[從 Git 抓取現有專案]
-    create_local_repo[建立新的本地專案]
-    k8s_yaml[撰寫部署 K8s yaml]
-    shell_script["撰寫 CI/CD shell (build.sh/deploy.sh/undeploy.sh)"]
-    deploy[一鍵部署服務到 K8S]
-    debug["開發與除錯(CI/CD、程式)"]
-    monitor[K9s / Headlamp / K8S Dashboard]
-    expose[公開服務]
-    port_forwarding[port-forwarding]
-    cloudflare_tunnel[Cloudflare Tunnel]
-    ngrok[ngrok]
-    git_push[將 Workspace 環境儲存至Git]
-
-    create_workspace--> create_local_k8s
-    create_workspace--> add_remote_k8s
-    create_local_k8s --> create_project
-    add_remote_k8s --> create_project
-    create_project --> pull_repo
-    create_project --> create_local_repo
-    pull_repo --> k8s_yaml
-    create_local_repo --> k8s_yaml
-    k8s_yaml --> shell_script
-    shell_script --> deploy
-    deploy --> monitor
-    monitor --> debug
-    debug --> git_push
-    %% 公開服務
-    deploy -.-> expose
-    expose -.-> port_forwarding
-    expose -.-> cloudflare_tunnel
-    expose -.-> ngrok
-
-```
-
-## 安裝
-
-### 前置需求
-
-- 必須先安裝 [Docker](https://docs.docker.com/engine/install/)
-
-### 推薦方式：容器化執行（無需安裝）
-
-在 `~/.bashrc` 或 `~/.zshrc` 中加入以下 alias：
+### 🎯 統一的工具入口
+將 9+ 種 Kubernetes 開發工具整合為統一的 CLI 介面，降低學習曲線：
 
 ```bash
-kde() {
-  docker run -it --rm \
-    -v $(pwd):$(pwd) \
-    -v $HOME:$HOME \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -w $(pwd) \
-    -e HOME=$HOME \
-    -e PUID=$(id -u) \
-    -e PGID=$(id -g) \
-    -e USER_NAME=$USER \
-    r82wei/kde-cli:latest \
-    kde "$@"
-}
+kde start               # 建立/啟動環境 (Kind/K3D/K8s)
+kde k9s                 # 啟動 K9s 終端管理工具
+kde headlamp            # 啟動 Headlamp Web UI
+kde telepresence        # 啟動 Telepresence 流量攔截
+kde code-server         # 啟動 VSCode Web IDE
+kde cloudflare-tunnel   # 啟動 Cloudflare Tunnel
+kde ngrok               # 啟動 Ngrok 外部連線
+kde expose              # Port Forward 端口轉發
 ```
 
-重新載入配置：
+### 🔄 環境一致性 (Dev/Prod Parity)
+- 開發環境與生產環境都在 Kubernetes 內運行
+- 透過 PVC 掛載實現程式碼即時同步與 Hot Reload
+- 透過 Telepresence 將遠端 K8s 流量攔截到本地開發
+- 所有工具都在容器內執行，確保環境一致性
+
+### 📦 可版控、可重現、可攜帶
+- 環境配置（`k8s.env`）可納入版本控制
+- 專案配置（`project.env`）可納入版本控制
+- CI/CD Pipeline 配置可納入版本控制
+- 工具版本統一管理（`kde.env`）
+- 團隊成員可快速複製相同的開發環境
+- **新成員 onboarding 只需一行指令**
+
+### 🚀 Script 驅動的 CI/CD Pipeline
+- 使用 Shell Script 定義 CI/CD 流程
+- 自訂 Pipeline 階段和執行環境
+- 支援手動模式進行開發與除錯
+- 階段間環境變數傳遞
+- 彈性的錯誤處理機制
+
+### 🐳 容器優先 (Container First)
+- 只需要安裝 Docker 就可以執行所有功能
+- 所有工具都在容器中執行
+- 避免污染本機環境
+- 確保環境一致性
+
+## 🎯 適用對象
+
+### 組織 (Organization)
+- 希望開發環境與正式環境對齊
+- 需要管理多環境、多專案
+- 需要標準化開發流程和環境配置版本化
+- 團隊希望保持環境的一致性
+- 需要快速 onboarding（一鍵啟動環境）
+- 希望可以在開發環境測試 CI/CD 流程和驗證 K8s 配置
+
+### 專案 (Project)
+- 正式環境部署於 Kubernetes 的專案
+- 微服務架構
+- 需要部署到多個 K8s 環境
+
+### 使用者 (Developer/DevOps/SRE/QA)
+- 快速建立模擬環境
+- 方便程式開發/除錯
+- 方便 K8s 環境、CI/CD Pipeline 模擬/開發/除錯
+- 環境配置版本化管理
+- 本地模擬完整的 K8s 環境
+
+## 🚀 快速開始
+
+### 系統需求
+
+- **Docker**：已安裝並運行
+- **作業系統**：Linux / macOS / Windows (WSL)
+- **Shell**：Bash
+- **權限**：需要 sudo 權限進行安裝
+
+### 安裝
+
+#### 方式 1：一鍵安裝（推薦）
 
 ```bash
-source ~/.bashrc  # 或 source ~/.zshrc
+# 使用 curl（需要 sudo 權限）
+curl -fsSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/install.sh | sudo bash
+
+# 或使用 wget（需要 sudo 權限）
+wget -qO- https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/install.sh | sudo bash
+
+# 驗證安裝
+kde --version
 ```
 
-現在就可以直接使用 `kde` 指令！
+#### 方式 2：手動安裝
 
-### 其他安裝方式
+```bash
+# 1. Clone 專案
+git clone https://github.com/r82wei/KDE-cli.git
+cd KDE-cli
 
-詳細安裝說明請參考 [安裝指南 (INSTALL.zh-TW.md)](./INSTALL.zh-TW.md)
+# 2. 執行安裝（需要 sudo 權限）
+sudo ./local-install.sh
 
-- 使用包裝腳本 `kde-docker.sh`
-- 本地安裝（需要 sudo）
-
-## 快速開始
-
-1. **啟動或加入 K8s 環境**
-   - 在本地啟動 kind/k3d
-     ```bash
-     kde create <cluster-name> --kind    # 或 --k3d
-     ```
-   - 加入現有的 K8s 叢集一杯
-     ```bash
-     kde create <cluster-name> --k8s
-     ```
-2. **新增專案（namespace）**
-   ```bash
-   # 將專案建立在 environment/<cluster-name>/namespaces/<project-name>，並且新增專案相關設定到 project.env
-   kde project create <project-name>
-   ```
-3. **進入本地容器開發環境**
-
-   - 可以將需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
-
-   ```bash
-   # 透過 project.env 自訂的 Docker image(DEVELOP_IMAGE) 啟動開發執行環境
-   kde project exec <project-name> dev [port]
-
-   # 透過 project.env 自訂的 Docker image(DEPLOY_IMAGE) 啟動部署執行環境
-   kde project exec <project-name> dep [port]
-   ```
-
-4. **執行 CI/CD 部署**
-
-   KDE 支援靈活的 Pipeline 機制：
-
-   - **標準 CICD**（預設）：Build → Test → Release → Deploy
-   - **自定義 Pipeline**：靈活定義階段、順序和執行環境
-   - **傳統模式**（向後相容）：傳統的 build/deploy 流程
-
-   **快速開始 - 傳統模式**（向後相容）：
-
-   - 可以將**編譯**/**部署**需要的環境變數定義在 project.env，執行部署時會自動注入 container 環境內
-   - 如果檔案存在，將會依序執行專案下的 shell 腳本：
-
-     | 執行順序 | 腳本           | 預設 Image    | 自訂 Image 環境變數 (project.env) |
-     | -------- | -------------- | ------------- | --------------------------------- |
-     | 1        | pre-build.sh   | DEVELOP_IMAGE | PRE_BUILD_IMAGE                   |
-     | 2        | build.sh       | DEVELOP_IMAGE | BUILD_IMAGE                       |
-     | 3        | post-build.sh  | DEVELOP_IMAGE | POST_BUILD_IMAGE                  |
-     | 4        | pre-deploy.sh  | DEPLOY_IMAGE  | PRE_DEPLOY_IMAGE                  |
-     | 5        | deploy.sh      | DEPLOY_IMAGE  | DEPLOY_IMAGE                      |
-     | 6        | post-deploy.sh | DEPLOY_IMAGE  | POST_DEPLOY_IMAGE                 |
-
-   **標準 CICD**：
-
-   - 如果腳本存在：`build.sh`、`test.sh`、`release.sh`、`deploy.sh`
-   - 系統自動執行這些階段
-   - 所有階段預設使用 `DEPLOY_IMAGE`
-
-   **自定義 Pipeline**：
-
-   - 在 `project.env` 中定義自定義階段：
-
-     ```bash
-     # 定義要執行的階段
-     KDE_PIPELINE_STAGES="lint,security,build,test,deploy,monitor"
-
-     # 配置每個階段
-     KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
-     KDE_PIPELINE_STAGE_lint_IMAGE=node:20
-
-     KDE_PIPELINE_STAGE_security_SCRIPT=security-scan.sh
-     KDE_PIPELINE_STAGE_security_IMAGE=aquasec/trivy:latest
-     # ... 其他階段
-     ```
-
-   - 錯誤處理選項：
-     - 預設啟用 Fail Fast 模式（任何階段失敗立即停止），設定 `KDE_PIPELINE_FAIL_FAST=false` 可停用
-     - 允許特定階段失敗：設定 `KDE_PIPELINE_STAGE_<stage>_ALLOW_FAILURE=true` 讓該階段失敗不阻擋 pipeline
-
-   **執行**：
-
-   ```bash
-   # 執行完整 Pipeline
-   kde project deploy <project-name>
-
-   # 僅執行建置（CI 階段）
-   kde project build <project-name>
-   ```
-
-   📚 **了解更多**：
-
-   - [自定義 Pipeline 指南](./docs/custom-pipeline.md)
-   - [Pipeline 遷移指南](./docs/pipeline-migration-guide.md)
-   - [自定義 Pipeline 範例](./docs/examples/custom-pipeline-example.md)
-
-5. **開啟 Dashboard 開發/除錯**
-
-   ```bash
-   # 文字介面，可在 IDE 的終端機使用
-   # 如果指定 --port 30000-30020，就可以使用 K9S 的 Port forwarding 功能將 port 30000-30020 對應到本地
-   kde k9s [--port]
-
-   # Headlamp (Kubernetes Web UI)
-   kde headlamp [--port]
-
-   # Web UI，可加上 `--insecure` 跳過登入
-   kde dashboard [--port] [--insecure]
-   ```
-
-6. **解除部署**
-
-   - 可以將**解除部署**需要的環境變數定義在 project.env，啟動環境時會自動注入 container 環境內
-   - (如果檔案存在) 觸發 `undeploy.sh`，可以在 project.env 自訂執行環境的 docker image
-     - `undeploy.sh`: UNDEPLOY_IMAGE (預設: DEPLOY_IMAGE)
-   - ⚠️ 如果 `undeploy.sh` 不存在，預設動作為刪除 K8S 環境內與專案名稱同名的 namespace
-
-   ```bash
-   kde project undeploy <project-name>
-   ```
-
-7. **查看或切換當前環境**
-
-   ```bash
-   # 取得目前使用的 cluster
-   kde current
-
-   # 切換當前使用的 K8s cluster
-   kde use <cluster-name>
-   ```
-
-8. **查看全部 K8s 環境狀態**
-   ```bash
-   kde status
-   ```
-
-## 進階功能
-
-- **啟動 VS Code Web UI ([code-server](https://github.com/coder/code-server))**
-
-  - options
-    - -d : 背景執行
-    - -p : 指定 Port (預設 8080)
-
-  ```bash
-  kde code-server [options]
-  ```
-
-- **遠端除錯 ([Telepresence](https://telepresence.io/docs/quick-start))**
-
-  - ⚠️ 不建議直接代理正式環境的服務，使用者應自行評估風險
-
-  ```bash
-  kde telepresence <command>
-  ```
-
-  - command
-    - `replace` 攔截遠端 Pod 的流量到本地環境，並且停止 Pod 的運行
-    - `intercept` 攔截遠端 Pod 的流量到本地環境，但不干擾遠端 Pod 的運行
-    - `wiretap` 複製遠端 Pod 的流量副本到本地環境，但不干擾遠端 Pod 的運行
-    - `ingest` 不攔截流量，也不干擾遠端 Pod 的運行，僅讓本地環境可以連線 k8s 環境內的服務
-
-- **公開服務**
-
-  ```bash
-  # 本地 port forwarding
-  kde expose
-
-  # Ngrok
-  kde ngrok <target>
-
-  # Cloudflare Tunnel
-  kde cloudflare-tunnel <target> [options]
-  ```
-
-## 檔案結構
-
-### kde-cli
-
-```
-kde.sh                    # 主腳本，連動 scripts/* 內的子指令 (安裝到 /usr/local/lib)
-install.sh                # 安裝腳本
-uninstall.sh              # 解除安裝腳本
-dockerfiles/
-  └─ <docker images>/       # kde-cli 使用的 docker image 相關檔案
-scripts/                  # 各項指令的實作 (安裝到 /usr/local/lib)
-  └─ <commands>/            # kde cli 指令邏輯
-  └─ utils/                 # kde cli 功能函式
+# 3. 驗證安裝
+kde --version
 ```
 
-### kde-cli Artifacts (可版本化的環境設定)
+### 5 分鐘快速體驗
 
-```
-environments/
-  └─ <cluster-name>/      # K8S 環境
-    └─ kubeconfig/          # k8s kubeconfig 所在資料夾 (建議加入 .gitignore)
-    └─ pki/                 # kind cluster cert 所在資料夾 (建議加入 .gitignore)
-    └─ kind-config.yaml     # kind 的設定檔 (建議加入 .gitignore)
-    └─ k3d-config.yaml      # k3d 的設定檔 (建議加入 .gitignore)
-    └─ .env                 # 此環境的本地的設定檔 (建議加入 .gitignore)
-    └─ k8s.env              # 此環境的公用的設定檔
-    └─ namespaces/
-      └─ <project-name>/    # 專案名稱(K8S namespace 名稱)
-        ├─ project.env        # 專案設定檔(包含專案 Repo、開發/部署環境 image 設定，可增加自訂環境變數)
-        ├─ pre-build.sh       # CI 前置腳本
-        ├─ build.sh           # CI 執行腳本
-        ├─ post-build.sh      # CI 後置腳本
-        ├─ pre-deploy.sh      # CD 前置腳本
-        ├─ deploy.sh          # CD 執行腳本
-        ├─ post-deploy.sh     # CD 後置腳本
-        ├─ undeploy.sh        # 解除部署腳本
-        ├─ [repo]/            # 專案 git repo
-        ├─ [pvc dir]/         # PVC 掛載的資料夾 (StroageClass: local-path)
-        └─ ...
-current.env  # 當前使用的 K8s 環境 (建議加入 .gitignore)
-kde.env      # kde-cli 使用的 docker image (建議加入 .gitignore)
+```bash
+# 1. 初始化 Workspace
+mkdir my-workspace && cd my-workspace
+kde init
+
+# 2. 啟動 Kind 開發環境
+kde start dev-env kind
+
+# 3. 建立專案
+kde proj create myapp
+# 選擇從 Git 倉庫抓取或建立本地專案
+# 設定開發映像（例如：node:20）
+
+# 4. 執行 CI/CD Pipeline 部署
+kde proj pipeline myapp
+
+# 5. 啟動 K9s 監控
+kde k9s
 ```
 
-## 免責聲明
+恭喜！你已經成功建立了第一個 Kubernetes 開發環境並部署了專案。
 
-本工具僅作為自動化操作的框架，協助使用者更方便地啟用這些服務。所有使用者應自行了解並遵守這些第三方服務各自的服務條款與授權模式。
+## 📚 核心概念
 
-## 其他語言
+### Workspace（工作空間）
+Workspace 是 KDE-cli 的核心組織單位，用來統一管理：
+- **環境定義**：一個或多個 Kubernetes 集群（本地或遠端）
+- **專案定義**：每個專案對應一個 K8s Namespace
+- **CI/CD 流程定義**：每個專案可定義獨立的 Pipeline 流程
 
-[English](./README.md)
+### Environment（環境）
+支援三種環境類型：
+- **Kind**：Kubernetes in Docker，適合本地開發
+- **K3D**：K3s in Docker，輕量級本地開發環境
+- **外部 K8s**：連接到雲端或地端 K8s 集群
 
-## 相關連結
+### Project（專案）
+- 每個專案對應一個 Kubernetes Namespace
+- 包含應用程式原始碼、建置腳本、部署腳本
+- 支援從 Git 倉庫抓取或本地開發
 
-- [k3d](https://k3d.io/stable/)
-- [kind](https://kind.sigs.k8s.io/)
-- [local-path-provisioner](https://github.com/rancher/local-path-provisioner)
-- [k9s](https://k9scli.io/)
-- [Kubernetes Dashboard](https://github.com/kubernetes/dashboard)
-- [Headlamp](https://headlamp.dev/)
-- [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
-- [Ngrok](https://ngrok.com/)
-- [Telepresence](https://telepresence.io/docs/quick-start)
-- [code-server](https://github.com/coder/code-server)
+### CI/CD Pipeline
+- Script 驅動的 CI/CD 流程
+- 預設流程：`build` → `deploy`
+- 可自訂階段：`test` → `lint` → `build` → `security-scan` → `release` → `deploy`
+- 每個階段可指定執行環境（Docker 映像）
+
+## 🛠️ 整合的工具生態系統
+
+| 分類 | 工具 | 功能 |
+|------|------|------|
+| **本地 K8s** | Kind, K3D | 快速啟動本地 Kubernetes 環境 |
+| **K8s 管理** | K9s | TUI 終端機圖形化操作介面 |
+| | Headlamp | Web UI 圖形化管理介面 |
+| **開發整合** | 開發容器 | DEVELOP_IMAGE 容器環境 |
+| | Kind/K3D + PVC 掛載 | 透過 local-path-provisioner 實現程式碼即時同步 |
+| | Telepresence | 遠端 Pod 流量轉接與環境模擬 |
+| | code-server | Web UI 的 VSCode 開發環境 |
+| | Port Forward | Service/Pod 端口轉發到本地 |
+| **對外連線** | Cloudflare Tunnel | 安全的外部連線（自訂域名） |
+| | Ngrok | 快速的臨時外部連線 |
+
+## 📖 基本使用
+
+### 環境管理
+
+```bash
+# 列出所有環境
+kde list
+kde ls
+
+# 啟動/建立環境
+kde start dev-env kind        # Kind 環境
+kde start test-env k3d        # K3D 環境
+kde start prod-env k8s        # 外部 K8s 環境
+
+# 切換環境
+kde use dev-env
+
+# 查看環境狀態
+kde status
+
+# 停止環境
+kde stop dev-env
+
+# 重啟環境
+kde restart dev-env
+
+# 移除環境
+kde remove dev-env
+kde rm dev-env
+```
+
+### 專案管理
+
+```bash
+# 列出專案
+kde proj list
+kde proj ls
+
+# 建立專案
+kde proj create myapp
+
+# 執行 CI/CD Pipeline 部署
+kde proj pipeline myapp
+kde proj deploy myapp
+
+# 更新專案程式碼
+kde proj pull myapp
+
+# 重新部署
+kde proj redeploy myapp
+
+# 卸載專案
+kde proj undeploy myapp
+
+# 移除專案
+kde proj remove myapp
+kde proj rm myapp
+```
+
+### 開發模式
+
+```bash
+# 進入開發容器（DEVELOP_IMAGE）
+kde proj exec myapp develop
+kde proj exec myapp dev
+
+# 進入開發容器並對應端口
+kde proj exec myapp develop 3000
+
+# 進入部署容器（DEPLOY_IMAGE，包含 kubectl/helm）
+kde proj exec myapp deploy
+kde proj exec myapp dep
+```
+
+### 監控與除錯
+
+```bash
+# 啟動 K9s（終端機 UI）
+kde k9s
+
+# 啟動 Headlamp（Web UI）
+kde headlamp
+
+# 查看專案 Pod 日誌
+kde proj tail myapp
+```
+
+### 外部連線
+
+```bash
+# Port Forward（本地存取）
+kde expose myapp service myapp-service 3000 3000
+
+# Cloudflare Tunnel（安全外部存取）
+kde cloudflare-tunnel myapp.example.com service
+
+# Ngrok（快速外部存取）
+kde ngrok service
+```
+
+### CI/CD Pipeline 進階操作
+
+```bash
+# 執行完整 Pipeline
+kde proj pipeline myapp
+
+# 從特定階段開始
+kde proj pipeline myapp --from build
+
+# 執行到特定階段
+kde proj pipeline myapp --to test
+
+# 只執行特定階段
+kde proj pipeline myapp --only build
+
+# 手動模式（除錯）
+kde proj pipeline myapp --manual
+kde proj pipeline myapp --only build --manual
+```
+
+## 🏗️ 開發模式
+
+KDE-cli 支援三種開發模式，適應不同的開發場景：
+
+### 模式 1：開發容器模式
+進入 `DEVELOP_IMAGE` 容器，掛載專案資料夾進行開發。
+
+```bash
+kde proj exec myapp develop [port]
+```
+
+**適用場景**：快速開發、單元測試、不需要 K8s 功能
+
+### 模式 2：K8s + PVC 掛載模式（Hot Reload）
+透過 K8s YAML 或 Helm 部署應用到 K8s，使用 `local-path-provisioner` 將 source code 掛載到 Pod 內。
+
+```
+本地程式碼 → PVC → Pod 內即時同步 → Hot Reload
+```
+
+**適用場景**：整合測試、接近生產環境的開發、需要 K8s 網路功能
+
+### 模式 3：Telepresence 模式
+攔截遠端 K8s Pod 的流量到本地開發容器。
+
+```bash
+kde telepresence replace myapp myapp-deployment
+```
+
+**適用場景**：連接遠端 K8s 開發、需要存取遠端服務
+
+## 📖 文檔
+
+完整的文檔請參考 `docs/` 目錄：
+
+### 核心文檔
+- **[KDE-cli 概述](./docs/core/overview.md)** - 核心價值與開發生命週期
+- **[Workspace（工作空間）](./docs/core/workspace.md)** - Workspace 完整說明
+- **[設計原則](./docs/principle.md)** - 設計理念與工作流程
+
+### 環境管理
+- **[環境概述](./docs/core/environment/environment-overview.md)** - 環境類型與開發模式
+- **[Kubernetes 環境](./docs/core/environment/kubernetes/overview.md)** - K8s 環境詳細說明
+  - [Kind 環境](./docs/core/environment/kubernetes/kind.md)
+  - [K3D 環境](./docs/core/environment/kubernetes/k3d.md)
+  - [外部 K8s 環境](./docs/core/environment/kubernetes/external-kubernetes.md)
+- **[開發容器](./docs/core/environment/dev-container.md)** - 開發容器詳細說明
+
+### 專案與 CI/CD
+- **[專案管理](./docs/core/project.md)** - 專案配置與管理
+- **[CI/CD Pipeline](./docs/core/cicd-pipeline.md)** - Script 驅動的 CI/CD 流程
+
+### 開發工具
+- **[開發工具概述](./docs/dev-tools.md)** - 整合工具總覽
+- **[K9s](./docs/core/dev-tools/k9s.md)** - 終端機 K8s 管理工具
+- **[Headlamp](./docs/core/dev-tools/headlamp.md)** - Web UI Dashboard
+- **[Telepresence](./docs/core/dev-tools/telepresence.md)** - 遠端流量攔截
+- **[code-server](./docs/core/dev-tools/code-server.md)** - Web VSCode
+- **[Port Forward](./docs/core/dev-tools/port-forward.md)** - 端口轉發
+- **[Cloudflare Tunnel](./docs/core/dev-tools/cloudflare-tunnel.md)** - 安全外部連線
+- **[Ngrok](./docs/core/dev-tools/ngrok.md)** - 快速外部連線
+
+### 快速參考
+- **[快速參考指南](./.cursor/rules/quick-reference.mdc)** - 常用指令速查
+
+## 🎓 使用範例
+
+### 範例 1：團隊協作開發環境
+
+```bash
+# 管理員：建立並配置 Workspace
+mkdir team-workspace && cd team-workspace
+kde init
+kde start dev-env kind
+kde proj create service-a
+kde proj create service-b
+# 配置專案...
+git add . && git commit -m "Add dev environment" && git push
+
+# 團隊成員：一鍵啟動環境
+git clone <team-workspace-repo-url>
+cd team-workspace
+kde start dev-env kind
+kde proj pipeline service-a
+kde proj pipeline service-b
+kde k9s  # 開始開發
+```
+
+### 範例 2：多環境部署
+
+```bash
+# 開發環境
+kde use dev-env
+kde proj pipeline myapp
+
+# 測試環境
+kde use test-env
+kde proj pipeline myapp
+
+# 生產環境
+kde use prod-env
+kde proj pipeline myapp
+```
+
+### 範例 3：使用 Telepresence 連接遠端 K8s
+
+```bash
+# 連接到遠端環境
+kde start remote-env k8s
+
+# 啟動 Telepresence 攔截流量
+kde telepresence replace myapp myapp-deployment
+
+# 選擇專案並進入開發環境
+# 本地開發，遠端流量導向本地
+npm run dev
+```
+
+## 🔧 除錯
+
+啟用除錯模式來追蹤 KDE-cli 的執行流程：
+
+```bash
+# 方式 1：臨時啟用
+KDE_DEBUG=true kde start dev-env kind
+KDE_DEBUG=true kde proj pipeline myapp
+
+# 方式 2：在 kde.env 中永久啟用
+echo "KDE_DEBUG=true" >> kde.env
+kde proj pipeline myapp
+```
+
+除錯模式會顯示：
+- KDE-cli 內部執行的每個 shell 命令
+- 變數值和函數調用
+- 幫助追蹤問題發生在哪個步驟
+
+## 📝 授權
+
+本專案採用 MIT 授權條款 - 詳見 [LICENSE](./LICENSE) 檔案
+
+## 🔗 相關資源
+
+- **GitHub**：[r82wei/KDE-cli](https://github.com/r82wei/KDE-cli)
+- **文檔**：[docs/](./docs/)
+- **Issues**：[GitHub Issues](https://github.com/r82wei/KDE-cli/issues)
+- **Discussions**：[GitHub Discussions](https://github.com/r82wei/KDE-cli/discussions)
+
+## 💡 專案名稱說明
+
+**KDE** = **Kubernetes Development Environment** = **Workspace**
+
+這三個名詞指的是同一個概念：
+- **KDE** 是縮寫，代表整個開發環境
+- **Kubernetes Development Environment** 是完整名稱
+- **Workspace（工作空間）** 是實際的組織單位和目錄結構
