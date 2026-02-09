@@ -57,6 +57,7 @@ show_help() {
     echo "  ngrok                                               啟動 ngrok"
     echo "  cloudflare-tunnel <target> [options]                透過 Cloudflare Tunnel 建立連線 (可以使用 kde cloudflare-tunnel -h 查看詳細說明)"
     echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
+    echo "  mirrord <command> -n <namespace> --pod <pod>        透過 Mirrord 連接 Pod，鏡像/攔截流量到本地開發容器 (可以使用 kde mirrord -h 查看詳細說明)"
     echo "  code-server [-d] [-p port]                          在目前路徑下啟動 code-server，可使用 -d 參數在背景執行，可使用 -p 參數指定 code-server 的 port"
     echo "  alias <name> [path]                                 建立 alias 指令，透過 tmux 快速啟動 session 到指定路徑的目錄 (需要安裝 tmux)"
     echo "  version                                             顯示 KDE 版本"
@@ -260,6 +261,10 @@ case "$1" in
     telepresence)
         shift  # 移除 "telepresence" 指令
         source ${KDE_SCRIPTS_PATH}/telepresence/command.sh
+        ;;
+    mirrord)
+        shift  # 移除 "mirrord" 指令
+        source ${KDE_SCRIPTS_PATH}/mirrord/command.sh
         ;;
     code-server)
         shift  # 移除 "code-server" 指令
