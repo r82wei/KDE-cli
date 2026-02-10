@@ -22,6 +22,8 @@ if [[ ! -f ${KDE_PATH}/kde.env ]]; then
 fi
 # 設定環境目錄路徑(enviroments)
 export ENVIROMENTS_PATH=${KDE_PATH}/environments
+# 設定 KDE 文件目標路徑
+export KDE_DOCS_TARGET_PATH=${KDE_PATH}/docs/kde-cli
 
 # 設定 KUBE_CONFIG_DIR
 export KUBE_CONFIG_DIR=kubeconfig
@@ -73,7 +75,7 @@ case "$1" in
     --init|init)
         touch ${KDE_ENV_FILE}
         cp -r ${KDE_TEMPLATES_PATH}/init/. ${KDE_PATH}/
-        cp -r ${KDE_DOCS_PATH} ${KDE_PATH}/
+        cp -r ${KDE_DOCS_PATH} ${KDE_DOCS_TARGET_PATH}
         exit 0
         ;;
     -v|version|--version)
@@ -177,6 +179,18 @@ load_enviroment_env ${CUR_ENV}
 
 # 根據第一個參數來選擇不同的處理流程
 case "$1" in
+    docs)
+        if [[ -d ${KDE_DOCS_TARGET_PATH} ]]; then
+            # 提示是否要覆蓋
+            read -p "kde-cli 文件已存在，是否要覆蓋？(y/n) " answer
+            if [[ $answer != "y" ]]; then
+                exit 0
+            fi
+        fi
+        cp -r ${KDE_DOCS_PATH} ${KDE_DOCS_TARGET_PATH}
+        echo "kde-cli 文件已建立"
+        exit 0
+        ;;
     start)
         shift  # 移除 "start" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh
