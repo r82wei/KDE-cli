@@ -38,6 +38,7 @@ show_help() {
     echo ""
     echo "command:"
     echo "  init                                                初始化 kde 環境"
+    echo "  docs                                                建立 kde-cli 文件"
     echo "  list, ls                                            列出 k8s 環境"
     echo "  start <env_name> [kind|k3d|k8s]                     建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 k3d 啟動 k3d，可使用參數 k8s 啟動外部 K8S)"
     echo "  create <env_name> [kind|k3d|k8s]                    建立/啟動 k8s 環境 (預設使用 kind，可使用參數 k3d 建立 k3d，可使用參數 k8s 建立外部 K8S)"
