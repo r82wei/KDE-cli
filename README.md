@@ -1,349 +1,460 @@
-# KDE-cli (Kubernetes Development Environment)
+# KDE-cli
 
-Environment-as-Code for reproducible Kubernetes development environments.
+[English](./README.md) | [繁體中文](./README.zh-TW.md)
 
-## What is KDE-cli？
+> **Kubernetes Development Environment CLI** - A development environment and delivery workflow management tool for Kubernetes
 
-A lightweight CLI-based development environment built around Kubernetes that helps you quickly set up Kubernetes development environments, supports both local and remote Kubernetes development, enables CI/CD simulation and verification, and can deploy the same workflow to different remote Kubernetes clusters with a single command.
+KDE-cli is a unified management tool for Kubernetes development environments that integrates a complete development toolchain, enabling full lifecycle management from environment creation to deployment. It consolidates scattered Kubernetes development tools into a unified command interface, allowing developers to complete the entire Kubernetes development workflow—from environment creation, development, testing, to deployment—using **one toolset and one command interface**.
 
-## 🔑 Key Features
+## ✨ Core Features
 
-- ⚙️ `Quickly start a local K8s or connect to a remote K8s`
-  - [kind](https://kind.sigs.k8s.io/): Kubernetes cluster in Docker (default)
-  - [k3d](https://k3d.io/stable/): Lightweight K3s cluster
-  - Remote K8s: Connect to an existing Kubernetes cluster via kubeconfig
-- 🧑🏻‍💻 `Real-time development`
-  - One-click launch of VS Code Web UI. Develop anywhere via a browser (uses [code-server](https://github.com/coder/code-server); can pair with [Ngrok](https://ngrok.com/) and [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) for HTTPS access)
-  - On local K8s, mount source code into Pods via PV for hot-reload development (uses [local-path-provisioner](https://github.com/rancher/local-path-provisioner))
-  - For remote K8s, forward traffic to a local containerized development environment for debugging (uses [Telepresence](https://telepresence.io/docs/quick-start))
-- 🚀 `Simple and flexible CI/CD`
-  - Custom shell deployment scripts, with runtime environment variables configured via `project.env`
-  - Customizable docker image for the deploy environment; supports any deployment tool
-  - One-click deployment to quickly validate deployment scripts and deploy to any K8s environment
-- 🖥️ `Monitoring and management tools`
-  - [k9s](https://k9scli.io/): Terminal-based Kubernetes UI, convenient inside IDE terminals
-  - [Headlamp](https://headlamp.dev/): User-friendly Kubernetes Web UI
-  - [Kubernetes Dashboard](https://github.com/kubernetes/dashboard): Web UI for management
-- 🌐 `Quickly expose services`
-  - [Ngrok](https://ngrok.com/): Expose local services to the internet for testing
-  - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/): Create secure tunnels through Cloudflare for quick external access
-  - Port Forward: Forward K8s Service/Pod ports to the local machine
-- 🐳 `Fully containerized`
-  - All operations run inside Docker containers
-  - Isolated development environments; develop multiple projects simultaneously
-  - Only Docker is needed to create a consistent development environment
-- 📦 `IaC-based environment settings`
-  - Environment configuration can be versioned with Git
-  - Standardized development environments across the team
+### 🔄 Environment Consistency (Dev/Prod Parity)
+- Quickly start Kind/K3D Kubernetes development environments
+- Quickly connect to existing Kubernetes environments (via kubeconfig)
+- Development environment achieves real-time code sync and Hot Reload via PVC mounting
+- Intercept remote Kubernetes traffic to local development containers via Telepresence
+- Development and production environments both run inside Kubernetes
+- All tools run inside containers, ensuring environment consistency
 
-## Why KDE-cli?
+### 📦 Version Controllable, Reproducible, Portable
+- Environment configuration (`k8s.env`) can be version controlled
+- Project configuration (`project.env`) can be version controlled
+- CI/CD Pipeline configuration can be version controlled
+- Unified tool version management (`kde.env`)
+- Quickly sync and migrate multiple environments, projects, and CI/CD Pipelines across different computers via GitHub/GitLab
+- Team members can quickly replicate identical development environments
+- Rapid onboarding for new members
 
-- You are a Developer who wants to quickly start a local development environment? ✅
-- You are a Developer who wants to debug by replacing a remote K8s Pod with your local environment? ✅
-- You are Ops/Infra/DevOps and want to simulate deployments before running CI/CD? ✅
-- You are QA and want to validate the behavior of a specific commit? ✅
-- You want your team to use the same development/test environment? ✅
-- You want to reduce drift between development and production? ✅
-- You prefer to do it all with a single shell tool? ✅
+### 🚀 Script-Driven CI/CD Pipeline
+- Define CI/CD workflows using Shell Scripts
+- Customize pipeline stages and execution environments
+- Support manual mode for development and debugging
+- Flexible error handling mechanism
 
-👉 KDE-cli aims to simplify and integrate these workflows so that users can complete most development, testing, and deployment verification tasks in a local command-line environment—and version their environments.
+### 🔒 Project Isolation
+- Each project corresponds to an independent Kubernetes Namespace with complete resource isolation
+- Development containers are isolated from each other, allowing simultaneous development of multiple projects without interference
+- Resource isolation: Set independent resource quotas and limits for each project
+- Environment variable isolation: Each project's configuration and environment variables do not affect each other
+- Multiple projects can run simultaneously in the same Workspace without conflicts
 
-## Usage Flow
+### 🐳 Container First
+- Only Docker installation needed to execute all functions
+- All tools run inside containers
+- Avoid polluting the local environment
+- Ensure environment consistency
 
-```mermaid
-flowchart LR
-    create_workspace[Create Workspace]
-    create_local_k8s[Create Local K8s]
-    add_remote_k8s[Connect Existing K8s]
-    create_project[Configure Project]
-    pull_repo[Fetch Project from Git]
-    create_local_repo[Create New Local Project]
-    k8s_yaml[Write K8s Deployment YAML]
-    shell_script["Write CI/CD Shell (build.sh/deploy.sh/undeploy.sh)"]
-    deploy[Deploy to K8s]
-    debug["Develop & Debug (CI/CD, App)"]
-    monitor[K9s / Headlamp / K8s Dashboard]
-    expose[Expose Service]
-    port_forwarding[Port Forwarding]
-    cloudflare_tunnel[Cloudflare Tunnel]
-    ngrok[ngrok]
-    git_push[Commit Workspace to Git]
+### 🎯 Unified Tool Entry Point
+Integrates 9+ Kubernetes development tools into a unified CLI interface, reducing the learning curve:
 
-    create_workspace--> create_local_k8s
-    create_workspace--> add_remote_k8s
-    create_local_k8s --> create_project
-    add_remote_k8s --> create_project
-    create_project --> pull_repo
-    create_project --> create_local_repo
-    pull_repo --> k8s_yaml
-    create_local_repo --> k8s_yaml
-    k8s_yaml --> shell_script
-    shell_script --> deploy
-    deploy --> monitor
-    monitor --> debug
-    debug --> git_push
-    %% Expose Service
-    deploy -.-> expose
-    expose -.-> port_forwarding
-    expose -.-> cloudflare_tunnel
-    expose -.-> ngrok
-
+```bash
+kde start               # Create/start environment (Kind/K3D/K8s)
+kde k9s                 # Launch K9s terminal management tool
+kde headlamp            # Launch Headlamp Web UI
+kde telepresence        # Launch Telepresence traffic interception
+kde code-server         # Launch VSCode Web IDE
+kde cloudflare-tunnel   # Launch Cloudflare Tunnel
+kde ngrok               # Launch Ngrok external connection
+kde expose              # Port Forward
 ```
 
-## Installation
+## 🎯 Target Audience
 
-1. **Prepare Docker**
+### Organizations
+- Want to align development and production environments
+- Need to manage multiple environments and projects
+- Need to standardize development workflows and version control environment configurations
+- Teams want to maintain environment consistency
+- Need rapid onboarding (one-click environment startup)
+- Want to test CI/CD workflows and validate K8s configurations in development environments
 
-   - You must first install [Docker](https://docs.docker.com/engine/install/).
+### Projects
+- Projects deployed to Kubernetes in production
+- Microservices architecture
+- Need to deploy to multiple K8s environments
 
-2. **Install KDE-cli**
+### Users (Developer/DevOps/SRE/QA)
+- Quickly create simulation environments
+- Convenient for development/debugging
+- Convenient for K8s environment and CI/CD Pipeline simulation/development/debugging
+- Version-controlled environment configuration management
+- Local simulation of complete K8s environments
 
-   - **Option 1: Quick Start with Docker**
+## 🚀 Quick Start
 
-     ```bash
-     bash <(curl -fsSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/run.sh)
-     ```
+### System Requirements
 
-     This command will start a Docker container with KDE-cli pre-installed and ready to use.
+- **Docker**: Installed and running
+- **Operating System**: Linux / macOS / Windows (WSL)
+- **Shell**: Bash
+- **Permissions**: Requires sudo permissions for installation
 
-   - **Option 2: Local Installation on Linux/Mac**
-     ```bash
-     curl -sSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/install.sh | bash
-     ```
-     This will install KDE-cli directly on your system.
+### Installation
 
-## Quick Start
+#### Method 1: One-Click Installation (Recommended)
 
-1. **Start or join a K8s environment**
-   - Start kind/k3d locally
-     ```bash
-     kde create <cluster-name> --kind    # or --k3d
-     ```
-   - Join an existing K8s cluster
-   ```bash
-     kde create <cluster-name> --k8s
-   ```
-2. **Create a project (namespace)**
-   ```bash
-   # Creates the project at environment/<cluster-name>/namespaces/<project-name> and adds project settings to project.env
-   kde project create <project-name>
-   ```
-3. **Enter the local container development environment**
+```bash
+# Using curl (requires sudo permissions)
+curl -fsSL https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/install.sh | sudo bash
 
-   - Define required environment variables in `project.env`. They will be automatically injected into the container at startup.
+# Or using wget (requires sudo permissions)
+wget -qO- https://raw.githubusercontent.com/r82wei/KDE-cli/refs/heads/main/install.sh | sudo bash
 
-   ```bash
-   # Start the development runtime environment using the custom Docker image (DEVELOP_IMAGE) in project.env
-   kde project exec <project-name> dev [port]
-
-   # Start the deployment runtime environment using the custom Docker image (DEPLOY_IMAGE) in project.env
-   kde project exec <project-name> dep [port]
-   ```
-
-4. **Run CI/CD deployment**
-
-   KDE supports flexible Pipeline mechanisms:
-
-   - **Standard CICD** (Default): Build → Test → Release → Deploy
-   - **Custom Pipeline**: Flexibly define stages, order, and execution environment
-   - **Legacy Mode** (Backward compatible): Traditional build/deploy process
-
-   **Quick Start - Legacy Mode** (Backward compatible):
-
-   - Define environment variables required for **build**/**deploy** in `project.env`. They will be automatically injected during execution.
-   - If the files exist, the following shell scripts under the project will be executed in order:
-
-     | Order | Script         | Default Image | Custom Image Env (project.env) |
-     | ----- | -------------- | ------------- | ------------------------------ |
-     | 1     | pre-build.sh   | DEVELOP_IMAGE | PRE_BUILD_IMAGE                |
-     | 2     | build.sh       | DEVELOP_IMAGE | BUILD_IMAGE                    |
-     | 3     | post-build.sh  | DEVELOP_IMAGE | POST_BUILD_IMAGE               |
-     | 4     | pre-deploy.sh  | DEPLOY_IMAGE  | PRE_DEPLOY_IMAGE               |
-     | 5     | deploy.sh      | DEPLOY_IMAGE  | DEPLOY_IMAGE                   |
-     | 6     | post-deploy.sh | DEPLOY_IMAGE  | POST_DEPLOY_IMAGE              |
-
-   **Standard CICD**:
-
-   - If scripts exist: `build.sh`, `test.sh`, `release.sh`, `deploy.sh`
-   - System automatically executes these stages
-   - All stages use `DEPLOY_IMAGE` by default
-
-   **Custom Pipeline**:
-
-   - Define custom stages in `project.env`:
-
-     ```bash
-     # Define stages to execute
-     KDE_PIPELINE_STAGES="lint,security,build,test,deploy,monitor"
-
-     # Configure each stage
-     KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
-     KDE_PIPELINE_STAGE_lint_IMAGE=node:20
-
-     KDE_PIPELINE_STAGE_security_SCRIPT=security-scan.sh
-     KDE_PIPELINE_STAGE_security_IMAGE=aquasec/trivy:latest
-     # ... other stages
-     ```
-
-   - Error handling options:
-     - Fail Fast mode is enabled by default (stops immediately on any failure). Set `KDE_PIPELINE_FAIL_FAST=false` to disable
-     - Allow specific stages to fail: Set `KDE_PIPELINE_STAGE_<stage>_ALLOW_FAILURE=true` for stages that can fail without blocking the pipeline
-
-   **Execution**:
-
-   ```bash
-   # Execute complete pipeline
-   kde project deploy <project-name>
-
-   # Execute build only (CI stages)
-   kde project build <project-name>
-   ```
-
-   📚 **Learn More**:
-
-   - [Custom Pipeline Guide](./docs/custom-pipeline.md)
-   - [Pipeline Migration Guide](./docs/pipeline-migration-guide.md)
-   - [Custom Pipeline Example](./docs/examples/custom-pipeline-example.md)
-
-5. **Open dashboards for development/debugging**
-
-   ```bash
-   # Terminal UI suitable for IDE terminals
-   # If you specify --port 30000-30020, you can use K9s port forwarding to map ports 30000-30020 locally
-   kde k9s [--port]
-
-   # Headlamp (Kubernetes Web UI)
-   kde headlamp [--port]
-
-   # Web UI; add `--insecure` to skip login
-   kde dashboard [--port] [--insecure]
-   ```
-
-6. **Undeploy**
-
-   - Define environment variables required for **undeploy** in `project.env`. They will be automatically injected at startup.
-   - Trigger `undeploy.sh` if the file exists; its runtime Docker image can be customized in `project.env`.
-     - `undeploy.sh`: UNDEPLOY_IMAGE (default: DEPLOY_IMAGE)
-   - ⚠️ If `undeploy.sh` does not exist, the default action is to delete the namespace in K8s that has the same name as the project.
-
-   ```bash
-   kde project undeploy <project-name>
-   ```
-
-7. **View or switch the current environment**
-
-   ```bash
-   # Get the currently used cluster
-   kde current
-
-   # Switch the current K8s cluster
-   kde use <cluster-name>
-   ```
-
-8. **View status of all K8s environments**
-   ```bash
-   kde status
-   ```
-
-## Advanced Features
-
-- **Launch VS Code Web UI ([code-server](https://github.com/coder/code-server))**
-
-  - options
-    - -d : Run in background
-    - -p : Specify port (default 8080)
-
-  ```bash
-  kde code-server [options]
-  ```
-
-- **Remote debugging ([Telepresence](https://telepresence.io/docs/quick-start))**
-
-  - ⚠️ Not recommended to directly proxy production services. Evaluate the risks yourself.
-
-  ```bash
-  kde telepresence <command>
-  ```
-
-  - command
-    - `replace` Intercept traffic from a remote Pod to the local environment and stop the Pod
-    - `intercept` Intercept traffic from a remote Pod to the local environment without stopping the Pod
-    - `wiretap` Copy a replica of a remote Pod's traffic to the local environment without stopping the Pod
-    - `ingest` Do not intercept traffic and do not affect the Pod; only allow the local environment to connect to services inside the K8s cluster
-
-- **Expose services**
-
-  ```bash
-  # Local port forwarding
-  kde expose
-
-  # Ngrok
-  kde ngrok <target>
-
-  # Cloudflare Tunnel
-  kde cloudflare-tunnel <target> [options]
-  ```
-
-## File Structure
-
-### kde-cli
-
-```
-kde.sh                    # Main script, coordinates sub-commands in scripts/* (installed to /usr/local/lib)
-install.sh                # Installation script
-uninstall.sh              # Uninstall script
-dockerfiles/
-  └─ <docker images>/     # Docker images used by kde-cli
-scripts/                  # Implementations of commands (installed to /usr/local/lib)
-  └─ <commands>/          # kde cli command logic
-  └─ utils/               # kde cli utility functions
+# Verify installation
+kde --version
 ```
 
-### kde-cli Artifacts (versionable environment settings)
+#### Method 2: Manual Installation
 
-```
-environments/
-  └─ <cluster-name>/      # K8s environment
-    └─ kubeconfig/          # k8s kubeconfig folder (recommended to add to .gitignore)
-    └─ pki/                 # kind cluster cert folder (recommended to add to .gitignore)
-    └─ kind-config.yaml     # kind config (recommended to add to .gitignore)
-    └─ k3d-config.yaml      # k3d config (recommended to add to .gitignore)
-    └─ .env                 # Local settings for this environment (recommended to add to .gitignore)
-    └─ k8s.env              # Shared settings for this environment
-      └─ namespaces/
-      └─ <project-name>/    # Project name (K8s namespace name)
-        ├─ project.env        # Project config (repo, dev/deploy images, custom env vars)
-        ├─ pre-build.sh       # CI pre script
-        ├─ build.sh           # CI build script
-        ├─ post-build.sh      # CI post script
-        ├─ pre-deploy.sh      # CD pre script
-        ├─ deploy.sh          # CD deploy script
-        ├─ post-deploy.sh     # CD post script
-        ├─ undeploy.sh        # Undeploy script
-        ├─ [repo]/            # Project git repo
-        ├─ [pvc dir]/         # PVC mounted folder (StorageClass: local-path)
-              └─ ...
-current.env  # Currently selected K8s environment (recommended to add to .gitignore)
-kde.env      # Docker images for kde-cli (recommended to add to .gitignore)
+```bash
+# 1. Clone the project
+git clone https://github.com/r82wei/KDE-cli.git
+cd KDE-cli
+
+# 2. Run installation (requires sudo permissions)
+sudo ./local-install.sh
+
+# 3. Verify installation
+kde --version
 ```
 
-## Disclaimer
+### 5-Minute Quick Experience
 
-This tool serves only as an automation framework to help users enable these services more conveniently. All users should understand and comply with the terms of service and licensing models of the respective third-party services.
+```bash
+# 1. Initialize Workspace
+mkdir my-workspace && cd my-workspace
+kde init
 
-## Language
+# 2. Start Kind development environment
+kde start dev-env kind
 
-- [中文版](./README.zh-TW.md)
+# 3. Create project
+kde proj create myapp
+# Choose to fetch from Git repository or create local project
+# Set development image (e.g., node:20)
 
-## Related Links
+# 4. Run CI/CD Pipeline deployment
+kde proj pipeline myapp
 
-- [k3d](https://k3d.io/stable/)
-- [kind](https://kind.sigs.k8s.io/)
-- [local-path-provisioner](https://github.com/rancher/local-path-provisioner)
-- [k9s](https://k9scli.io/)
-- [Kubernetes Dashboard](https://github.com/kubernetes/dashboard)
-- [Headlamp](https://headlamp.dev/)
-- [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
-- [Ngrok](https://ngrok.com/)
-- [Telepresence](https://telepresence.io/docs/quick-start)
-- [code-server](https://github.com/coder/code-server)
+# 5. Launch K9s for monitoring
+kde k9s
+```
+
+Congratulations! You have successfully created your first Kubernetes development environment and deployed a project.
+
+## 📚 Core Concepts
+
+### Workspace
+Workspace is the core organizational unit of KDE-cli, used to centrally manage:
+- **Environment Definitions**: One or more Kubernetes clusters (local or remote)
+- **Project Definitions**: Each project corresponds to a K8s Namespace
+- **CI/CD Workflow Definitions**: Each project can define independent Pipeline workflows
+
+### Environment
+Supports three environment types:
+- **Kind**: Kubernetes in Docker, suitable for local development
+- **K3D**: K3s in Docker, lightweight local development environment
+- **External K8s**: Connect to cloud or on-premises K8s clusters
+
+### Project
+- Each project corresponds to a Kubernetes Namespace
+- Contains application source code, build scripts, deployment scripts
+- Supports fetching from Git repositories or local development
+
+### CI/CD Pipeline
+- Script-driven CI/CD workflows
+- Default workflow: `build` → `deploy`
+- Customizable stages: `test` → `lint` → `build` → `security-scan` → `release` → `deploy`
+- Each stage can specify execution environment (Docker image)
+
+## 🛠️ Integrated Tool Ecosystem
+
+| Category | Tool | Function |
+|------|------|------|
+| **Local K8s** | Kind, K3D | Quickly start local Kubernetes environments |
+| **K8s Management** | K9s | TUI terminal graphical interface |
+| | Headlamp | Web UI graphical management interface |
+| **Development Integration** | Dev Container | DEVELOP_IMAGE container environment |
+| | Kind/K3D + PVC Mount | Real-time code sync via local-path-provisioner |
+| | Telepresence | Remote Pod traffic forwarding and environment simulation |
+| | code-server | VSCode development environment with Web UI |
+| | Port Forward | Forward Service/Pod ports to local |
+| **External Connectivity** | Cloudflare Tunnel | Secure external connection (custom domain) |
+| | Ngrok | Quick temporary external connection |
+
+## 📖 Basic Usage
+
+### Environment Management
+
+```bash
+# List all environments
+kde list
+kde ls
+
+# Start/create environment
+kde start dev-env kind        # Kind environment
+kde start test-env k3d        # K3D environment
+kde start prod-env k8s        # External K8s environment
+
+# Switch environment
+kde use dev-env
+
+# View environment status
+kde status
+
+# Stop environment
+kde stop dev-env
+
+# Restart environment
+kde restart dev-env
+
+# Remove environment
+kde remove dev-env
+kde rm dev-env
+```
+
+### Project Management
+
+```bash
+# List projects
+kde proj list
+kde proj ls
+
+# Create project
+kde proj create myapp
+
+# Run CI/CD Pipeline deployment
+kde proj pipeline myapp
+kde proj deploy myapp
+
+# Update project code
+kde proj pull myapp
+
+# Redeploy
+kde proj redeploy myapp
+
+# Undeploy project
+kde proj undeploy myapp
+
+# Remove project
+kde proj remove myapp
+kde proj rm myapp
+```
+
+### Development Mode
+
+```bash
+# Enter development container (DEVELOP_IMAGE)
+kde proj exec myapp develop
+kde proj exec myapp dev
+
+# Enter development container with port mapping
+kde proj exec myapp develop 3000
+
+# Enter deployment container (DEPLOY_IMAGE, includes kubectl/helm)
+kde proj exec myapp deploy
+kde proj exec myapp dep
+```
+
+### Monitoring and Debugging
+
+```bash
+# Launch K9s (terminal UI)
+kde k9s
+
+# Launch Headlamp (Web UI)
+kde headlamp
+
+# View project Pod logs
+kde proj tail myapp
+```
+
+### External Connectivity
+
+```bash
+# Port Forward (local access)
+kde expose myapp service myapp-service 3000 3000
+
+# Cloudflare Tunnel (secure external access)
+kde cloudflare-tunnel myapp.example.com service
+
+# Ngrok (quick external access)
+kde ngrok service
+```
+
+### Advanced CI/CD Pipeline Operations
+
+```bash
+# Execute complete Pipeline
+kde proj pipeline myapp
+
+# Start from specific stage
+kde proj pipeline myapp --from build
+
+# Execute to specific stage
+kde proj pipeline myapp --to test
+
+# Execute only specific stage
+kde proj pipeline myapp --only build
+
+# Manual mode (debugging)
+kde proj pipeline myapp --manual
+kde proj pipeline myapp --only build --manual
+```
+
+## 🏗️ Development Modes
+
+KDE-cli supports three development modes, adapting to different development scenarios:
+
+### Mode 1: Development Container Mode
+Enter `DEVELOP_IMAGE` container, mount project folder for development.
+
+```bash
+kde proj exec myapp develop [port]
+```
+
+**Use Cases**: Rapid development, unit testing, no K8s functionality needed
+
+### Mode 2: K8s + PVC Mount Mode (Hot Reload)
+Deploy application to K8s via K8s YAML or Helm, use `local-path-provisioner` to mount source code into Pod.
+
+```
+Local code → PVC → Real-time sync in Pod → Hot Reload
+```
+
+**Use Cases**: Integration testing, near-production environment development, needs K8s network functionality
+
+### Mode 3: Telepresence Mode
+Intercept remote K8s Pod traffic to local development container.
+
+```bash
+kde telepresence replace myapp myapp-deployment
+```
+
+**Use Cases**: Connect to remote K8s for development, need to access remote services
+
+## 📖 Documentation
+
+For complete documentation, refer to the `docs/` directory:
+
+### Core Documentation
+- **[KDE-cli Overview](./docs/core/overview.md)** - Core value and development lifecycle
+- **[Workspace](./docs/core/workspace.md)** - Complete Workspace explanation
+- **[Design Principles](./docs/principle.md)** - Design philosophy and workflows
+
+### Environment Management
+- **[Environment Overview](./docs/core/environment/environment-overview.md)** - Environment types and development modes
+- **[Kubernetes Environment](./docs/core/environment/kubernetes/overview.md)** - Detailed K8s environment explanation
+  - [Kind Environment](./docs/core/environment/kubernetes/kind.md)
+  - [K3D Environment](./docs/core/environment/kubernetes/k3d.md)
+  - [External K8s Environment](./docs/core/environment/kubernetes/external-kubernetes.md)
+- **[Development Container](./docs/core/environment/dev-container.md)** - Detailed development container explanation
+
+### Projects and CI/CD
+- **[Project Management](./docs/core/project.md)** - Project configuration and management
+- **[CI/CD Pipeline](./docs/core/cicd-pipeline.md)** - Script-driven CI/CD workflows
+
+### Development Tools
+- **[Development Tools Overview](./docs/dev-tools.md)** - Integrated tools overview
+- **[K9s](./docs/core/dev-tools/k9s.md)** - Terminal K8s management tool
+- **[Headlamp](./docs/core/dev-tools/headlamp.md)** - Web UI Dashboard
+- **[Telepresence](./docs/core/dev-tools/telepresence.md)** - Remote traffic interception
+- **[code-server](./docs/core/dev-tools/code-server.md)** - Web VSCode
+- **[Port Forward](./docs/core/dev-tools/port-forward.md)** - Port forwarding
+- **[Cloudflare Tunnel](./docs/core/dev-tools/cloudflare-tunnel.md)** - Secure external connection
+- **[Ngrok](./docs/core/dev-tools/ngrok.md)** - Quick external connection
+
+### Quick Reference
+- **[Quick Reference Guide](./.cursor/rules/quick-reference.mdc)** - Quick command reference
+
+## 🎓 Usage Examples
+
+### Example 1: Team Collaborative Development Environment
+
+```bash
+# Administrator: Create and configure Workspace
+mkdir team-workspace && cd team-workspace
+kde init
+kde start dev-env kind
+kde proj create service-a
+kde proj create service-b
+# Configure projects...
+git add . && git commit -m "Add dev environment" && git push
+
+# Team members: One-click environment startup
+git clone <team-workspace-repo-url>
+cd team-workspace
+kde start dev-env kind
+kde proj pipeline service-a
+kde proj pipeline service-b
+kde k9s  # Start development
+```
+
+### Example 2: Multi-Environment Deployment
+
+```bash
+# Development environment
+kde use dev-env
+kde proj pipeline myapp
+
+# Testing environment
+kde use test-env
+kde proj pipeline myapp
+
+# Production environment
+kde use prod-env
+kde proj pipeline myapp
+```
+
+### Example 3: Using Telepresence to Connect to Remote K8s
+
+```bash
+# Connect to remote environment
+kde start remote-env k8s
+
+# Launch Telepresence to intercept traffic
+kde telepresence replace myapp myapp-deployment
+
+# Select project and enter development environment
+# Local development, remote traffic directed to local
+npm run dev
+```
+
+## 🔧 Debugging
+
+Enable debug mode to track KDE-cli execution flow:
+
+```bash
+# Method 1: Temporary enable
+KDE_DEBUG=true kde start dev-env kind
+KDE_DEBUG=true kde proj pipeline myapp
+
+# Method 2: Permanently enable in kde.env
+echo "KDE_DEBUG=true" >> kde.env
+kde proj pipeline myapp
+```
+
+Debug mode will display:
+- Every shell command executed internally by KDE-cli
+- Variable values and function calls
+- Help track which step the issue occurred
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details
+
+## 🔗 Related Resources
+
+- **GitHub**: [r82wei/KDE-cli](https://github.com/r82wei/KDE-cli)
+- **Documentation**: [docs/](./docs/)
+- **Issues**: [GitHub Issues](https://github.com/r82wei/KDE-cli/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/r82wei/KDE-cli/discussions)
+
+## 💡 Project Name Explanation
+
+**KDE** = **Kubernetes Development Environment** = **Workspace**
+
+These three terms refer to the same concept:
+- **KDE** is the abbreviation, representing the entire development environment
+- **Kubernetes Development Environment** is the full name
+- **Workspace** is the actual organizational unit and directory structure
