@@ -441,7 +441,7 @@ kde proj pipeline myapp
 
 ## 📝 授權
 
-本專案採用 MIT 授權條款 - 詳見 [LICENSE](./LICENSE) 檔案
+本專案採用 Apache 2.0 授權條款 - 詳見 [LICENSE](./LICENSE) 檔案
 
 ## 🔗 相關資源
 
