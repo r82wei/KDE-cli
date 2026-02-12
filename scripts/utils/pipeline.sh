@@ -364,8 +364,12 @@ execute_custom_pipeline() {
             fi
         fi
         
-        # 取得映像名稱（預設使用 DEPLOY_IMAGE）
-        local IMAGE=$(get_stage_image ${STAGE} ${DEPLOY_IMAGE})
+        # 取得映像名稱（build 階段預設使用 DEVELOP_IMAGE，其他階段預設使用 DEPLOY_IMAGE）
+        local DEFAULT_IMAGE=${DEPLOY_IMAGE}
+        if [[ "${STAGE}" == "build" ]]; then
+            DEFAULT_IMAGE=${DEVELOP_IMAGE}
+        fi
+        local IMAGE=$(get_stage_image ${STAGE} ${DEFAULT_IMAGE})
         
         # 執行階段
         execute_stage ${PROJECT_NAME} ${STAGE} ${SCRIPT} ${IMAGE}
