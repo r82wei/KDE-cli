@@ -165,8 +165,22 @@ if [[ -f ${KDE_PATH}/ngrok.env ]]; then
 fi
 
 # 設定當前環境的環境變數
-if [[ -f ${KDE_PATH}/current.env ]]; then
-    source ${KDE_PATH}/current.env
+# 判斷 $PWD 是否在 ENVIROMENTS_PATH 底下的某個資料夾
+if [[ -d ${ENVIROMENTS_PATH} ]]; then
+    for env in $(ls ${ENVIROMENTS_PATH}); do
+        if [[ ${PWD} == $(readlink -f ${ENVIROMENTS_PATH}/${env}) ]]; then
+            CUR_ENV=${env}
+            echo "目前在 ${CUR_ENV} 環境資料夾底下，設定當前環境為 ${CUR_ENV}"
+            break
+        fi
+    done
+fi
+
+if [[ -z ${CUR_ENV} ]]; then
+    if [[ -f ${KDE_PATH}/current.env ]]; then
+        source ${KDE_PATH}/current.env
+        echo "從 current.env 檔案中讀取當前環境為 ${CUR_ENV}"
+    fi
 fi
 
 if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
