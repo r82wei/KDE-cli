@@ -475,7 +475,7 @@ parse_pipeline_args() {
                     return 1
                 fi
                 ;;
-            --manual)
+            -m|--manual)
                 PIPELINE_MANUAL_MODE=true
                 shift
                 ;;
@@ -515,7 +515,7 @@ show_pipeline_help() {
     echo "  --to=<stage>      等號語法"
     echo "  --only <stage>    僅執行指定階段（不可與 --from/--to 一起使用）"
     echo "  --only=<stage>    等號語法"
-    echo "  --manual          進入每個階段的執行環境手動測試"
+    echo "  -m, --manual      進入每個階段的執行環境手動測試"
     echo "  -h, --help        顯示此說明"
     echo ""
     echo "環境變數配置："
