@@ -36,6 +36,72 @@
 - `environment/[環境名稱]/k8s.env` - 環境共用設定（可進入 git 版控）
 - `environment/[環境名稱]/.env` - 環境本地設定（不可進入 git 版控）
 
+## 當前環境判斷
+
+KDE-cli 使用智能化的當前環境判斷機制，自動識別和切換環境：
+
+### 判斷優先順序
+
+1. **目錄位置判斷（最高優先級）**
+   - 當你在任何環境的資料夾底下工作時，系統會自動識別並設定為當前環境
+   - 例如：在 `environments/dev-env/` 目錄或其子目錄下，自動設定 `CUR_ENV=dev-env`
+
+2. **配置檔案讀取（次優先級）**
+   - 如果不在環境目錄下，系統會從 `current.env` 檔案讀取上次使用的環境
+   - 保持環境狀態的持久性
+
+3. **環境有效性驗證**
+   - 判斷識別出的環境是否`存在`
+   - 如果環境不存在，自動進入預設環境設定流程
+
+### 運作流程
+
+```mermaid
+flowchart TD
+    Start([開始執行 kde 指令]) --> CheckPWD{當前目錄是否在<br/>environments/環境名稱/ 內?}
+    
+    CheckPWD -->|是| SetFromPWD[設定 CUR_ENV=環境名稱]
+    SetFromPWD --> MsgPWD[提示: 目前在環境資料夾底下<br/>設定當前環境]
+    
+    CheckPWD -->|否| CheckFile{current.env<br/>檔案是否存在?}
+    CheckFile -->|是| ReadFile[從 current.env 讀取 CUR_ENV]
+    ReadFile --> MsgFile[提示: 從 current.env 讀取當前環境]
+    CheckFile -->|否| SetEmpty[CUR_ENV 為空]
+    
+    MsgPWD --> ValidateEnv{驗證環境<br/>是否存在?}
+    MsgFile --> ValidateEnv
+    SetEmpty --> ValidateEnv
+    
+    ValidateEnv -->|存在| End([環境設定完成])
+    ValidateEnv -->|不存在| Error[提示: 環境不存在]
+    Error --> SetDefault[執行 set_default_env<br/>設定 environments 底下的第一個環境為預設環境]
+    SetDefault --> End
+    
+    style Start fill:#e3f2fd
+    style End fill:#c8e6c9
+    style SetFromPWD fill:#fff9c4
+    style ReadFile fill:#fff9c4
+    style Error fill:#ffcdd2
+    style SetDefault fill:#ffe0b2
+```
+
+### 使用範例
+
+```bash
+# 範例 1：透過目錄自動切換環境
+cd ~/workspace/environments/dev-env
+kde cur  # 自動使用 dev-env 環境
+# 輸出：目前在 dev-env 環境資料夾底下，設定當前環境為 dev-env
+
+# 範例 2：在專案目錄下工作
+cd ~/kde/environments/prod-env/namespaces/myapp
+kde proj ls  # 自動使用 prod-env 環境
+
+# 範例 3：在環境外使用上次的環境
+cd ~/workspace
+kde cur  # 使用 current.env 記錄的環境
+# 輸出：從 current.env 檔案中讀取當前環境為 dev-env
+```
 ---
 
 ## 開發模式
