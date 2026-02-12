@@ -396,10 +396,16 @@ exec_script_in_container_with_project_and_port() {
 
 # project exec 、build、deploy 使用
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
+# 參數：
+#   $1 - 專案名稱
+#   $2 - Docker 映像
+#   $3 - 要執行的腳本或命令
+#   $4 - (可選) 階段名稱，用於 Pipeline 階段特定掛載
 exec_script_in_container_with_project() {
     PROJECT_NAME=$1
     DOCKER_IMAGE=$2
     SCRIPT=$3
+    STAGE=$4  # 可選參數
     export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
     PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
     PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
@@ -421,9 +427,19 @@ exec_script_in_container_with_project() {
     . ${PROJECT_ENV_FILE_TMP}
     . ${PROJECT_PATH}/.env
     set +a
-    # 將 KDE_MOUNT_* 環境變數轉換為 docker volume 參數
+    
+    # 收集所有掛載點
+    # 1. 全局掛載 KDE_MOUNT_*
     set +e
     DOCKER_VOLUMES=$(env | grep '^KDE_MOUNT_' | cut -d= -f2- | sed 's/^/-v /' | xargs)
+    
+    # 2. 如果提供了 STAGE 參數，則加入階段特定掛載
+    if [ -n "${STAGE}" ]; then
+        # 將 stage 中的連字號轉換為底線（環境變數命名規則）
+        local STAGE_VAR=$(echo "${STAGE}" | tr '-' '_')
+        STAGE_VOLUMES=$(env | grep "^KDE_PIPELINE_STAGE_${STAGE_VAR}_MOUNT_" | cut -d= -f2- | sed 's/^/-v /' | xargs)
+        DOCKER_VOLUMES="${DOCKER_VOLUMES} ${STAGE_VOLUMES}"
+    fi
     set -e
     
     docker run --rm -it \

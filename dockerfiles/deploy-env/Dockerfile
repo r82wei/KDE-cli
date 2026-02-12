@@ -4,7 +4,7 @@ ARG KUBECTL_VERSION=v1.32.0
 ARG TARGETARCH
 
 RUN apt-get update
-RUN apt-get install ca-certificates curl gnupg lsb-release gridsite-clients gcc g++ make unzip jq -y
+RUN apt-get install ca-certificates curl gnupg lsb-release gridsite-clients gcc g++ make unzip jq gettext -y
 
 # Install Helm
 RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3

@@ -6,7 +6,7 @@
 
 - 以 Kubernetes 為最終部署目標環境，並且維持開發環境、測試環境、正式環境的一致性
 - 定義專案、交付流程(CICD pipeline)、環境(K8S)三者之間的關係，提供可重現、可版控、團隊一致且可攜、共享的開發環境與各階段(開發、測試、正式) K8S 環境的交付流程
-- 以 DevOps Loop 為核心的軟體交付流程(CICD pipeline)，使用者可自訂交付流程各階段的 shell script 與執行環境容器映像檔
+- 使用者可自訂交付流程(CICD pipeline)各階段的 shell script 與執行環境容器映像檔
 - 整合各式開發工具，提升 DevOps Loop 各階段開發體驗(DX)
 - 可以快速啟動並連結本地 K8S 開發環境(kind、k3d)，也可以透過 kubeconfig 連結雲端/地端 K8S 作為專案部署的目的地
 - 本地 K8S 環境(kind、k3d)可以透過 local-path-provisioner 建立 PVC，將專案程式碼掛載到 Pod 內

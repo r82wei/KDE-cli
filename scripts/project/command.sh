@@ -8,21 +8,19 @@ show_help() {
     echo "  kde [project|proj] <command> <project_name> [option]  專案相關指令"
     echo ""
     echo "command:"
-    echo "  list, ls        列出專案"
-    echo "  create          建立專案"
-    echo "  link            連結專案"
-    echo "  fetch           透過 git url 抓取專案"
-    echo "  pull            透過 project.env 內的 git repo 設定更新專案（git pull）"
-    echo "                  使用 --force 或 -f 參數可刪除 repo 目錄並重新 clone"
-    echo "  build           建置專案"
-    echo "  deploy          建置 & 部署專案"
-    echo "  deploy-only     不執行建置，只部署專案"
-    echo "  undeploy        卸載專案"
-    echo "  redeploy        重新部署專案"
-    echo "  tail            查看 pod 的 log，預設查看最後 100 行"
-    echo "  remove, rm      刪除專案"
-    echo "  exec            進入專案"
-    echo "  ingress         建立 ingress"
+    echo "  list, ls            列出專案"
+    echo "  create              建立專案"
+    echo "  link                連結專案"
+    echo "  fetch               透過 git url 抓取專案"
+    echo "  pull                透過 project.env 內的 git repo 設定更新專案（git pull）"
+    echo "                      使用 --force 或 -f 參數可刪除 repo 目錄並重新 clone"
+    echo "  pipeline, deploy    執行自定義的 CICD Pipeline（支援 --from, --to, --only, --manual）"
+    echo "  undeploy            解除部署專案"
+    echo "  redeploy            重新部署專案 (解除部署後再執行 Pipeline)"
+    echo "  tail                查看 pod 的 log，預設查看最後 100 行"
+    echo "  remove, rm          刪除專案"
+    echo "  exec                進入專案 container"
+    echo "  ingress             建立 ingress"
 }
 
 show_exec_help() {
@@ -52,7 +50,7 @@ fi
 
 case "${COMMAND}" in
     ls|list)
-        ls ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}
+        list_projects | sed 's/^/  - /'
         exit 0
         ;;
     create)
@@ -106,28 +104,54 @@ case "${COMMAND}" in
         fi
         pull_project_repo ${PROJECT_NAME} ${FORCE_FLAG}
         ;;
-    build)
+    pipeline|deploy)
+        # 載入 pipeline 工具
+        source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
+        
+        # 重置 PROJECT_NAME，避免使用到前面 $2 的值
+        PROJECT_NAME=""
+        
+        # 解析命令行參數（直接調用，不使用 $()，以便全局變數能正確設置）
+        shift  # 移除 "pipeline" 指令
+        parse_pipeline_args "$@"
+        PARSE_EXIT_CODE=$?
+        
+        # 檢查參數解析結果
+        if [[ ${PARSE_EXIT_CODE} -eq 2 ]]; then
+            # 顯示了說明，正常退出
+            exit 0
+        elif [[ ${PARSE_EXIT_CODE} -ne 0 ]]; then
+            # 參數錯誤
+            exit 1
+        fi
+        
+        # 從 REMAINING_ARGS（由 parse_pipeline_args 設置）中取得專案名稱
+        if [[ ${#REMAINING_ARGS[@]} -gt 0 ]]; then
+            PROJECT_NAME="${REMAINING_ARGS[0]}"
+        fi
+        
+        # 檢查專案名稱（如果未提供，會跳出選單讓使用者選擇）
         check_project_name ${PROJECT_NAME}
-        build_project ${PROJECT_NAME}
-        ;;
-    deploy)
-        check_project_name ${PROJECT_NAME}
-        build_project ${PROJECT_NAME}
-        deploy_project ${PROJECT_NAME}
-        ;;
-    deploy-only)
-        check_project_name ${PROJECT_NAME}
-        deploy_project ${PROJECT_NAME}
+        
+        # 驗證專案是否存在
+        exit_if_project_not_exist ${PROJECT_NAME}
+        
+        # 執行 Pipeline
+        execute_pipeline ${PROJECT_NAME}
         ;;
     undeploy)
+        # 檢查專案名稱（如果未提供，會跳出選單讓使用者選擇）
         check_project_name ${PROJECT_NAME}
+        # 解除部署專案（undeploy_project 內部會檢查專案是否存在）
         undeploy_project ${PROJECT_NAME}
         ;;
     redeploy)
+        # 檢查專案名稱（如果未提供，會跳出選單讓使用者選擇）
         check_project_name ${PROJECT_NAME}
-        undeploy_project ${PROJECT_NAME}
-        build_project ${PROJECT_NAME}
-        deploy_project ${PROJECT_NAME}
+        # 解除部署專案（undeploy_project 內部會檢查專案是否存在）
+        undeploy_project ${PROJECT_NAME} || exit 1
+        # 執行 Pipeline
+        execute_pipeline ${PROJECT_NAME}
         ;;
     tail)
         if [[ -z "${PROJECT_NAME}" ]]; then
