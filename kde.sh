@@ -3,10 +3,16 @@
 set -eo pipefail
 
 # 設定 KDE 版本
-export KDE_VERSION=v1.0.0-rc.4
+export KDE_VERSION=v1.0.0-rc.5
+# 設定 KDE cli 根目錄路徑
+export KDE_CLI_PATH=$(dirname $(readlink -f "$0"))
+# 設定 KDE 文件路徑
+export KDE_DOCS_PATH=${KDE_CLI_PATH}/docs
+# 設定 KDE 模板路徑
+export KDE_TEMPLATES_PATH=${KDE_CLI_PATH}/templates
 # 設定 KDE scripts 路徑
-export KDE_SCRIPTS_PATH=$(dirname $(readlink -f "$0"))/scripts
-# 設定 KDE 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
+export KDE_SCRIPTS_PATH=${KDE_CLI_PATH}/scripts
+# 設定 KDE workspace 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
 export KDE_PATH=$PWD
 while [[ ! -f ${KDE_PATH}/kde.env && ${KDE_PATH} != "/" ]]; do
     KDE_PATH=$(dirname ${KDE_PATH})
@@ -16,6 +22,8 @@ if [[ ! -f ${KDE_PATH}/kde.env ]]; then
 fi
 # 設定環境目錄路徑(enviroments)
 export ENVIROMENTS_PATH=${KDE_PATH}/environments
+# 設定 KDE 文件目標路徑
+export KDE_DOCS_TARGET_PATH=${KDE_PATH}/docs/kde-cli
 
 # 設定 KUBE_CONFIG_DIR
 export KUBE_CONFIG_DIR=kubeconfig
@@ -30,6 +38,7 @@ show_help() {
     echo ""
     echo "command:"
     echo "  init                                                初始化 kde 環境"
+    echo "  docs                                                建立 kde-cli 文件"
     echo "  list, ls                                            列出 k8s 環境"
     echo "  start <env_name> [kind|k3d|k8s]                     建立/啟動 k8s 環境並且啟動 K9S (預設使用 kind，可使用參數 k3d 啟動 k3d，可使用參數 k8s 啟動外部 K8S)"
     echo "  create <env_name> [kind|k3d|k8s]                    建立/啟動 k8s 環境 (預設使用 kind，可使用參數 k3d 建立 k3d，可使用參數 k8s 建立外部 K8S)"
@@ -66,6 +75,8 @@ fi
 case "$1" in
     --init|init)
         touch ${KDE_ENV_FILE}
+        cp -r ${KDE_TEMPLATES_PATH}/init/. ${KDE_PATH}/
+        cp -r ${KDE_DOCS_PATH} ${KDE_DOCS_TARGET_PATH}
         exit 0
         ;;
     -v|version|--version)
@@ -154,8 +165,22 @@ if [[ -f ${KDE_PATH}/ngrok.env ]]; then
 fi
 
 # 設定當前環境的環境變數
-if [[ -f ${KDE_PATH}/current.env ]]; then
-    source ${KDE_PATH}/current.env
+# 判斷 $PWD 是否在 ENVIROMENTS_PATH 底下的某個資料夾
+if [[ -d ${ENVIROMENTS_PATH} ]]; then
+    for env in $(ls ${ENVIROMENTS_PATH}); do
+        if [[ ${PWD} == $(readlink -f ${ENVIROMENTS_PATH}/${env}) ]]; then
+            CUR_ENV=${env}
+            echo "目前在 ${CUR_ENV} 環境資料夾底下，設定當前環境為 ${CUR_ENV}"
+            break
+        fi
+    done
+fi
+
+if [[ -z ${CUR_ENV} ]]; then
+    if [[ -f ${KDE_PATH}/current.env ]]; then
+        source ${KDE_PATH}/current.env
+        echo "從 current.env 檔案中讀取當前環境為 ${CUR_ENV}"
+    fi
 fi
 
 if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
@@ -169,6 +194,18 @@ load_enviroment_env ${CUR_ENV}
 
 # 根據第一個參數來選擇不同的處理流程
 case "$1" in
+    docs)
+        if [[ -d ${KDE_DOCS_TARGET_PATH} ]]; then
+            # 提示是否要覆蓋
+            read -p "kde-cli 文件已存在，是否要覆蓋？(y/n) " answer
+            if [[ $answer != "y" ]]; then
+                exit 0
+            fi
+        fi
+        cp -r ${KDE_DOCS_PATH} ${KDE_DOCS_TARGET_PATH}
+        echo "kde-cli 文件已建立"
+        exit 0
+        ;;
     start)
         shift  # 移除 "start" 指令
         source ${KDE_SCRIPTS_PATH}/start/command.sh

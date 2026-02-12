@@ -51,7 +51,10 @@ exit_if_project_not_exist() {
     PROJECT_NAME=$1
 
     if [[ $(is_project_exist ${PROJECT_NAME}) == "false" ]]; then
-        echo "專案 ${1} 不存在"
+        echo "❌ 錯誤：專案 '${PROJECT_NAME}' 不存在於當前環境 '${CUR_ENV}' 的 namespaces 內" >&2
+        echo "" >&2
+        echo "可用的專案列表：" >&2
+        list_projects | sed 's/^/  - /' >&2
         exit 1
     fi
 }
@@ -76,32 +79,49 @@ load_project_env() {
 # 建立專案資料夾、namespace
 create_project() {
     PROJECT_NAME=$1
+    local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     exit_if_project_exist ${PROJECT_NAME}
-    mkdir -p ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-    read -p "Is this project a git remote repo? (y/n): " IS_GIT_REMOTE_REPO
+    mkdir -p ${PROJECT_PATH}
+    read -p "是否需要從 Git 遠端倉庫抓取專案程式碼？(y/n): " IS_GIT_REMOTE_REPO
     if [[ ${IS_GIT_REMOTE_REPO} == "y" ]]; then
         set_git_repo ${PROJECT_NAME}
-        source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+        source ${PROJECT_PATH}/project.env
         REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/$(git_repo_name ${GIT_REPO_URL})
         download_git_repo ${PROJECT_NAME} ${GIT_REPO_URL} ${GIT_REPO_BRANCH} ${REPO_PATH}
     else
-        echo "GIT_REPO_URL=./${PROJECT_NAME}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-        echo "GIT_REPO_BRANCH=main" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+        echo "GIT_REPO_URL=./${PROJECT_NAME}" >> ${PROJECT_PATH}/project.env
+        echo "GIT_REPO_BRANCH=main" >> ${PROJECT_PATH}/project.env
         REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${PROJECT_NAME}
         mkdir -p ${REPO_PATH}
     fi
-    read -p "請輸入專案開發(建置)環境 Image (執行 build.sh 的環境): " DEVELOP_IMAGE
-    echo "DEVELOP_IMAGE=${DEVELOP_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    read -p "請輸入專案部署環境 Image (執行 deploy 相關 shell 的環境，預設為 ${KDE_DEPLOY_ENV_IMAGE}): " DEPLOY_IMAGE
+    read -p "請輸入開發環境 Image（用於本地開發環境容器和 Pipeline build 階段，例如: node:20, python:3.11）: " DEVELOP_IMAGE
+    echo "DEVELOP_IMAGE=${DEVELOP_IMAGE}" >> ${PROJECT_PATH}/project.env
+    read -p "請輸入部署環境 Image（用於本地部署環境容器和 Pipeline deploy 階段，包含 kubectl/helm 等工具，預設為 ${KDE_DEPLOY_ENV_IMAGE}）: " DEPLOY_IMAGE
     DEPLOY_IMAGE=${DEPLOY_IMAGE:-${KDE_DEPLOY_ENV_IMAGE}}
-    echo "DEPLOY_IMAGE=${DEPLOY_IMAGE}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo "DEPLOY_IMAGE=${DEPLOY_IMAGE}" >> ${PROJECT_PATH}/project.env
     # 匯出常用變數
-    echo 'HELM_CONFIG_HOME=${PROJECT_PATH}/.helm/config' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'HELM_CACHE_HOME=${PROJECT_PATH}/.helm/cache' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'HELM_DATA_HOME=${PROJECT_PATH}/.helm/data' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    echo 'HELM_PLUGINS=${PROJECT_PATH}/.helm/plugins' >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    init_project_deploy_script ${PROJECT_NAME}
+    echo 'HELM_CONFIG_HOME=${PROJECT_PATH}/.helm/config' >> ${PROJECT_PATH}/project.env
+    echo 'HELM_CACHE_HOME=${PROJECT_PATH}/.helm/cache' >> ${PROJECT_PATH}/project.env
+    echo 'HELM_DATA_HOME=${PROJECT_PATH}/.helm/data' >> ${PROJECT_PATH}/project.env
+    echo 'HELM_PLUGINS=${PROJECT_PATH}/.helm/plugins' >> ${PROJECT_PATH}/project.env
+    # 配置快速 Pipeline 模式 (build → deploy)
+    echo '' >> ${PROJECT_PATH}/project.env
+    echo '# Pipeline 配置（快速模式：build → deploy）' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGES="build,deploy"' >> ${PROJECT_PATH}/project.env
+    echo '' >> ${PROJECT_PATH}/project.env
+    echo '# Build 階段配置' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGE_build_SCRIPT=build.sh' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGE_build_IMAGE=${DEVELOP_IMAGE}' >> ${PROJECT_PATH}/project.env
+    echo '' >> ${PROJECT_PATH}/project.env
+    echo '# Deploy 階段配置' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh' >> ${PROJECT_PATH}/project.env
+    echo 'KDE_PIPELINE_STAGE_deploy_IMAGE=${DEPLOY_IMAGE}' >> ${PROJECT_PATH}/project.env
+    # 建立 build.sh 和 deploy.sh 檔案
+    touch ${PROJECT_PATH}/build.sh
+    chmod +x ${PROJECT_PATH}/build.sh
+    touch ${PROJECT_PATH}/deploy.sh
+    chmod +x ${PROJECT_PATH}/deploy.sh
     echo "專案 ${PROJECT_NAME} 已建立"
 }
 
@@ -163,16 +183,6 @@ pull_if_project_repo_not_exist() {
     fi
 }
 
-init_project_deploy_script() {
-    PROJECT_NAME=$1
-    PROJECT_REPO_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-
-    touch ${PROJECT_REPO_PATH}/build.sh
-    chmod +x ${PROJECT_REPO_PATH}/build.sh
-    touch ${PROJECT_REPO_PATH}/deploy.sh
-    chmod +x ${PROJECT_REPO_PATH}/deploy.sh
-}
-
 git_repo_name() {
     GIT_REPO_URL=$1
 
@@ -181,12 +191,13 @@ git_repo_name() {
 
 set_git_repo() {
     PROJECT_NAME=$1
+    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
 
     exit_if_project_not_exist ${PROJECT_NAME}
-    read -p "請輸入 git repo HTTPS URL: " GIT_REPO_URL
-    echo "GIT_REPO_URL=${GIT_REPO_URL}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    read -p "請輸入 Git 倉庫網址 (支援 HTTPS 或 SSH，例如: https://github.com/user/repo.git 或 git@github.com:user/repo.git): " GIT_REPO_URL
+    echo "GIT_REPO_URL=${GIT_REPO_URL}" >> ${PROJECT_PATH}/project.env
     read -p "請輸入分支名稱(default: main): " GIT_REPO_BRANCH
-    echo "GIT_REPO_BRANCH=${GIT_REPO_BRANCH:-main}" >> ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
+    echo "GIT_REPO_BRANCH=${GIT_REPO_BRANCH:-main}" >> ${PROJECT_PATH}/project.env
 }
 
 download_git_repo() {
@@ -263,164 +274,52 @@ create_link() {
     ln -s ${DIR_PATH} ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/${DIR_NAME}
 }
 
-# 解析要執行的 CICD 腳本（支援自訂腳本）
-# 參數：
-#   $1 - 標準腳本名稱（如 build.sh）
-#   $2 - 自訂腳本環境變數的值（如 ${KDE_PROJECT_BUILD_SCRIPT}）
-#   $3 - 專案路徑
-# 返回：實際要執行的腳本名稱（透過 echo 輸出）
-resolve_cicd_script() {
-    local STANDARD_SCRIPT=$1
-    local CUSTOM_SCRIPT=$2
-    local PROJECT_PATH=$3
-    
-    local RESOLVED_SCRIPT="${STANDARD_SCRIPT}"
-    
-    # 如果設定了自訂腳本
-    if [[ -n "${CUSTOM_SCRIPT}" ]]; then
-        # 檢查使用者是否已經加上 ./ 前綴，如果是，就把 ./ 去掉
-        if [[ "${CUSTOM_SCRIPT}" == "./"* ]]; then
-            CUSTOM_SCRIPT="${CUSTOM_SCRIPT#./}"
-        fi
-        # 檢查使用者是否已經加上 ${PROJECT_PATH} 前綴，如果是，就把 ${PROJECT_PATH} 前綴去掉
-        if [[ "${CUSTOM_SCRIPT}" == "${PROJECT_PATH}/"* ]]; then
-            CUSTOM_SCRIPT="${CUSTOM_SCRIPT#${PROJECT_PATH}/}"
-        fi
-
-        echo "CUSTOM_SCRIPT: ${CUSTOM_SCRIPT}" >&2
-        
-        # 檢查自訂腳本是否存在
-        if [[ -f "${PROJECT_PATH}/${CUSTOM_SCRIPT}" ]]; then
-            # Guardrail: 如果標準腳本也存在，給予警告
-            if [[ -f "${PROJECT_PATH}/${STANDARD_SCRIPT}" && "${CUSTOM_SCRIPT}" != "${STANDARD_SCRIPT}" ]]; then
-                echo "⚠️  警告：檢測到同時存在 ${STANDARD_SCRIPT} 和 ${CUSTOM_SCRIPT}" >&2
-                echo "    將使用 project.env 中指定的: ${CUSTOM_SCRIPT}" >&2
-                echo "    如果這不是預期行為，請移除 project.env 中的相關環境變數設定" >&2
-                echo "" >&2
-            fi
-            RESOLVED_SCRIPT="${CUSTOM_SCRIPT}"
-        else
-            echo "❌ 錯誤：自訂腳本 ${CUSTOM_SCRIPT} 不存在" >&2
-            echo "    請確認自訂腳本是否存在" >&2
-            # 返回空字符串並標記錯誤
-            echo ""
-            return 1
-        fi
-    fi
-    
-    echo "${RESOLVED_SCRIPT}"
-    return 0
-}
-
-build_project() {
-    PROJECT_NAME=$1
-    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-
-    pull_if_project_repo_not_exist ${PROJECT_NAME}
-    source ${PROJECT_PATH}/project.env
-
-    # 解析要執行的腳本，檢查返回狀態
-    local PRE_BUILD_SCRIPT
-    PRE_BUILD_SCRIPT=$(resolve_cicd_script "pre-build.sh" "${KDE_PROJECT_PRE_BUILD_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 建置失敗：pre-build 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    local BUILD_SCRIPT
-    BUILD_SCRIPT=$(resolve_cicd_script "build.sh" "${KDE_PROJECT_BUILD_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 建置失敗：build 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    local POST_BUILD_SCRIPT
-    POST_BUILD_SCRIPT=$(resolve_cicd_script "post-build.sh" "${KDE_PROJECT_POST_BUILD_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 建置失敗：post-build 腳本解析錯誤" >&2
-        return 1
-    fi
-
-    if [[ -f ${PROJECT_PATH}/${PRE_BUILD_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${PRE_BUILD_SCRIPT}
-    fi
-    if [[ -f ${PROJECT_PATH}/${BUILD_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${BUILD_SCRIPT}
-    fi
-    if [[ -f ${PROJECT_PATH}/${POST_BUILD_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_BUILD_IMAGE:-${DEVELOP_IMAGE}} ./${POST_BUILD_SCRIPT}
-    fi
-
-    if [[ -f ${PROJECT_PATH}/${PRE_BUILD_SCRIPT} || -f ${PROJECT_PATH}/${BUILD_SCRIPT} || -f ${PROJECT_PATH}/${POST_BUILD_SCRIPT} ]]; then
-        echo "專案 ${PROJECT_NAME} 已建置完成"
-    fi
-}
-
-deploy_project() {
-    PROJECT_NAME=$1
-    PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-
-    pull_if_project_repo_not_exist ${PROJECT_NAME}
-    source ${PROJECT_PATH}/project.env
-    
-    # 解析要執行的腳本，檢查返回狀態
-    local PRE_DEPLOY_SCRIPT
-    PRE_DEPLOY_SCRIPT=$(resolve_cicd_script "pre-deploy.sh" "${KDE_PROJECT_PRE_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 部署失敗：pre-deploy 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    local DEPLOY_SCRIPT
-    DEPLOY_SCRIPT=$(resolve_cicd_script "deploy.sh" "${KDE_PROJECT_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 部署失敗：deploy 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    local POST_DEPLOY_SCRIPT
-    POST_DEPLOY_SCRIPT=$(resolve_cicd_script "post-deploy.sh" "${KDE_PROJECT_POST_DEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 部署失敗：post-deploy 腳本解析錯誤" >&2
-        return 1
-    fi
-    
-    if [[ -f ${PROJECT_PATH}/${PRE_DEPLOY_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${PRE_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${PRE_DEPLOY_SCRIPT}
-    fi
-    if [[ -f ${PROJECT_PATH}/${DEPLOY_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} ./${DEPLOY_SCRIPT}
-    fi
-    if [[ -f ${PROJECT_PATH}/${POST_DEPLOY_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${POST_DEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${POST_DEPLOY_SCRIPT}
-    fi
-
-    if [[ -f ${PROJECT_PATH}/${PRE_DEPLOY_SCRIPT} || -f ${PROJECT_PATH}/${DEPLOY_SCRIPT} || -f ${PROJECT_PATH}/${POST_DEPLOY_SCRIPT} ]]; then
-        echo "專案 ${PROJECT_NAME} 已部署完成"
-    fi
-}
-
 undeploy_project() {
     PROJECT_NAME=$1
 
     exit_if_project_not_exist ${PROJECT_NAME}
-    source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     
-    # 解析要執行的腳本，檢查返回狀態
+    # 載入 Pipeline 工具函數
+    source ${KDE_SCRIPTS_PATH}/utils/pipeline.sh
+    
+    # 載入專案環境變數
     local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
-    local UNDEPLOY_SCRIPT
-    UNDEPLOY_SCRIPT=$(resolve_cicd_script "undeploy.sh" "${KDE_PROJECT_UNDEPLOY_SCRIPT}" "${PROJECT_PATH}")
-    if [[ $? -ne 0 ]]; then
-        echo "❌ 解除部署失敗：undeploy 腳本解析錯誤" >&2
-        return 1
-    fi
+    source ${PROJECT_PATH}/project.env
     
-    if [[ -f ${PROJECT_PATH}/${UNDEPLOY_SCRIPT} ]]; then
-        exec_script_in_container_with_project ${PROJECT_NAME} ${UNDEPLOY_IMAGE:-${DEPLOY_IMAGE}} ./${UNDEPLOY_SCRIPT}
+    # 使用 Pipeline 的腳本解析機制
+    local UNDEPLOY_SCRIPT=$(get_stage_script "undeploy" ${PROJECT_PATH})
+    
+    # 如果 undeploy.sh 存在，使用 Pipeline 執行
+    if [[ -n "${UNDEPLOY_SCRIPT}" ]]; then
+        export PIPELINE_ONLY_STAGE="undeploy"
+        execute_pipeline ${PROJECT_NAME}
+        local EXIT_CODE=$?
+        unset PIPELINE_ONLY_STAGE
+        
+        if [[ ${EXIT_CODE} -eq 0 ]]; then
+            echo "專案 ${PROJECT_NAME} 已解除部署"
+        fi
+        return ${EXIT_CODE}
     else
-        exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
+        # 如果 undeploy.sh 不存在，根據環境類型執行預設動作
+        if [[ "${ENV_TYPE}" == "kind" || "${ENV_TYPE}" == "k3d" ]]; then
+            # 本地環境（kind/k3d）：執行預設動作刪除 namespace
+            echo "⚠️  undeploy.sh 不存在，執行預設動作：刪除 namespace ${PROJECT_NAME}"
+            exec_script_in_deploy_env "kubectl delete ns ${PROJECT_NAME}"
+            local EXIT_CODE=$?
+            if [[ ${EXIT_CODE} -ne 0 ]]; then
+                echo "❌ 解除部署失敗（退出碼：${EXIT_CODE}）" >&2
+                return ${EXIT_CODE}
+            fi
+            echo "專案 ${PROJECT_NAME} 已解除部署"
+            return 0
+        else
+            # 外部 K8s 環境：不執行預設刪除動作，避免危險操作
+            echo "❌ undeploy.sh 不存在且環境為外部 K8s (${ENV_TYPE})，為安全考量不執行預設刪除動作" >&2
+            echo "   請建立 undeploy.sh 腳本來明確定義解除部署流程" >&2
+            return 1
+        fi
     fi
-    echo "專案 ${PROJECT_NAME} 已解除部署"
 }
 
 remove_project() {
