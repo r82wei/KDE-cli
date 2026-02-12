@@ -1,10 +1,48 @@
 # KDE-cli
 
+[English](./README.md) | [繁體中文](./README.zh-TW.md)
+
 > **Kubernetes Development Environment CLI** - 以 Kubernetes 為目標的開發環境與交付流程管理工具
 
 KDE-cli 是一個 Kubernetes 開發環境的統一管理工具，整合完整的開發工具鏈，實現從環境建立到部署的全生命週期管理。它將分散的 Kubernetes 開發工具整合為統一的指令介面，讓開發者用**一套工具、一個指令介面**完成從環境建立、開發、測試到部署的完整 Kubernetes 開發流程。
 
 ## ✨ 核心特性
+
+### 🔄 環境一致性 (Dev/Prod Parity)
+- 快速啟動 Kind/K3D 的 Kubenetes 開發環境
+- 快速連結現有的 Kubernetes 環境 (透過 kubeconfig)
+- 開發環境透過 PVC 掛載實現程式碼即時同步與 Hot Reload
+- 透過 Telepresence 將遠端 Kubernetes 流量攔截到本地開發容器
+- 開發環境與生產環境都在 Kubernetes 內運行
+- 所有工具都在容器內執行，確保環境一致性
+
+### 📦 可版控、可重現、可攜帶
+- 環境配置（`k8s.env`）可納入版本控制
+- 專案配置（`project.env`）可納入版本控制
+- CI/CD Pipeline 配置可納入版本控制
+- 工具版本統一管理（`kde.env`）
+- 可以透過 GitHub/Gitlab 在不同電腦間快速同步、搬移多個環境、專案、 CICD Pipeline
+- 團隊成員可快速複製相同的開發環境
+- 新成員快速 onboarding
+
+### 🚀 Script 驅動的 CI/CD Pipeline
+- 使用 Shell Script 定義 CI/CD 流程
+- 自訂 Pipeline 階段和執行環境
+- 支援手動模式進行開發與除錯
+- 彈性的錯誤處理機制
+
+### 🔒 專案隔離性 (Project Isolation)
+- 每個專案對應獨立的 Kubernetes Namespace，資源完全隔離
+- 開發容器之間相互隔離，可同時開發多個專案而不互相干擾
+- 資源隔離：可為每個專案設定獨立的資源配額和限制
+- 環境變數隔離：每個專案的配置和環境變數互不影響
+- 同一個 Workspace 可同時運行多個專案，互不衝突
+
+### 🐳 容器優先 (Container First)
+- 只需要安裝 Docker 就可以執行所有功能
+- 所有工具都在容器中執行
+- 避免污染本機環境
+- 確保環境一致性
 
 ### 🎯 統一的工具入口
 將 9+ 種 Kubernetes 開發工具整合為統一的 CLI 介面，降低學習曲線：
@@ -19,33 +57,6 @@ kde cloudflare-tunnel   # 啟動 Cloudflare Tunnel
 kde ngrok               # 啟動 Ngrok 外部連線
 kde expose              # Port Forward 端口轉發
 ```
-
-### 🔄 環境一致性 (Dev/Prod Parity)
-- 開發環境與生產環境都在 Kubernetes 內運行
-- 透過 PVC 掛載實現程式碼即時同步與 Hot Reload
-- 透過 Telepresence 將遠端 K8s 流量攔截到本地開發
-- 所有工具都在容器內執行，確保環境一致性
-
-### 📦 可版控、可重現、可攜帶
-- 環境配置（`k8s.env`）可納入版本控制
-- 專案配置（`project.env`）可納入版本控制
-- CI/CD Pipeline 配置可納入版本控制
-- 工具版本統一管理（`kde.env`）
-- 團隊成員可快速複製相同的開發環境
-- **新成員 onboarding 只需一行指令**
-
-### 🚀 Script 驅動的 CI/CD Pipeline
-- 使用 Shell Script 定義 CI/CD 流程
-- 自訂 Pipeline 階段和執行環境
-- 支援手動模式進行開發與除錯
-- 階段間環境變數傳遞
-- 彈性的錯誤處理機制
-
-### 🐳 容器優先 (Container First)
-- 只需要安裝 Docker 就可以執行所有功能
-- 所有工具都在容器中執行
-- 避免污染本機環境
-- 確保環境一致性
 
 ## 🎯 適用對象
 
