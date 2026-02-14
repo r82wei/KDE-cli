@@ -18,6 +18,8 @@ show_help() {
     echo "  undeploy            解除部署專案"
     echo "  redeploy            重新部署專案 (解除部署後再執行 Pipeline)"
     echo "  tail                查看 pod 的 log，預設查看最後 100 行"
+    echo "  pod                 列出專案內所有的 pod"
+    echo "  pod-exec            進入專案內指定的 pod"
     echo "  remove, rm          刪除專案"
     echo "  exec                進入專案 container"
     echo "  ingress             建立 ingress"

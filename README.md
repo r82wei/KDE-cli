@@ -8,22 +8,38 @@ KDE-cli is a unified management tool for Kubernetes development environments tha
 
 ## ✨ Core Features
 
-### 🔄 Environment Consistency (Dev/Prod Parity)
-- Quickly start Kind/K3D Kubernetes development environments
-- Quickly connect to existing Kubernetes environments (via kubeconfig)
-- Development environment achieves real-time code sync and Hot Reload via PVC mounting
-- Intercept remote Kubernetes traffic to local development containers via Telepresence
-- Development and production environments both run inside Kubernetes
+### 🔄 Environment Consistency
+- Simulate production environments through Kind/K3D development environments
+- Use the same deployment methods and YAML as production to launch development environments, ensuring environment consistency
 - All tools run inside containers, ensuring environment consistency
 
-### 📦 Version Controllable, Reproducible, Portable
-- Environment configuration (`k8s.env`) can be version controlled
-- Project configuration (`project.env`) can be version controlled
-- CI/CD Pipeline configuration can be version controlled
-- Unified tool version management (`kde.env`)
-- Quickly sync and migrate multiple environments, projects, and CI/CD Pipelines across different computers via GitHub/GitLab
-- Team members can quickly replicate identical development environments
+**💡 Core Value**: Eliminate "works on my machine" problems, fully align development and production environments, and identify environment-related issues early.
+
+### 🧑‍💻 Real-time Development Inside Kubernetes Environment
+- Development environments (Kind/K3D) mount local code via PVC, enabling real-time sync and Hot Reload
+- Intercept remote Kubernetes traffic to local development containers via Telepresence, with code mounted via volume for real-time sync and Hot Reload
+
+**💡 Core Value**: Develop in real Kubernetes environments, see code changes immediately without rebuilding images, dramatically accelerating development iteration speed.
+
+### 🔒 Project Isolation
+- Each project corresponds to an independent Kubernetes Namespace with complete resource isolation, allowing simultaneous development of multiple projects without interference
+- Development containers are isolated from each other, allowing simultaneous development of multiple projects without interference
+- Environment variable isolation: Each project's configuration and environment variables do not affect each other
+
+**💡 Core Value**: Parallel multi-project development without conflicts, complete isolation of resources and configurations, making team collaboration safer and more efficient.
+
+### 📦 Version Controllable, Shareable, Portable
+- Configuration files can be version controlled
+  - Environment configuration (`k8s.env`)
+  - Project configuration (`project.env`)
+  - CI/CD Pipeline scripts & execution environment image configuration (`*.sh` & `project.env`)
+  - Development tool version configuration (`kde.env`)
+- Project folders can be migrated or copied to other environments: Copy the project folder (including `project.env` and all scripts) to `namespaces/` in a different environment to quickly start services with the same configuration and workflow in the new environment without reconfiguration
+- Quickly sync and migrate development workspaces across different computers via GitHub/GitLab
+- Team members can quickly replicate the same development workspace
 - Rapid onboarding for new members
+
+**💡 Core Value**: Environment as Code, team members launch identical environments with one command, onboarding time reduced from days to minutes.
 
 ### 🚀 Script-Driven CI/CD Pipeline
 - Define CI/CD workflows using Shell Scripts
@@ -31,12 +47,7 @@ KDE-cli is a unified management tool for Kubernetes development environments tha
 - Support manual mode for development and debugging
 - Flexible error handling mechanism
 
-### 🔒 Project Isolation
-- Each project corresponds to an independent Kubernetes Namespace with complete resource isolation
-- Development containers are isolated from each other, allowing simultaneous development of multiple projects without interference
-- Resource isolation: Set independent resource quotas and limits for each project
-- Environment variable isolation: Each project's configuration and environment variables do not affect each other
-- Multiple projects can run simultaneously in the same Workspace without conflicts
+**💡 Core Value**: Develop and test CI/CD workflows locally, ensure workflow correctness before deploying to remote CI/CD systems, dramatically reducing trial-and-error costs.
 
 ### 🐳 Container First
 - Only Docker installation needed to execute all functions
@@ -44,11 +55,13 @@ KDE-cli is a unified management tool for Kubernetes development environments tha
 - Avoid polluting the local environment
 - Ensure environment consistency
 
+**💡 Core Value**: Zero environment configuration, only Docker needed to execute all functions, team members use the same tool versions, avoiding version conflicts.
+
 ### 🎯 Unified Tool Entry Point
-Integrates 9+ Kubernetes development tools into a unified CLI interface, reducing the learning curve:
+Integrates 9+ Kubernetes development tools into a unified CLI interface, automatically handles tool-to-K8s environment connections, reducing the learning curve:
 
 ```bash
-kde start               # Create/start environment (Kind/K3D/K8s)
+kde start               # Create/start/connect environment (Kind/K3D/K8s)
 kde k9s                 # Launch K9s terminal management tool
 kde headlamp            # Launch Headlamp Web UI
 kde telepresence        # Launch Telepresence traffic interception
@@ -58,9 +71,11 @@ kde ngrok               # Launch Ngrok external connection
 kde expose              # Port Forward
 ```
 
+**💡 Core Value**: Complete all operations with one command set, tools automatically connect to the current environment, developers only need to focus on development without learning installation and configuration of multiple tools.
+
 ## 🎯 Target Audience
 
-### Organizations
+### Organization
 - Want to align development and production environments
 - Need to manage multiple environments and projects
 - Need to standardize development workflows and version control environment configurations
@@ -68,7 +83,7 @@ kde expose              # Port Forward
 - Need rapid onboarding (one-click environment startup)
 - Want to test CI/CD workflows and validate K8s configurations in development environments
 
-### Projects
+### Project
 - Projects deployed to Kubernetes in production
 - Microservices architecture
 - Need to deploy to multiple K8s environments
@@ -415,10 +430,42 @@ kde start remote-env k8s
 # Launch Telepresence to intercept traffic
 kde telepresence replace myapp myapp-deployment
 
-# Select project and enter development environment
-# Local development, remote traffic directed to local
+# Select project and enter container development environment
+# Develop in container, remote traffic directed to container
 npm run dev
 ```
+
+### Example 4: Migrate Projects to Other Environments for Quick Deployment
+
+```bash
+# Scenario: Quickly copy a project from dev environment to test environment
+
+# 1. Project already configured in development environment
+kde use dev-env
+kde proj list
+# Output: myapp (with project.env and all scripts configured)
+
+# 2. Copy project folder to test environment
+cp -r environments/dev-env/namespaces/myapp environments/test-env/namespaces/myapp
+
+# 3. Modify environment variables for test environment
+vi environments/test-env/namespaces/myapp/project.env
+
+# 4. Switch to test environment and deploy
+kde use test-env
+kde proj pipeline myapp
+# Use the same configuration and workflow to quickly start services in test environment
+
+# 5. Can also use Git version control for synchronization
+git add . && git commit -m "Add myapp configuration"
+git push
+```
+
+**Core Advantages**:
+- ✅ Project folder contains all CI/CD configurations
+- ✅ All scripts (build.sh, deploy.sh, etc.) migrate together
+- ✅ No need to reconfigure, ensuring multi-environment consistency
+- ✅ Suitable for rapid expansion to multiple environments (dev → test → staging → prod)
 
 ## 🔧 Debugging
 

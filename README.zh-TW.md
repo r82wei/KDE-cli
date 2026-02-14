@@ -8,22 +8,38 @@ KDE-cli 是一個 Kubernetes 開發環境的統一管理工具，整合完整的
 
 ## ✨ 核心特性
 
-### 🔄 環境一致性 (Dev/Prod Parity)
-- 快速啟動 Kind/K3D 的 Kubenetes 開發環境
-- 快速連結現有的 Kubernetes 環境 (透過 kubeconfig)
-- 開發環境透過 PVC 掛載實現程式碼即時同步與 Hot Reload
-- 透過 Telepresence 將遠端 Kubernetes 流量攔截到本地開發容器
-- 開發環境與生產環境都在 Kubernetes 內運行
+### 🔄 環境一致性
+- 透過 Kind/K3D 模擬正式環境的開發環境
+- 使用與正式環境相同的部署方式及 yaml 啟動開發環境，確保環境一致性
 - 所有工具都在容器內執行，確保環境一致性
 
-### 📦 可版控、可重現、可攜帶
-- 環境配置（`k8s.env`）可納入版本控制
-- 專案配置（`project.env`）可納入版本控制
-- CI/CD Pipeline 配置可納入版本控制
-- 工具版本統一管理（`kde.env`）
-- 可以透過 GitHub/Gitlab 在不同電腦間快速同步、搬移多個環境、專案、 CICD Pipeline
-- 團隊成員可快速複製相同的開發環境
+**💡 核心價值**：消除「在我機器上可以跑」的問題，開發環境與生產環境完全對齊，提早發現環境相關問題。
+
+### 🧑‍💻 Kubernetes 環境內即時開發
+- 開發環境(Kind/K3D)透過 PVC 掛載本地程式碼，實現即時同步與 Hot Reload
+- 透過 Telepresence 將遠端 Kubernetes 流量攔截到本地開發容器，並且透過 volume 掛載本地程式碼，實現即時同步與 Hot Reload
+
+**💡 核心價值**：在真實的 Kubernetes 環境中開發，無需重新建置映像即可立即看到程式碼變更效果，大幅加快開發迭代速度。
+
+### 🔒 專案隔離性
+- 每個專案對應獨立的 Kubernetes Namespace，資源完全隔離，可同時開發多個專案而不互相干擾
+- 開發容器之間相互隔離，可同時開發多個專案而不互相干擾
+- 環境變數隔離：每個專案的配置和環境變數互不影響
+
+**💡 核心價值**：多專案並行開發不衝突，資源和配置完全隔離，團隊協作更安全高效。
+
+### 📦 可版控、可共享、可攜帶
+- 設定檔可納入版本控制
+  - 環境配置（`k8s.env`）
+  - 專案配置（`project.env`）
+  - CI/CD Pipeline 腳本 & 執行環境映像檔設定 (`*.sh` & `project.env`)
+  - 開發工具版本配置（`kde.env`）
+- 專案資料夾可平移或複製到其他環境：將專案資料夾（包含 `project.env` 和所有腳本）複製到不同環境的 `namespaces/` 底下，即可用相同的配置和流程在新環境中快速啟動服務，無需重新配置
+- 可以透過 GitHub/Gitlab 在不同電腦間快速同步、搬移開發工作區(Workspace)
+- 團隊成員可快速複製相同的開發工作區
 - 新成員快速 onboarding
+
+**💡 核心價值**：開發環境即程式碼（Environment as Code），團隊成員一鍵啟動相同環境，新人 onboarding 從數天縮短到數分鐘。
 
 ### 🚀 Script 驅動的 CI/CD Pipeline
 - 使用 Shell Script 定義 CI/CD 流程
@@ -31,24 +47,21 @@ KDE-cli 是一個 Kubernetes 開發環境的統一管理工具，整合完整的
 - 支援手動模式進行開發與除錯
 - 彈性的錯誤處理機制
 
-### 🔒 專案隔離性 (Project Isolation)
-- 每個專案對應獨立的 Kubernetes Namespace，資源完全隔離
-- 開發容器之間相互隔離，可同時開發多個專案而不互相干擾
-- 資源隔離：可為每個專案設定獨立的資源配額和限制
-- 環境變數隔離：每個專案的配置和環境變數互不影響
-- 同一個 Workspace 可同時運行多個專案，互不衝突
+**💡 核心價值**：本地開發與測試 CI/CD 流程，確保流程正確性後再部署到遠端 CI/CD 系統，大幅降低試錯成本。
 
-### 🐳 容器優先 (Container First)
+### 🐳 容器優先
 - 只需要安裝 Docker 就可以執行所有功能
 - 所有工具都在容器中執行
 - 避免污染本機環境
 - 確保環境一致性
 
+**💡 核心價值**：零環境配置，只需 Docker 即可執行所有功能，團隊成員使用相同的工具版本，避免版本衝突。
+
 ### 🎯 統一的工具入口
-將 9+ 種 Kubernetes 開發工具整合為統一的 CLI 介面，降低學習曲線：
+將 9+ 種 Kubernetes 開發工具整合為統一的 CLI 介面，並且自動處理工具與 K8s 環境的連接，降低學習曲線：
 
 ```bash
-kde start               # 建立/啟動環境 (Kind/K3D/K8s)
+kde start               # 建立/啟動/連接環境 (Kind/K3D/K8s)
 kde k9s                 # 啟動 K9s 終端管理工具
 kde headlamp            # 啟動 Headlamp Web UI
 kde telepresence        # 啟動 Telepresence 流量攔截
@@ -57,6 +70,8 @@ kde cloudflare-tunnel   # 啟動 Cloudflare Tunnel
 kde ngrok               # 啟動 Ngrok 外部連線
 kde expose              # Port Forward 端口轉發
 ```
+
+**💡 核心價值**：一套指令完成所有操作，工具自動連接到當前環境，開發者只需專注於開發，無需學習多種工具的安裝和配置。
 
 ## 🎯 適用對象
 
@@ -369,7 +384,7 @@ kde telepresence replace myapp myapp-deployment
 
 ## 🎓 使用範例
 
-### 範例 1：團隊協作開發環境
+### 範例 1：團隊協作開發工作區
 
 ```bash
 # 管理員：建立並配置 Workspace
@@ -415,10 +430,42 @@ kde start remote-env k8s
 # 啟動 Telepresence 攔截流量
 kde telepresence replace myapp myapp-deployment
 
-# 選擇專案並進入開發環境
-# 本地開發，遠端流量導向本地
+# 選擇專案並進入容器開發環境
+# 容器內開發，遠端流量導向容器
 npm run dev
 ```
+
+### 範例 4：將專案平移到其他環境快速部署
+
+```bash
+# 情境：將開發環境的專案快速複製到測試環境
+
+# 1. 在開發環境中已配置好的專案
+kde use dev-env
+kde proj list
+# 輸出：myapp (已配置好 project.env 和所有腳本)
+
+# 2. 複製專案資料夾到測試環境
+cp -r environments/dev-env/namespaces/myapp environments/test-env/namespaces/myapp
+
+# 3. 修改成測試環境的環境變數
+vi environments/test-env/namespaces/myapp/project.env
+
+# 4. 切換到測試環境並部署
+kde use test-env
+kde proj pipeline myapp
+# 使用相同的配置和流程，快速在測試環境啟動服務
+
+# 5. 也可以直接用 Git 版控來同步
+git add . && git commit -m "Add myapp configuration"
+git push
+```
+
+**核心優勢**：
+- ✅ 專案資料夾包含所有 CI/CD 設定
+- ✅ 所有腳本（build.sh, deploy.sh 等）一起遷移
+- ✅ 不需要重新配置，確保多環境一致性
+- ✅ 適合快速擴展到多個環境（dev → test → staging → prod）
 
 ## 🔧 除錯
 
@@ -455,6 +502,6 @@ kde proj pipeline myapp
 **KDE** = **Kubernetes Development Environment** = **Workspace**
 
 這三個名詞指的是同一個概念：
-- **KDE** 是縮寫，代表整個開發環境
+- **KDE** 是縮寫，代表整個開發工作區
 - **Kubernetes Development Environment** 是完整名稱
-- **Workspace（工作空間）** 是實際的組織單位和目錄結構
+- **Workspace（開發工作區）** 是實際的組織單位和目錄結構
