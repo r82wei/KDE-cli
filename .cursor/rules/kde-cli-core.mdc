@@ -1,0 +1,301 @@
+---
+description: KDE-CLI 核心概念與最佳實踐指南
+alwaysApply: true
+---
+
+# KDE-CLI 核心概念
+
+KDE-CLI 是一個整合式 Kubernetes 開發環境管理工具，透過容器化工作流程簡化從開發到部署的完整生命週期。
+
+## 核心架構
+
+### 三大核心組件
+
+1. **環境管理 (Environment)**：管理多個獨立的 K8s 環境
+2. **專案管理 (Project)**：管理專案的完整生命週期
+3. **Pipeline 系統**：腳本驅動的 CI/CD 工作流程
+
+### 目錄結構
+
+```
+environments/<env_name>/
+├── k8s.env                    # 環境配置（版控）
+├── .env                       # 本地配置（不版控）
+├── kubeconfig/config          # K8s 連線配置
+├── init.sh                    # 環境初始化腳本
+├── kind-config.yaml           # Kind 配置（Kind 環境）
+├── k3d-config.yaml            # K3D 配置（K3D 環境）
+└── namespaces/<project_name>/ # 專案目錄
+    ├── project.env            # 專案配置（版控）
+    ├── .env                   # 專案本地配置（不版控）
+    ├── build.sh               # 建置腳本
+    ├── deploy.sh              # 部署腳本
+    └── <repo>/                # Git 倉庫
+```
+
+## 環境類型
+
+| 類型 | 適用場景 | 特點 |
+|------|---------|------|
+| **Kind** | 本地開發、功能測試 | 完整 K8s 功能 |
+| **K3D** | 快速開發、CI/CD | 輕量、快速啟動 |
+| **外部 K8s** | 生產環境、團隊協作 | 雲端或自建集群 |
+
+```bash
+# 建立環境
+kde start dev-env kind           # Kind 環境
+kde start test-env k3d           # K3D 環境
+kde start prod-env k8s           # 外部 K8s
+
+# 環境操作
+kde use <env_name>               # 切換環境
+kde status                       # 查看狀態
+kde restart <env_name>           # 重啟環境
+```
+
+## Pipeline 系統
+
+### 核心概念
+
+Pipeline 是透過 **Docker 容器** 執行的階段式工作流程，每個階段可使用不同的容器映像。
+
+```bash
+# project.env 配置
+KDE_PIPELINE_STAGES="build,test,deploy"
+
+# 階段配置
+KDE_PIPELINE_STAGE_build_IMAGE=node:20
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+
+KDE_PIPELINE_STAGE_test_IMAGE=node:20
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+```
+
+### 階段控制
+
+```bash
+# 執行選項
+kde proj pipeline myapp                    # 執行完整 Pipeline
+kde proj pipeline myapp --only build       # 只執行 build
+kde proj pipeline myapp --from test        # 從 test 開始
+kde proj pipeline myapp --to build         # 執行到 build
+kde proj pipeline myapp --manual           # 手動模式（進入容器）
+
+# 階段配置
+KDE_PIPELINE_STAGE_lint_SKIP=true                # 跳過階段
+KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true         # 只能手動觸發
+KDE_PIPELINE_STAGE_lint_ALLOW_FAILURE=true       # 允許失敗
+KDE_PIPELINE_STAGE_preview_PAUSE=true            # 執行後暫停等待確認
+```
+
+### 階段間環境變數傳遞
+
+```bash
+# build.sh - 輸出變數
+echo "APP_IMAGE=myapp:1.0.0" >> .pipeline.env
+
+# deploy.sh - 使用變數
+source .pipeline.env
+echo "部署映像: ${APP_IMAGE}"
+```
+
+## 開發模式
+
+### 模式一：開發容器模式
+
+快速啟動開發環境，自動掛載專案資料夾。
+
+```bash
+# 進入開發容器
+kde proj exec myapp develop
+kde proj exec myapp dev 3000    # 帶 port mapping
+```
+
+### 模式二：K8s + PVC 掛載模式
+
+在 K8s 中開發，透過 PVC 實現 Hot Reload。
+
+```yaml
+# PVC 自動對應到 project 資料夾下的同名資料夾
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: source-code  # 對應 namespaces/<project>/source-code/
+```
+
+### 模式三：Telepresence 模式
+
+攔截遠端 K8s 流量到本地開發環境。
+
+```bash
+kde telepresence intercept myapp myapp-deployment
+kde telepresence list            # 查看連線狀態
+kde telepresence clear           # 清理連線
+```
+
+## 環境變數載入順序
+
+Pipeline 和開發容器會依序載入以下環境變數：
+
+1. `${KDE_PATH}/kde.env` - 全域配置（版控）
+2. `${ENVIROMENTS_PATH}/${CUR_ENV}/k8s.env` - 環境配置（版控）
+3. `${ENVIROMENTS_PATH}/${CUR_ENV}/.env` - 環境本地配置（不版控）
+4. `${PROJECT_PATH}/project.env` - 專案配置（版控）
+5. `${PROJECT_PATH}/.env` - 專案本地配置（不版控）
+6. `${PROJECT_PATH}/.pipeline.env` - Pipeline 階段傳遞（自動生成）
+
+## 常用工作流程
+
+### 建立新專案
+
+```bash
+# 1. 建立環境
+kde start dev-env kind
+
+# 2. 建立專案
+kde proj create myapp
+
+# 3. 從 Git 抓取（可選）
+kde proj fetch myapp https://github.com/user/repo.git main
+
+# 4. 配置 Pipeline
+# 編輯 environments/dev-env/namespaces/myapp/project.env
+```
+
+### 本地開發
+
+```bash
+# 方法 A：使用開發容器
+kde proj exec myapp develop
+
+# 方法 B：使用 Pipeline 手動模式（測試腳本）
+kde proj pipeline myapp --only build --manual
+```
+
+### 部署測試
+
+```bash
+# 執行完整 Pipeline
+kde proj pipeline myapp
+
+# 或分階段執行
+kde proj pipeline myapp --only build
+kde proj pipeline myapp --only deploy
+```
+
+### 與遠端 K8s 整合
+
+```bash
+# 使用 Telepresence 攔截
+kde telepresence intercept myapp myapp-deployment
+
+# 選擇專案，自動進入開發容器
+# 本地修改會直接影響 K8s 流量
+```
+
+## 容器化工具整合
+
+KDE-CLI 透過容器映像整合任何工具，無需安裝插件：
+
+```bash
+# project.env
+KDE_PIPELINE_STAGE_lint_IMAGE=golangci/golangci-lint:latest
+KDE_PIPELINE_STAGE_security_IMAGE=aquasec/trivy:latest
+KDE_PIPELINE_STAGE_test_IMAGE=cypress/included:latest
+KDE_PIPELINE_STAGE_build_IMAGE=docker:latest
+```
+
+## DooD (Docker-out-of-Docker)
+
+開發容器自動掛載 Docker Socket，可在容器內使用 Docker：
+
+```bash
+# 在開發容器內
+docker build -t myapp:1.0.0 .
+docker push registry.example.com/myapp:1.0.0
+
+# 映像會儲存在宿主機，可載入到 Kind/K3D
+kde load-image myapp:1.0.0
+```
+
+## 除錯技巧
+
+```bash
+# 啟用除錯模式
+KDE_DEBUG=true kde start dev-env kind
+KDE_DEBUG=true kde proj pipeline myapp
+
+# 進入環境手動測試
+kde proj pipeline myapp --only build --manual
+
+# 查看容器執行命令
+docker ps -a
+
+# 檢查環境配置
+cat environments/<env>/k8s.env
+```
+
+## 最佳實踐
+
+### 配置管理
+
+- ✅ **版控**: `project.env`, `k8s.env` - 團隊共享配置
+- ❌ **不版控**: `.env` - 敏感資訊、本地配置
+
+### Pipeline 設計
+
+- 使用 `ALLOW_FAILURE` 處理非關鍵階段（如 lint）
+- 使用 `MANUAL_ONLY` 標記手動觸發的階段
+- 使用 `PAUSE` 在部署前執行 diff 預覽並等待確認（如 kubectl diff、helm diff）
+- 透過 `.pipeline.env` 在階段間傳遞資料
+- 每個階段使用最適合的容器映像
+
+### 開發工作流程
+
+- **快速開發**: 使用開發容器模式
+- **整合測試**: 使用 K8s + PVC 模式
+- **遠端除錯**: 使用 Telepresence 模式
+
+### 環境管理
+
+- **本地開發**: Kind/K3D 環境
+- **團隊協作**: 外部 K8s + 共享 kubeconfig
+- **多環境**: 透過 `kde use` 快速切換
+
+## 指令速查
+
+```bash
+# 環境
+kde start <env> [kind|k3d|k8s]   # 建立/啟動
+kde use <env>                     # 切換
+kde stop [env]                    # 停止
+kde restart [env]                 # 重啟
+kde status                        # 狀態
+
+# 專案
+kde proj create <name>            # 建立
+kde proj fetch <name> <url> <br>  # 抓取 Git
+kde proj pipeline <name>          # 執行 Pipeline
+kde proj exec <name> [dev|dep]    # 進入容器
+
+# Telepresence
+kde telepresence intercept <ns> <workload>
+kde telepresence list [ns]
+kde telepresence clear
+
+# 運維
+kde k9s                           # 啟動 K9s
+kde dashboard                     # 啟動 Dashboard
+kde load-image <image> [env]      # 載入映像
+```
+
+## 重要提醒
+
+1. **環境切換**: 在 `environments/<env>/` 目錄下會自動切換環境
+2. **專案即 Namespace**: 每個專案對應一個 K8s namespace
+3. **容器即工具**: 不需要插件，透過容器映像整合任何工具
+4. **本地與遠端**: Kind/K3D 容器可直接透過服務名存取 K8s 服務
+5. **版控原則**: `*.env` 不版控，`project.env`/`k8s.env` 版控

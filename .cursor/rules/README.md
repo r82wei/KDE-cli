@@ -1,128 +1,186 @@
-# KDE CLI Cursor 規則說明
+# KDE-CLI Cursor Rules 說明
 
-本目錄包含 KDE CLI 工具的 Cursor MDC 格式規則檔案，旨在幫助開發者快速了解和使用 KDE CLI 工具。
+本目錄包含 KDE-CLI 專案的 AI agent 指導規則，幫助 Cursor AI 更好地理解和協助 KDE-CLI 的開發與使用。
 
-## 規則檔案說明
+## 📚 Rules 列表
 
-### 1. kde-cli-overview.mdc
+### 1. `kde-cli-core.mdc` (Always Apply)
+**描述**：KDE-CLI 核心概念與最佳實踐指南
 
-- **描述**: KDE CLI 工具總覽
-- **適用範圍**: 所有 .sh 檔案
-- **自動應用**: 是
-- **內容**: 工具概覽、主要功能模組、核心指令架構、環境變數與配置
+**內容**：
+- 核心架構（環境、專案、Pipeline）
+- 環境類型（Kind、K3D、外部 K8s）
+- Pipeline 系統完整說明
+- 三種開發模式（開發容器、K8s PVC、Telepresence）
+- 環境變數載入順序
+- 常用工作流程
+- DooD 支援
+- 指令速查
 
-### 2. environment-management.mdc
+**觸發時機**：所有對話都會載入
 
-- **描述**: 環境管理詳細指南
-- **適用範圍**: 環境管理相關腳本
-- **自動應用**: 否
-- **內容**: kind/k3d/外部 K8s 環境的建立、管理與操作
-
-### 3. project-management.mdc
-
-- **描述**: 專案管理詳細指南
-- **適用範圍**: 專案管理相關腳本
-- **自動應用**: 否
-- **內容**: 專案建立、部署、管理與專案集合操作
-
-### 4. cloud-proxy-tools.mdc
-
-- **描述**: 雲端代理工具詳細指南
-- **適用範圍**: 雲端代理相關腳本
-- **自動應用**: 否
-- **內容**: Cloudflare Tunnel、Ngrok、Telepresence 與 Port Forward
-
-### 5. operations-tools.mdc
-
-- **描述**: 運維工具詳細指南
-- **適用範圍**: 運維工具相關腳本
-- **自動應用**: 否
-- **內容**: K9s、Dashboard、Exec、Load Image 等運維工具
-
-### 6. installation-setup.mdc
-
-- **描述**: 安裝與設定詳細指南
-- **適用範圍**: 安裝與配置相關檔案
-- **自動應用**: 否
-- **內容**: 安裝、解除安裝、配置與初始化
-
-### 7. quick-reference.mdc
-
-- **描述**: 快速參考指南
-- **適用範圍**: 所有 .sh 檔案
-- **自動應用**: 是
-- **內容**: 常用指令速查表、工作流程、環境變數參考
-
-## 使用方式
-
-### 在 Cursor 中使用
-
-1. **自動應用規則**: 當您開啟 KDE 專案時，`kde-cli-overview.mdc` 和 `quick-reference.mdc` 會自動載入
-2. **手動引用規則**: 在對話中使用 `@environment-management` 等來引用特定規則
-3. **上下文感知**: 當您編輯特定類型的腳本時，相關規則會自動提供建議
-
-### 規則類型說明
-
-- **Always Apply**: 總是自動載入的規則
-- **Auto Attached**: 根據檔案類型自動附加的規則
-- **Agent Requested**: AI 可選擇性載入的規則
-- **Manual**: 需要手動引用的規則
-
-## 規則內容特色
-
-### 1. 結構化資訊
-
-- 清晰的章節組織
-- 詳細的指令說明
-- 實用的範例代碼
-
-### 2. 實用性導向
-
-- 快速參考表格
-- 故障排除指南
-- 最佳實踐建議
-
-### 3. 完整性覆蓋
-
-- 涵蓋所有主要功能
-- 包含配置說明
-- 提供工作流程
-
-## 自訂規則
-
-您可以根據專案需求自訂這些規則：
-
-1. **修改現有規則**: 編輯對應的 .mdc 檔案
-2. **新增規則**: 建立新的 .mdc 檔案
-3. **調整適用範圍**: 修改 globs 設定
-4. **變更自動應用**: 調整 alwaysApply 設定
-
-## 規則格式
-
-每個規則檔案都使用 MDC 格式：
-
-```yaml
 ---
-description: 規則描述
-globs: ["檔案模式"]
-alwaysApply: true/false
+
+### 2. `kde-project-config.mdc`
+**描述**：KDE-CLI 專案配置與 Pipeline 腳本指南
+
+**內容**：
+- `project.env` 完整配置結構
+- Pipeline 階段配置模式
+- 常見語言專案配置範例（Node.js、Go、Python）
+- Pipeline 腳本最佳實踐（build.sh、test.sh、deploy.sh）
+- 階段間資料傳遞機制
+- 檔案掛載範例
+- 除錯技巧
+
+**觸發時機**：編輯以下檔案時
+- `**/project.env`
+- `**/build.sh`
+- `**/deploy.sh`
+- `**/test.sh`
+- `**/*-deploy.sh`
+- `**/*-build.sh`
+
 ---
-# 規則內容
-## 章節標題
-內容...
+
+### 3. `kde-k8s-deployment.mdc`
+**描述**：KDE-CLI Kubernetes 部署與 PVC 掛載最佳實踐
+
+**內容**：
+- PVC 掛載機制（local-path-provisioner）
+- PVC 命名規則與資料夾對應
+- 完整部署範例（Node.js、Go、Python Hot Reload）
+- 部署腳本整合（kubectl、Helm）
+- ConfigMap 和 Secret 管理
+- Ingress 設定
+- 多容器 Pod 範例
+- 資源限制和健康檢查
+- 常見錯誤與解決
+
+**觸發時機**：編輯以下檔案時
+- `**/k8s/**/*.yaml`
+- `**/k8s/**/*.yml`
+- `**/helm/**/*.yaml`
+- `**/kustomization.yaml`
+
+---
+
+### 4. `kde-environment.mdc`
+**描述**：KDE-CLI 環境管理與故障排除指南
+
+**內容**：
+- 環境配置檔案（k8s.env、.env）
+- init.sh 環境初始化腳本
+- Kind/K3D 配置範例
+- 環境操作指令
+- 環境切換機制
+- 完整的故障排除指南
+- 效能優化技巧
+- 最佳實踐
+
+**觸發時機**：編輯以下檔案時
+- `**/k8s.env`
+- `**/kind-config.yaml`
+- `**/k3d-config.yaml`
+- `**/init.sh`
+
+---
+
+## 🎯 使用指南
+
+### 對於開發者
+
+當你在 Cursor 中工作時，這些 rules 會自動提供給 AI agent：
+
+1. **核心概念**始終可用（`kde-cli-core.mdc`）
+2. 根據你正在編輯的檔案，相關的專門 rules 會被啟用
+
+### 對於 AI Agent
+
+當協助使用者時：
+
+1. **Always Apply Rule** (`kde-cli-core.mdc`) 已經提供核心概念
+2. 根據使用者開啟的檔案，讀取對應的 file-specific rules
+3. 參考 rules 中的範例和最佳實踐
+4. 使用 rules 中的除錯技巧幫助排查問題
+
+---
+
+## 📖 快速參考
+
+### 環境管理
+```bash
+kde start <env> [kind|k3d|k8s]  # 建立環境
+kde use <env>                    # 切換環境
+kde status                       # 查看狀態
 ```
 
-## 貢獻指南
+### 專案管理
+```bash
+kde proj create <name>           # 建立專案
+kde proj pipeline <name>         # 執行 Pipeline
+kde proj exec <name> [dev|dep]   # 進入容器
+```
 
-如果您想改進這些規則：
+### Pipeline 執行
+```bash
+kde proj pipeline <name>                # 完整執行
+kde proj pipeline <name> --only build   # 只執行特定階段
+kde proj pipeline <name> --manual       # 手動模式
+```
 
-1. 確保內容準確性
-2. 保持格式一致性
-3. 更新相關的 globs 設定
-4. 測試規則的有效性
+### Telepresence
+```bash
+kde telepresence intercept <ns> <workload>  # 攔截流量
+kde telepresence list                       # 查看連線
+kde telepresence clear                      # 清理連線
+```
 
-## 相關資源
+---
 
-- [Cursor Rules 官方文檔](https://docs.cursor.com/context/rules)
-- [KDE CLI 專案文檔](../README.md)
-- [KDE CLI 使用指南](../readme.usage.md)
+## 🔧 維護指南
+
+### 更新 Rules
+
+當 KDE-CLI 功能更新時：
+
+1. 確認哪個 rule 需要更新
+2. 更新對應的 `.mdc` 檔案
+3. 保持範例程式碼的正確性
+4. 更新本 README 如有必要
+
+### Rule 檔案規範
+
+- 檔案格式：`.mdc` (Markdown with frontmatter)
+- 檔案大小：建議 < 500 行
+- 內容原則：
+  - ✅ 簡潔明確
+  - ✅ 提供具體範例
+  - ✅ 包含常見錯誤處理
+  - ❌ 避免冗長說明
+  - ❌ 避免重複內容
+
+---
+
+## 📚 相關資源
+
+- [KDE-CLI 完整文檔](../docs/)
+- [快速參考指南](../docs/core/quick-reference.md)
+- [Pipeline 系統](../docs/core/cicd-pipeline.md)
+- [環境管理](../docs/core/environment/)
+
+---
+
+## 🙋 FAQ
+
+**Q: 為什麼需要這些 rules？**
+A: 讓 AI agent 能快速理解 KDE-CLI 的核心概念、配置模式和最佳實踐，提供更準確的協助。
+
+**Q: Rules 會影響效能嗎？**
+A: 不會。Rules 只在需要時被載入，且都經過精簡設計。
+
+**Q: 如何測試 rule 是否生效？**
+A: 開啟對應的檔案類型，詢問 AI agent 關於 KDE-CLI 的問題，檢查回答是否參考了 rules 中的內容。
+
+**Q: 可以自訂 rules 嗎？**
+A: 可以。你可以在 `.cursor/rules/` 中加入自己的 rules，遵循相同的格式即可。
