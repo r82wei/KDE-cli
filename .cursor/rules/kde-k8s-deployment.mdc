@@ -1,0 +1,527 @@
+---
+description: KDE-CLI Kubernetes 部署與 PVC 掛載最佳實踐
+globs: |
+  **/k8s/**/*.yaml
+  **/k8s/**/*.yml
+  **/helm/**/*.yaml
+  **/kustomization.yaml
+alwaysApply: false
+---
+
+# KDE-CLI Kubernetes 部署指南
+
+## PVC 掛載機制 (Kind/K3D 環境)
+
+KDE-CLI 使用 `local-path-provisioner` 實現本地開發的 Hot Reload。
+
+### 核心概念
+
+- **PVC 名稱對應資料夾**: 每個 PVC 名稱對應到 `namespaces/<project>/<pvc-name>/` 資料夾
+- **自動掛載**: local-path-provisioner 自動處理掛載
+- **即時同步**: 本地修改立即反映到 Pod 內
+
+### PVC 命名規則
+
+```yaml
+# ✅ GOOD - PVC 名稱清楚對應到專案資料夾
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: source-code  # 對應 namespaces/myapp/source-code/
+  namespace: myapp
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+### Deployment 掛載 PVC
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: app
+        image: node:20
+        workingDir: /app/source-code
+        command: ["npm", "run", "dev"]  # 支援 Hot Reload 的命令
+        volumeMounts:
+        - name: source-code
+          mountPath: /app/source-code  # 掛載點
+        ports:
+        - containerPort: 3000
+      volumes:
+      - name: source-code
+        persistentVolumeClaim:
+          claimName: source-code  # 對應的 PVC
+```
+
+## 專案資料夾結構範例
+
+```
+environments/dev-env/namespaces/myapp/
+├── project.env
+├── build.sh
+├── deploy.sh
+├── source-code/          # PVC: source-code
+│   ├── src/
+│   ├── package.json
+│   └── ...
+├── config/               # PVC: config (可選)
+│   └── app.config.json
+└── my-repo/              # Git 倉庫
+    └── ...
+```
+
+## 完整部署範例
+
+### Node.js 應用 Hot Reload
+
+```yaml
+# k8s/deployment.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myapp
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: source-code
+  namespace: myapp
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: app
+        image: node:20
+        workingDir: /app/source-code
+        command: 
+          - sh
+          - -c
+          - |
+            npm install
+            npm run dev
+        volumeMounts:
+        - name: source-code
+          mountPath: /app/source-code
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: development
+      volumes:
+      - name: source-code
+        persistentVolumeClaim:
+          claimName: source-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+  namespace: myapp
+spec:
+  selector:
+    app: myapp
+  ports:
+  - protocol: TCP
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP
+```
+
+### Go 應用 Hot Reload (with Air)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-app
+  namespace: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-app
+  template:
+    metadata:
+      labels:
+        app: go-app
+    spec:
+      containers:
+      - name: app
+        image: cosmtrek/air:latest  # 使用 Air 實現 Hot Reload
+        workingDir: /app/source-code
+        volumeMounts:
+        - name: source-code
+          mountPath: /app/source-code
+        ports:
+        - containerPort: 8080
+      volumes:
+      - name: source-code
+        persistentVolumeClaim:
+          claimName: source-code
+```
+
+### Python 應用 Hot Reload
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-app
+  namespace: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-app
+  template:
+    metadata:
+      labels:
+        app: python-app
+    spec:
+      containers:
+      - name: app
+        image: python:3.11
+        workingDir: /app/source-code
+        command:
+          - sh
+          - -c
+          - |
+            pip install -r requirements.txt
+            # 使用支援 Hot Reload 的工具
+            # Flask: FLASK_ENV=development flask run --reload
+            # FastAPI: uvicorn main:app --reload
+            python app.py
+        volumeMounts:
+        - name: source-code
+          mountPath: /app/source-code
+        ports:
+        - containerPort: 8000
+      volumes:
+      - name: source-code
+        persistentVolumeClaim:
+          claimName: source-code
+```
+
+## 部署腳本整合
+
+### deploy.sh 使用 kubectl
+
+```bash
+#!/bin/bash
+set -e
+
+NAMESPACE=${NAMESPACE:-myapp}
+
+echo "=== 部署到 Kubernetes ==="
+
+# 1. 建立 Namespace
+kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+
+# 2. 部署應用
+kubectl apply -f k8s/ -n ${NAMESPACE}
+
+# 3. 等待部署完成
+kubectl rollout status deployment/myapp -n ${NAMESPACE} --timeout=5m
+
+# 4. 顯示部署狀態
+kubectl get pods -n ${NAMESPACE}
+kubectl get svc -n ${NAMESPACE}
+
+echo "✅ 部署完成"
+echo "提示: 本地修改 source-code/ 資料夾會即時同步到 Pod"
+```
+
+### deploy.sh 使用 Helm
+
+```bash
+#!/bin/bash
+set -e
+
+NAMESPACE=${NAMESPACE:-myapp}
+RELEASE_NAME=${APP_NAME:-myapp}
+
+echo "=== 使用 Helm 部署 ==="
+
+# 1. 建立 Namespace
+kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+
+# 2. Helm 部署
+helm upgrade --install ${RELEASE_NAME} ./helm/${APP_NAME} \
+    --namespace ${NAMESPACE} \
+    --set image.repository=${APP_IMAGE%:*} \
+    --set image.tag=${APP_VERSION:-latest} \
+    --wait \
+    --timeout 5m
+
+# 3. 顯示部署狀態
+helm status ${RELEASE_NAME} -n ${NAMESPACE}
+kubectl get pods -n ${NAMESPACE}
+
+echo "✅ Helm 部署完成"
+```
+
+## ConfigMap 和 Secret 管理
+
+### 從環境變數建立 ConfigMap
+
+```bash
+# deploy.sh 或 pre-deploy.sh
+kubectl create configmap app-config \
+    --from-literal=APP_NAME=${APP_NAME} \
+    --from-literal=APP_PORT=${APP_PORT} \
+    --namespace ${NAMESPACE} \
+    --dry-run=client -o yaml | kubectl apply -f -
+```
+
+### 從檔案建立 Secret
+
+```bash
+# 在 .env 中定義敏感資訊（不提交版控）
+# DATABASE_PASSWORD=secret123
+
+# deploy.sh
+kubectl create secret generic app-secret \
+    --from-literal=DATABASE_PASSWORD=${DATABASE_PASSWORD} \
+    --namespace ${NAMESPACE} \
+    --dry-run=client -o yaml | kubectl apply -f -
+```
+
+### 在 Deployment 中使用
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+      - name: app
+        image: myapp:latest
+        env:
+        # 從 ConfigMap 載入
+        - name: APP_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_NAME
+        # 從 Secret 載入
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: DATABASE_PASSWORD
+```
+
+## Ingress 設定
+
+### 基本 Ingress
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp
+  namespace: myapp
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: myapp.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: myapp
+            port:
+              number: 3000
+```
+
+### 使用 kde project ingress
+
+```bash
+# 自動建立 Ingress
+kde project ingress myapp
+
+# 或在 deploy.sh 中
+kubectl apply -f k8s/ingress.yaml -n ${NAMESPACE}
+```
+
+## 多容器 Pod 範例
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+      # 主應用容器
+      - name: app
+        image: myapp:latest
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: source-code
+          mountPath: /app/source-code
+      
+      # Sidecar: 日誌收集
+      - name: logger
+        image: fluent/fluent-bit:latest
+        volumeMounts:
+        - name: logs
+          mountPath: /var/log/app
+      
+      volumes:
+      - name: source-code
+        persistentVolumeClaim:
+          claimName: source-code
+      - name: logs
+        emptyDir: {}
+```
+
+## 資源限制最佳實踐
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+      - name: app
+        image: myapp:latest
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+```
+
+## 健康檢查
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+      - name: app
+        image: myapp:latest
+        ports:
+        - containerPort: 8080
+        
+        # 存活探測
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        
+        # 就緒探測
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+```
+
+## 常見錯誤與解決
+
+### PVC 無法綁定
+
+```bash
+# 檢查 StorageClass
+kubectl get storageclass
+
+# 確認使用 local-path
+kubectl describe pvc source-code -n myapp
+
+# 檢查 PV 狀態
+kubectl get pv
+```
+
+### 掛載路徑問題
+
+```yaml
+# ❌ BAD - 絕對路徑可能導致權限問題
+volumeMounts:
+- name: source-code
+  mountPath: /root/app  
+
+# ✅ GOOD - 使用應用目錄
+volumeMounts:
+- name: source-code
+  mountPath: /app/source-code
+```
+
+### Hot Reload 不生效
+
+1. 確認應用支援 Hot Reload（nodemon、Air、uvicorn --reload）
+2. 檢查檔案監控限制：`fs.inotify.max_user_watches`
+3. 確認 PVC 正確掛載：`kubectl exec -it <pod> -- ls /app/source-code`
+
+## 部署檢查清單
+
+- [ ] Namespace 已定義
+- [ ] PVC 使用 `storageClassName: local-path`
+- [ ] PVC 名稱對應到專案資料夾下的實際資料夾
+- [ ] volumeMounts 路徑正確
+- [ ] 應用啟動命令支援 Hot Reload
+- [ ] Service 正確選擇 Pod（selector）
+- [ ] 資源限制合理設定
+- [ ] 健康檢查已配置
+- [ ] ConfigMap/Secret 敏感資訊處理正確

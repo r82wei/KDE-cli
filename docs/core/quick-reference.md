@@ -557,8 +557,6 @@ environments/<env_name>/
         ├── project.env      # 專案配置
         ├── build.sh         # 建置腳本
         ├── deploy.sh        # 部署腳本
-        ├── pre-deploy.sh    # 部署前腳本
-        ├── post-deploy.sh   # 部署後腳本
         ├── undeploy.sh      # 卸載腳本
         └── <repo_name>/     # Git 倉庫內容
 ```

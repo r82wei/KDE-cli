@@ -1,0 +1,385 @@
+---
+description: KDE-CLI 專案配置與 Pipeline 腳本指南
+globs: |
+  **/project.env
+  **/build.sh
+  **/deploy.sh
+  **/test.sh
+  **/*-deploy.sh
+  **/*-build.sh
+alwaysApply: false
+---
+
+# KDE-CLI 專案配置指南
+
+## project.env 配置結構
+
+```bash
+# === Git 倉庫配置 ===
+GIT_REPO_URL=https://github.com/user/repo.git
+GIT_REPO_BRANCH=main
+
+# === 容器映像配置 ===
+DEVELOP_IMAGE=node:20              # 開發環境映像
+DEPLOY_IMAGE=r82wei/deploy-env:1.0.0  # 部署工具映像
+
+# === Pipeline 階段定義 ===
+KDE_PIPELINE_STAGES="build,test,deploy"
+
+# === Build 階段配置 ===
+KDE_PIPELINE_STAGE_build_IMAGE=node:20
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+
+# === Test 階段配置 ===
+KDE_PIPELINE_STAGE_test_IMAGE=node:20
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+
+# === Deploy 階段配置 ===
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+
+# === 應用配置 ===
+APP_NAME=myapp
+APP_PORT=8080
+NAMESPACE=myapp
+```
+
+## Pipeline 階段配置模式
+
+### 基本階段配置
+
+```bash
+# 階段定義
+KDE_PIPELINE_STAGES="<stage1>,<stage2>,<stage3>"
+
+# 每個階段需要配置
+KDE_PIPELINE_STAGE_<stage>_IMAGE=<docker-image>
+KDE_PIPELINE_STAGE_<stage>_SCRIPT=<script-file>
+```
+
+### 階段控制選項
+
+```bash
+# 跳過階段（預設執行）
+KDE_PIPELINE_STAGE_<stage>_SKIP=true
+
+# 只能手動觸發（預設自動執行）
+KDE_PIPELINE_STAGE_<stage>_MANUAL_ONLY=true
+
+# 允許失敗（預設失敗即停止）
+KDE_PIPELINE_STAGE_<stage>_ALLOW_FAILURE=true
+```
+
+### 階段檔案掛載
+
+```bash
+# 掛載特定階段的檔案
+KDE_PIPELINE_STAGE_<stage>_MOUNT_<name>=/host/path:/container/path[:ro]
+
+# 掛載所有階段的檔案
+KDE_MOUNT_<name>=/host/path:/container/path[:ro]
+
+# 範例
+KDE_PIPELINE_STAGE_build_MOUNT_CACHE=${HOME}/.npm:/root/.npm
+KDE_MOUNT_SSH=${HOME}/.ssh:${HOME}/.ssh:ro
+```
+
+## 常見 Pipeline 配置範例
+
+### Node.js 專案
+
+```bash
+# project.env
+DEVELOP_IMAGE=node:20
+DEPLOY_IMAGE=r82wei/deploy-env:1.0.0
+
+KDE_PIPELINE_STAGES="install,lint,test,build,deploy"
+
+KDE_PIPELINE_STAGE_install_IMAGE=node:20
+KDE_PIPELINE_STAGE_install_SCRIPT=install.sh
+
+KDE_PIPELINE_STAGE_lint_IMAGE=node:20
+KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
+KDE_PIPELINE_STAGE_lint_ALLOW_FAILURE=true
+
+KDE_PIPELINE_STAGE_test_IMAGE=node:20
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+
+KDE_PIPELINE_STAGE_build_IMAGE=docker:latest
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+```
+
+### Go 專案
+
+```bash
+# project.env
+DEVELOP_IMAGE=golang:1.21
+DEPLOY_IMAGE=r82wei/deploy-env:1.0.0
+
+KDE_PIPELINE_STAGES="lint,test,build,security-scan,deploy"
+
+KDE_PIPELINE_STAGE_lint_IMAGE=golangci/golangci-lint:latest
+KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
+
+KDE_PIPELINE_STAGE_test_IMAGE=golang:1.21
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+
+KDE_PIPELINE_STAGE_build_IMAGE=docker:latest
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+
+KDE_PIPELINE_STAGE_security-scan_IMAGE=aquasec/trivy:latest
+KDE_PIPELINE_STAGE_security-scan_SCRIPT=security-scan.sh
+KDE_PIPELINE_STAGE_security-scan_ALLOW_FAILURE=true
+
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+```
+
+### Python 專案
+
+```bash
+# project.env
+DEVELOP_IMAGE=python:3.11
+DEPLOY_IMAGE=r82wei/deploy-env:1.0.0
+
+KDE_PIPELINE_STAGES="lint,test,build,deploy"
+
+KDE_PIPELINE_STAGE_lint_IMAGE=python:3.11
+KDE_PIPELINE_STAGE_lint_SCRIPT=lint.sh
+
+KDE_PIPELINE_STAGE_test_IMAGE=python:3.11
+KDE_PIPELINE_STAGE_test_SCRIPT=test.sh
+
+KDE_PIPELINE_STAGE_build_IMAGE=docker:latest
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+```
+
+## Pipeline 腳本最佳實踐
+
+### build.sh 範本
+
+```bash
+#!/bin/bash
+set -e  # 遇到錯誤立即退出
+
+echo "=== 開始建置 ==="
+
+# 1. 安裝依賴
+npm install
+# 或 go mod download
+# 或 pip install -r requirements.txt
+
+# 2. 執行建置
+npm run build
+# 或 go build -o app
+# 或 python setup.py build
+
+# 3. 建置 Docker 映像（如果需要）
+VERSION=$(cat package.json | jq -r .version)
+docker build -t ${APP_NAME}:${VERSION} .
+
+# 4. 推送映像到 Registry（如果需要）
+docker tag ${APP_NAME}:${VERSION} ${DOCKER_REGISTRY}/${APP_NAME}:${VERSION}
+docker push ${DOCKER_REGISTRY}/${APP_NAME}:${VERSION}
+
+# 5. 輸出環境變數給下一階段
+echo "APP_IMAGE=${DOCKER_REGISTRY}/${APP_NAME}:${VERSION}" >> .pipeline.env
+echo "APP_VERSION=${VERSION}" >> .pipeline.env
+
+echo "✅ 建置完成"
+```
+
+### test.sh 範本
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== 開始測試 ==="
+
+# 1. 單元測試
+npm test
+# 或 go test ./...
+# 或 pytest
+
+# 2. 整合測試（可選）
+# npm run test:integration
+
+# 3. 產生測試報告（可選）
+# npm run test:coverage
+
+echo "✅ 測試通過"
+```
+
+### deploy.sh 範本
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== 開始部署 ==="
+
+# 1. 載入 Pipeline 環境變數
+if [ -f .pipeline.env ]; then
+    source .pipeline.env
+fi
+
+# 2. 建立 Namespace
+kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+
+# 3. 部署應用
+# 方法 A: 使用 kubectl
+kubectl apply -f k8s/ -n ${NAMESPACE}
+
+# 方法 B: 使用 Helm
+# helm upgrade --install ${APP_NAME} ./helm \
+#     --set image.repository=${APP_IMAGE%:*} \
+#     --set image.tag=${APP_VERSION} \
+#     --namespace ${NAMESPACE}
+
+# 方法 C: 使用 Kustomize
+# kubectl apply -k k8s/overlays/${ENV_NAME} -n ${NAMESPACE}
+
+# 4. 等待部署完成
+kubectl rollout status deployment/${APP_NAME} -n ${NAMESPACE} --timeout=5m
+
+# 5. 驗證部署
+kubectl get pods -n ${NAMESPACE}
+
+echo "✅ 部署完成"
+```
+
+## 階段間資料傳遞
+
+### 在腳本中寫入環境變數
+
+```bash
+# build.sh 或任何階段
+echo "KEY=VALUE" >> .pipeline.env
+echo "APP_IMAGE=myapp:1.0.0" >> .pipeline.env
+echo "BUILD_TIME=$(date +%s)" >> .pipeline.env
+```
+
+### 在後續階段讀取
+
+```bash
+# deploy.sh 或後續階段
+source .pipeline.env
+echo "使用映像: ${APP_IMAGE}"
+echo "建置時間: ${BUILD_TIME}"
+```
+
+## 檔案掛載範例
+
+### 掛載 SSH 金鑰
+
+```bash
+# project.env
+KDE_MOUNT_SSH=${HOME}/.ssh:${HOME}/.ssh:ro
+```
+
+### 掛載 Docker 配置
+
+```bash
+# project.env
+KDE_PIPELINE_STAGE_build_MOUNT_DOCKER=${HOME}/.docker:/root/.docker:ro
+```
+
+### 掛載 NPM 快取
+
+```bash
+# project.env
+KDE_PIPELINE_STAGE_build_MOUNT_NPM=${HOME}/.npm:/root/.npm
+```
+
+### 掛載共用函式庫
+
+```bash
+# project.env
+KDE_MOUNT_LIBS=${HOME}/shared-libs:/workspace/libs:ro
+```
+
+## 常見錯誤處理
+
+### 腳本權限問題
+
+```bash
+# 確保腳本有執行權限
+chmod +x build.sh deploy.sh test.sh
+
+# 或在 Git 中設定
+git add --chmod=+x build.sh
+```
+
+### 環境變數未定義
+
+```bash
+# 在腳本開頭檢查必要變數
+if [ -z "${APP_NAME}" ]; then
+    echo "錯誤: APP_NAME 未定義"
+    exit 1
+fi
+```
+
+### Docker 映像不存在
+
+```bash
+# 在 build 階段確認映像建置成功
+docker images | grep ${APP_NAME}
+
+# 或使用 --pull-policy
+docker build --pull -t ${APP_NAME}:${VERSION} .
+```
+
+## 除錯技巧
+
+### 使用 --manual 模式
+
+```bash
+# 進入特定階段的容器環境
+kde proj pipeline myapp --only build --manual
+
+# 在容器內手動執行命令測試
+npm install
+npm run build
+./build.sh
+```
+
+### 啟用除錯輸出
+
+```bash
+# 在腳本開頭加入
+set -x  # 顯示執行的每一行命令
+
+# 或使用 KDE_DEBUG
+KDE_DEBUG=true kde proj pipeline myapp
+```
+
+### 查看 Pipeline 環境變數
+
+```bash
+# 在 --manual 模式下
+kde proj pipeline myapp --only build --manual
+
+# 在容器內
+env | grep KDE_
+env | grep PIPELINE
+cat .pipeline.env
+```
+
+## 配置檢查清單
+
+- [ ] `DEVELOP_IMAGE` 已設定
+- [ ] `DEPLOY_IMAGE` 已設定
+- [ ] `KDE_PIPELINE_STAGES` 已定義所有階段
+- [ ] 每個階段都有對應的 `_IMAGE` 和 `_SCRIPT`
+- [ ] 腳本檔案存在且有執行權限
+- [ ] 階段間資料使用 `.pipeline.env` 傳遞
+- [ ] 敏感資訊放在 `.env` 而非 `project.env`
+- [ ] 容器映像已經存在或可被拉取

@@ -1,0 +1,506 @@
+---
+description: KDE-CLI 環境管理與故障排除指南
+globs: |
+  **/k8s.env
+  **/kind-config.yaml
+  **/k3d-config.yaml
+  **/init.sh
+alwaysApply: false
+---
+
+# KDE-CLI 環境管理指南
+
+## 環境配置檔案
+
+### k8s.env (環境基本配置，提交版控)
+
+```bash
+# 環境名稱
+ENV_NAME=dev-env
+
+# 環境類型: kind, k3d, k8s
+ENV_TYPE=kind
+
+# K8s 容器名稱 (kind/k3d)
+K8S_CONTAINER_NAME=dev-env-control-plane
+
+# Docker 網路名稱
+DOCKER_NETWORK=kde-dev-env
+
+# 儲存類別
+STORAGE_CLASS=local-path
+
+# 自訂配置 (可選)
+# K8S_VERSION=1.27
+# INGRESS_ENABLED=true
+```
+
+### .env (環境本地配置，不提交版控)
+
+```bash
+# 本地特定配置
+LOCAL_IP=192.168.1.100
+CUSTOM_DNS=8.8.8.8
+
+# 雲端 K8s 憑證 (如果是外部 K8s)
+# AWS_ACCESS_KEY_ID=xxxxx
+# AWS_SECRET_ACCESS_KEY=xxxxx
+```
+
+## init.sh 環境初始化腳本
+
+### 基本結構
+
+```bash
+#!/bin/bash
+set -e
+
+echo "開始環境初始化..."
+
+# 1. 安裝監控工具
+echo "安裝 Prometheus 和 Grafana..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+
+helm install prometheus prometheus-community/kube-prometheus-stack \
+    --namespace monitoring --create-namespace --wait
+
+helm install grafana grafana/grafana \
+    --namespace monitoring --wait
+
+# 2. 建立自訂 Namespace
+echo "建立自訂 Namespace..."
+kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+
+# 3. 安裝 Ingress Controller (如果需要)
+echo "安裝 Nginx Ingress..."
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+kubectl wait --namespace ingress-nginx \
+    --for=condition=ready pod \
+    --selector=app.kubernetes.io/component=controller \
+    --timeout=90s
+
+echo "✅ 環境初始化完成！"
+```
+
+### 常見初始化任務
+
+#### 安裝 ArgoCD
+
+```bash
+# init.sh
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# 等待 ArgoCD 就緒
+kubectl wait --for=condition=available --timeout=300s \
+    deployment/argocd-server -n argocd
+```
+
+#### 安裝 Cert-Manager
+
+```bash
+# init.sh
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+
+kubectl wait --for=condition=available --timeout=300s \
+    deployment/cert-manager -n cert-manager
+```
+
+#### 建立預設 ServiceAccount 和 RBAC
+
+```bash
+# init.sh
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: default-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: default-sa-binding
+subjects:
+- kind: ServiceAccount
+  name: default-sa
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+EOF
+```
+
+## Kind 配置
+
+### kind-config.template.yaml
+
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ${ENV_NAME}
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+  # 可選: 加入 worker 節點
+  # - role: worker
+  # - role: worker
+networking:
+  # 自訂 Pod CIDR
+  podSubnet: "10.244.0.0/16"
+  # 自訂 Service CIDR
+  serviceSubnet: "10.96.0.0/12"
+```
+
+### 多節點配置
+
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ${ENV_NAME}
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+  - role: worker
+```
+
+## K3D 配置
+
+### k3d-config.template.yaml
+
+```yaml
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: ${ENV_NAME}
+servers: 1
+agents: 2
+ports:
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+```
+
+## 環境操作指令
+
+### 建立環境
+
+```bash
+# Kind 環境
+kde start dev-env kind
+kde start dev-env kind ./custom-kind-config.yaml
+
+# K3D 環境
+kde start test-env k3d
+kde start test-env k3d ./custom-k3d-config.yaml
+
+# 外部 K8s (需要 kubeconfig)
+kde start prod-env k8s
+# 然後放置 kubeconfig 到 environments/prod-env/kubeconfig/config
+```
+
+### 環境管理
+
+```bash
+# 切換環境
+kde use dev-env
+
+# 查看當前環境
+kde cur
+kde current
+
+# 查看所有環境
+kde list
+kde ls
+
+# 查看環境狀態
+kde status
+
+# 停止環境
+kde stop dev-env
+
+# 重啟環境 (會執行 init.sh)
+kde restart dev-env
+
+# 重置環境 (保留配置，重建集群)
+kde reset dev-env
+
+# 移除環境
+kde remove dev-env
+kde rm dev-env
+```
+
+## 環境切換機制
+
+### 自動切換 (透過目錄)
+
+```bash
+# 進入環境目錄會自動切換
+cd ~/kde/environments/dev-env
+kde status  # 自動使用 dev-env
+
+cd ~/kde/environments/prod-env/namespaces/myapp
+kde proj ls  # 自動使用 prod-env
+```
+
+### 手動切換
+
+```bash
+# 明確切換環境
+kde use test-env
+
+# 互動式選擇
+kde use
+# 顯示環境列表讓你選擇
+```
+
+## 故障排除
+
+### 環境無法啟動
+
+```bash
+# 1. 啟用除錯模式
+KDE_DEBUG=true kde start dev-env kind
+
+# 2. 檢查 Docker 狀態
+docker ps -a | grep dev-env
+
+# 3. 檢查 Docker 網路
+docker network ls | grep kde
+
+# 4. 檢查容器日誌
+docker logs dev-env-control-plane
+
+# 5. 手動進入容器檢查
+docker exec -it dev-env-control-plane bash
+kubectl get nodes
+```
+
+### kubeconfig 連線問題
+
+```bash
+# 1. 檢查 kubeconfig 路徑
+echo $KUBECONFIG
+cat environments/dev-env/kubeconfig/config
+
+# 2. 測試連線
+kubectl get nodes
+kubectl cluster-info
+
+# 3. 檢查 context
+kubectl config get-contexts
+kubectl config use-context kind-dev-env
+
+# 4. 重新生成 kubeconfig
+kde restart dev-env
+```
+
+### 節點未就緒
+
+```bash
+# 1. 查看節點狀態
+kubectl get nodes -o wide
+
+# 2. 查看節點詳細資訊
+kubectl describe node <node-name>
+
+# 3. 查看系統 Pod
+kubectl get pods -n kube-system
+
+# 4. 檢查 CNI 網路
+kubectl get pods -n kube-system | grep -E "calico|flannel|weave"
+
+# 5. 重啟環境
+kde restart dev-env
+```
+
+### PVC 無法綁定
+
+```bash
+# 1. 檢查 StorageClass
+kubectl get storageclass
+
+# 2. 檢查 PV 狀態
+kubectl get pv
+
+# 3. 檢查 local-path-provisioner
+kubectl get pods -n local-path-storage
+
+# 4. 查看 PVC 詳細資訊
+kubectl describe pvc <pvc-name> -n <namespace>
+
+# 5. 檢查掛載目錄權限
+docker exec -it dev-env-control-plane ls -la /opt/local-path-provisioner
+```
+
+### init.sh 執行失敗
+
+```bash
+# 1. 手動執行 init.sh 除錯
+kde proj exec deploy
+cd ${ENV_PATH}
+bash -x init.sh  # -x 顯示執行過程
+
+# 2. 檢查 Helm repo
+helm repo list
+
+# 3. 檢查網路連線
+kubectl run test --image=curlimages/curl --rm -it -- curl -I https://google.com
+
+# 4. 查看 kubectl 日誌
+kubectl get events -A --sort-by='.lastTimestamp'
+```
+
+### Docker 網路問題
+
+```bash
+# 1. 檢查 Docker 網路
+docker network ls
+docker network inspect kde-dev-env
+
+# 2. 檢查容器是否在同一網路
+docker network inspect kde-dev-env | grep -A 10 Containers
+
+# 3. 重建網路
+kde stop dev-env
+docker network rm kde-dev-env
+kde start dev-env kind
+```
+
+### 磁碟空間不足
+
+```bash
+# 1. 檢查磁碟使用
+df -h
+
+# 2. 清理 Docker 資源
+docker system df
+docker system prune -a
+
+# 3. 清理未使用的映像
+docker image prune -a
+
+# 4. 清理未使用的 Volume
+docker volume prune
+```
+
+## 效能優化
+
+### 資源限制調整
+
+```yaml
+# kind-config.template.yaml
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: /var/lib/kubelet
+        containerPath: /var/lib/kubelet
+        readOnly: false
+    kubeadmConfigPatches:
+      - |
+        kind: ClusterConfiguration
+        apiServer:
+          extraArgs:
+            max-requests-inflight: "1000"
+        controllerManager:
+          extraArgs:
+            node-monitor-period: "2s"
+```
+
+### 加速映像拉取
+
+```bash
+# 預先拉取常用映像
+docker pull node:20
+docker pull python:3.11
+docker pull golang:1.21
+
+# 載入到 Kind
+kde load-image node:20
+kde load-image python:3.11
+kde load-image golang:1.21
+```
+
+### 快取優化
+
+```bash
+# 在 project.env 中掛載快取
+KDE_MOUNT_NPM=${HOME}/.npm:/root/.npm
+KDE_MOUNT_GO=${HOME}/go/pkg:/go/pkg
+KDE_MOUNT_PIP=${HOME}/.cache/pip:/root/.cache/pip
+```
+
+## 最佳實踐
+
+### 環境命名
+
+- ✅ `dev-env`, `test-env`, `prod-env` - 清楚的環境用途
+- ✅ `feature-xxx-env` - 功能測試環境
+- ❌ `env1`, `env2` - 不清楚的命名
+
+### 配置管理
+
+- ✅ `k8s.env` 提交版控 - 團隊共享配置
+- ❌ `.env` 不提交版控 - 本地和敏感配置
+- ✅ 使用 `kind-config.template.yaml` 而非直接的 `kind-config.yaml`
+
+### init.sh 設計
+
+- ✅ 使用 `set -e` 確保錯誤時停止
+- ✅ 使用 `--wait` 等待資源就緒
+- ✅ 輸出清楚的進度訊息
+- ✅ 使用 `--dry-run=client -o yaml | kubectl apply` 確保冪等性
+
+### 資源清理
+
+```bash
+# 定期清理不使用的環境
+kde remove old-env
+
+# 清理 Docker 資源
+docker system prune -a
+
+# 清理 Kubernetes 資源
+kubectl delete pods --field-selector status.phase=Failed -A
+kubectl delete pods --field-selector status.phase=Succeeded -A
+```
+
+## 檢查清單
+
+- [ ] `k8s.env` 配置正確
+- [ ] `ENV_TYPE` 與實際環境類型一致
+- [ ] `kubeconfig` 檔案存在且有效
+- [ ] `init.sh` 有執行權限
+- [ ] Docker 服務正在運行
+- [ ] 磁碟空間充足 (>10GB)
+- [ ] 網路連線正常
+- [ ] 必要的容器映像已下載

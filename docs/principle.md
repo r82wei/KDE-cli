@@ -81,25 +81,16 @@ flowchart TD
 
     LocalDeploy --> CICD[觸發 CI/CD Pipeline]
 
-    CICD --> CI[CI 階段<br/>使用 DEVELOP_IMAGE]
-    CI --> PreBuild{pre-build.sh<br/>存在?}
-    PreBuild -->|是| PreBuildExec[執行 pre-build.sh]
-    PreBuild -->|否| Build
-    PreBuildExec --> Build[執行 build.sh<br/>編譯/建置專案]
-    Build --> PostBuild{post-build.sh<br/>存在?}
-    PostBuild -->|是| PostBuildExec[執行 post-build.sh]
-    PostBuild -->|否| CD
-    PostBuildExec --> CD
+    CICD --> PipelineStages[依序執行 Pipeline 階段<br/>KDE_PIPELINE_STAGES]
+    PipelineStages --> Stage1[階段 1<br/>使用對應的 _IMAGE<br/>執行對應的 _SCRIPT]
+    Stage1 --> Stage2[階段 2<br/>...]
+    Stage2 --> StageN[階段 N<br/>...]
+    StageN --> PipelineEnv[階段間環境變數<br/>透過 .pipeline.env 傳遞]
+    PipelineEnv --> Services
 
-    CD[CD 階段<br/>使用 DEPLOY_IMAGE]
-    CD --> PreDeploy{pre-deploy.sh<br/>存在?}
-    PreDeploy -->|是| PreDeployExec[執行 pre-deploy.sh]
-    PreDeploy -->|否| DeployScript
-    PreDeployExec --> DeployScript[執行 deploy.sh<br/>建立 Namespace<br/>建立 PVC<br/>Helm 部署服務]
-    DeployScript --> PostDeploy{post-deploy.sh<br/>存在?}
-    PostDeploy -->|是| PostDeployExec[執行 post-deploy.sh]
-    PostDeploy -->|否| Services
-    PostDeployExec --> Services
+    %% 常見 Pipeline 階段範例
+    note1[範例階段:<br/>build → test → deploy<br/>或<br/>lint → test → build → security-scan → deploy]
+    Stage1 -.-> note1
 
     Services[服務已部署到 K8s]
 
@@ -134,8 +125,11 @@ flowchart TD
     style Start fill:#e1f5ff
     style End fill:#d4edda
     style CICD fill:#fff3cd
-    style CI fill:#ffeaa7
-    style CD fill:#ffeaa7
+    style PipelineStages fill:#ffeaa7
+    style Stage1 fill:#ffeaa7
+    style Stage2 fill:#ffeaa7
+    style StageN fill:#ffeaa7
+    style PipelineEnv fill:#d4edda
     style Services fill:#d1ecf1
     style RemoteEnv fill:#e7f3ff
     style Telepresence fill:#e7f3ff
@@ -156,16 +150,35 @@ flowchart TD
 #### 本地 K8S 流程（kind/k3d）
 
 1. **啟動環境**：使用 `kde start` 啟動本地 K8S 環境（kind 或 k3d）
-2. **部署專案**：執行 `kde proj deploy` 部署專案到 K8S
-3. **CI/CD Pipeline**：
-   - **CI 階段**（使用 `DEVELOP_IMAGE` 或自訂的 `PRE_BUILD_IMAGE`/`BUILD_IMAGE`/`POST_BUILD_IMAGE`）：
-     - `pre-build.sh`：CI 前置作業腳本（預設：`DEVELOP_IMAGE`，可自訂：`PRE_BUILD_IMAGE`）
-     - `build.sh`：CI 執行腳本，進行編譯/建置（預設：`DEVELOP_IMAGE`，可自訂：`BUILD_IMAGE`）
-     - `post-build.sh`：CI 後置作業腳本（預設：`DEVELOP_IMAGE`，可自訂：`POST_BUILD_IMAGE`）
-   - **CD 階段**（使用 `DEPLOY_IMAGE` 或自訂的 `PRE_DEPLOY_IMAGE`/`POST_DEPLOY_IMAGE`）：
-     - `pre-deploy.sh`：CD 前置作業腳本（預設：`DEPLOY_IMAGE`，可自訂：`PRE_DEPLOY_IMAGE`）
-     - `deploy.sh`：CD 執行腳本，進行部署（建立 Namespace、PVC、Helm 部署等）（預設：`DEPLOY_IMAGE`）
-     - `post-deploy.sh`：CD 後置作業腳本（預設：`DEPLOY_IMAGE`，可自訂：`POST_DEPLOY_IMAGE`）
+2. **部署專案**：執行 `kde proj deploy` 或 `kde proj pipeline` 部署專案到 K8S
+3. **CI/CD Pipeline**（腳本驅動的工作流程）：
+   - **Pipeline 階段定義**：透過 `project.env` 定義 `KDE_PIPELINE_STAGES`
+     ```bash
+     # 預設階段
+     KDE_PIPELINE_STAGES="build,deploy"
+     
+     # 或自訂階段
+     KDE_PIPELINE_STAGES="lint,test,build,security-scan,deploy"
+     ```
+   - **階段配置**：每個階段可指定專屬的容器映像和腳本
+     ```bash
+     # 階段映像配置
+     KDE_PIPELINE_STAGE_build_IMAGE=node:20
+     KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+     
+     KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+     KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+     ```
+   - **階段控制**：
+     - `_SKIP=true`：跳過階段
+     - `_MANUAL_ONLY=true`：只能手動觸發
+     - `_ALLOW_FAILURE=true`：允許失敗
+   - **階段間資料傳遞**：透過 `.pipeline.env` 在階段間傳遞環境變數
+   - **執行選項**：
+     - `kde proj pipeline <name>`：執行完整 Pipeline
+     - `kde proj pipeline <name> --only build`：只執行特定階段
+     - `kde proj pipeline <name> --from test`：從特定階段開始
+     - `kde proj pipeline <name> --manual`：手動模式（進入容器環境）
 4. **服務管理**：使用 K9s、Headlamp 或 Port Forward 管理服務
 5. **對外公開**（可選）：使用 Ngrok 或 Cloudflare Tunnel 對外公開服務
 
@@ -176,10 +189,22 @@ flowchart TD
 3. **本地開發**：進入本地開發容器，流量會攔截到本地，支援 Hot Reload 即時測試
 4. **服務管理與對外公開**：與本地 K8S 流程相同
 
-#### 本地 CICD 開發流程（DEPLOY_IMAGE）
+#### 本地 Pipeline 開發流程
 
-1. **啟動環境**：使用 `kde project exec <專案名稱> dep <使用的 Port>` 啟動本地 Container 環境（DEPLOY_IMAGE）
-2. **本地開發**：進入本地開發容器，直接執行 CICD script (pre-build.sh、build.sh、post-build.sh、pre-deploy.sh、deploy.sh、post-deploy.sh)
+1. **測試 Pipeline 腳本**：
+   - 方法 A：使用 `kde proj exec <專案名稱> [dev|dep]` 進入開發/部署容器，手動執行腳本
+   - 方法 B（推薦）：使用 `kde proj pipeline <專案名稱> --only <stage> --manual` 進入 Pipeline 階段環境
+     ```bash
+     # 進入 build 階段環境測試
+     kde proj pipeline myapp --only build --manual
+     
+     # 進入 deploy 階段環境測試
+     kde proj pipeline myapp --only deploy --manual
+     ```
+2. **除錯 Pipeline**：
+   - 啟用除錯模式：`KDE_DEBUG=true kde proj pipeline <專案名稱>`
+   - 手動模式逐階段測試：`kde proj pipeline <專案名稱> --manual`
+   - 在腳本中加入 `set -x` 追蹤執行過程
 
 ## Best practice
 
