@@ -3,7 +3,7 @@
 set -eo pipefail
 
 # 設定 KDE 版本
-export KDE_VERSION=v1.0.0-rc.5
+export KDE_VERSION=v1.0.0-rc.6
 # 設定 KDE cli 根目錄路徑
 export KDE_CLI_PATH=$(dirname $(readlink -f "$0"))
 # 設定 KDE 文件路徑
