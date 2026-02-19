@@ -6,10 +6,22 @@
 
 KDE-cli is a unified management tool for Kubernetes development environments that integrates a complete development toolchain, enabling full lifecycle management from environment creation to deployment. It consolidates scattered Kubernetes development tools into a unified command interface, allowing developers to complete the entire Kubernetes development workflow—from environment creation, development, testing, to deployment—using **one toolset and one command interface**.
 
+## 💡 Unique Value
+- All-in-One Integration: Consolidates environment management + development tools + operations tools + external connectivity
+- Zero-Configuration Startup: `kde start dev kind` instantly creates a local K8s environment without complex configuration files
+- Environment Isolation: Easily manage multiple independent environments, avoiding conflicts
+- Real-time Development: Real-time synchronization between local files and files inside Pods
+- Team Sharing: Environment settings, project settings, and CICD delivery workflows can all be shared via Git
+- Gentle Learning Curve: Intuitive commands with comprehensive documentation
+- Complete Workflow: Covers the entire lifecycle from environment creation to deployment monitoring
+#### If you need an "out-of-the-box, feature-complete, easy-to-use" local K8s development environment, KDE-CLI is the best choice.
+
+
 ## ✨ Core Features
 
 ### 🔄 Environment Consistency
 - Simulate production environments through Kind/K3D development environments
+- Connect to existing Kubernetes environments via kubeconfig
 - Use the same deployment methods and YAML as production to launch development environments, ensuring environment consistency
 - All tools run inside containers, ensuring environment consistency
 
