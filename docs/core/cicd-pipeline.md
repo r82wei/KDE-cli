@@ -37,6 +37,7 @@
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_SKIP=true` 跳過特定階段（預設：false）
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY=true` 設定特定階段只能透過 `--manual` 參數手動觸發（預設：false）
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_ALLOW_FAILURE=true` 設定特定階段允許失敗但不影響後續階段執行（預設：false）
+    - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_PAUSE=true` 設定特定階段執行完畢後暫停，等待使用者確認是否繼續後續階段（預設：false）
 
 ### 功能總整理
 | 環境變數 | 說明 | 預設值 | 範例 |
@@ -48,6 +49,7 @@
 | `KDE_PIPELINE_STAGE_[階段名稱]_SKIP` | 跳過特定階段 | `false` | `KDE_PIPELINE_STAGE_lint_SKIP=true` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY` | 只能透過 --manual 參數手動觸發 | `false` | `KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_ALLOW_FAILURE` | 允許該階段失敗但不影響後續階段 | `false` | `KDE_PIPELINE_STAGE_lint_ALLOW_FAILURE=true` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_PAUSE` | 階段執行完畢後暫停，等待使用者確認是否繼續 | `false` | `KDE_PIPELINE_STAGE_preview_PAUSE=true` |
 | `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline | `true` | `KDE_PIPELINE_FAIL_FAST=false` |
 | `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | 無 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
 
@@ -258,7 +260,50 @@ kde proj pipeline myapp --manual
 kde proj pipeline myapp --only lint --manual
 ```
 
-### 範例 5：錯誤處理 - Allow Failure
+### 範例 5：暫停確認 - Pause
+
+在部署前執行 diff 預覽，讓使用者確認變更後再決定是否繼續部署：
+
+```bash
+# project.env
+KDE_PIPELINE_STAGES="build,preview,deploy"
+
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:24
+
+# preview 階段執行完畢後暫停，等待使用者確認
+KDE_PIPELINE_STAGE_preview_SCRIPT=preview.sh
+KDE_PIPELINE_STAGE_preview_IMAGE=r82wei/deploy-env:1.0.0
+KDE_PIPELINE_STAGE_preview_PAUSE=true
+
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+```
+
+`preview.sh` 範例（執行 helm diff 或 kubectl diff）：
+
+```bash
+#!/bin/bash
+helm diff upgrade myapp ./charts/myapp -f values.yaml
+# 或
+kubectl diff -f manifests/
+```
+
+執行結果：
+```bash
+kde proj pipeline myapp
+
+# 執行情況：
+# 1. build 階段正常執行
+# 2. preview 階段執行完畢後顯示：
+#    ⏸️  階段 preview 執行完成，Pipeline 已暫停
+#       請確認上方輸出後決定是否繼續執行後續階段
+#       繼續執行？(y/N):
+# 3. 輸入 y → 繼續執行 deploy 階段
+#    輸入 N 或 Enter → Pipeline 停止，不執行 deploy
+```
+
+### 範例 6：錯誤處理 - Allow Failure
 
 允許某些階段失敗但不影響整體流程：
 

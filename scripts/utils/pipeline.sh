@@ -165,6 +165,27 @@ is_stage_allow_failure() {
     fi
 }
 
+# 檢查階段是否需要暫停等待使用者確認
+# 參數：
+#   $1 - 階段名稱
+# 返回：true 或 false
+is_stage_pause() {
+    local STAGE=$1
+    
+    # 將 stage 中的連字號轉換為底線（環境變數命名規則）
+    local STAGE_VAR=$(echo "${STAGE}" | tr '-' '_')
+    
+    # 取得暫停確認標記
+    local VAR_NAME="KDE_PIPELINE_STAGE_${STAGE_VAR}_PAUSE"
+    local PAUSE="${!VAR_NAME}"
+    
+    if [[ "${PAUSE}" == "true" ]]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
 # 過濾階段列表（根據 --from, --to, --only 選項）
 # 參數：
 #   $1 - 原始階段列表（空格分隔）
@@ -399,6 +420,23 @@ execute_custom_pipeline() {
             else
                 echo ""
                 echo "⚠️  階段 ${STAGE} 執行失敗，但繼續執行後續階段（Fail Fast 已停用）"
+            fi
+        fi
+        
+        # 檢查是否需要暫停等待使用者確認（手動模式跳過）
+        if [[ ${EXIT_CODE} -eq 0 && "${PIPELINE_MANUAL_MODE}" != "true" ]]; then
+            if [[ $(is_stage_pause ${STAGE}) == "true" ]]; then
+                echo ""
+                echo "⏸️  階段 ${STAGE} 執行完成，Pipeline 已暫停"
+                echo "   請確認上方輸出後決定是否繼續執行後續階段"
+                echo -n "   繼續執行？(y/N): "
+                read -r CONFIRM </dev/tty
+                if [[ "${CONFIRM}" != "y" && "${CONFIRM}" != "Y" ]]; then
+                    echo ""
+                    echo "🛑 Pipeline 已在階段 ${STAGE} 後暫停，未繼續執行後續階段"
+                    return 0
+                fi
+                echo ""
             fi
         fi
     done
