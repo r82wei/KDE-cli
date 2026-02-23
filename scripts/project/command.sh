@@ -85,7 +85,7 @@ case "${COMMAND}" in
         fi
         
         if [[ -z "${PROJECT_NAME}" ]]; then
-            projects=($(kde project list))
+            projects=($(list_projects))
             PS3="請選擇一個 project（輸入編號）："
             select PROJECT_NAME in "${projects[@]}" "退出"
             do
