@@ -291,6 +291,7 @@ execute_pipeline() {
     
     # 載入專案環境變數
     source ${PROJECT_PATH}/project.env
+    pull_if_project_repo_not_exist ${PROJECT_NAME}
 
     # 如果 .pipeline.env 存在，則重置為空
     if [[ -f "${PROJECT_PATH}/.pipeline.env" ]]; then
