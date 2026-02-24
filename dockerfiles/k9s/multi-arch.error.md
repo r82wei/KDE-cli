@@ -1,6 +1,6 @@
 # K9s 映像建置說明
 
-本文件說明自建 K9s Docker 映像時，若使用 [k9s 官方 Dockerfile](https://github.com/derailed/k9s/blob/master/Dockerfile) 或類似寫法，在 **多平台建置（multi-arch）** 時可能遇到的問題與修正方式。
+本文件說明自建 K9s Docker 映像時，若使用 [k9s 官方 Dockerfile](https://github.com/derailed/k9s/blob/v0.50.18/Dockerfile) 或類似寫法，在 **多平台建置（multi-arch）** 時可能遇到的問題與修正方式。
 
 ## 問題：BUILDPLATFORM 導致架構錯誤
 
