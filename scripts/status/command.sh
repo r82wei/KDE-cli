@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 使用 kde list 命令列出所有環境
-environments=$(kde list)
+environments=$(ls ${ENVIROMENTS_PATH})
 FORMAT=$1
 JSON_STRING=""
 
