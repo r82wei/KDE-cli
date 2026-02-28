@@ -32,6 +32,8 @@ kde k9s
 
 目標是先跑通「環境 → 專案 → 部署 → 觀測」閉環。
 
+> 注意：`kde start` 會在流程尾端自動啟動 K9s。若在非互動或自動化場景，優先改用 `kde create <env> kind|k3d|k8s`，避免 UI/TUI 阻塞。
+
 ### B. 日常環境管理
 
 ```bash
@@ -67,6 +69,7 @@ kde headlamp
 - 進行 `remove/rm/reset/undeploy` 前，先回報影響範圍並要求確認。
 - 外部 K8s 環境執行卸載時，優先確認是否有明確 `undeploy.sh`，避免誤刪資源。
 - 不主動寫入或外傳敏感資訊（token、密碼、私鑰）；敏感值放 `.env` 而非 `project.env`。
+- 自動化執行時盡量帶齊參數，避免觸發 `select/read` 互動流程（例如 project/env 未帶值時會進入互動選單）。
 
 ## 4) 常見故障處理
 
