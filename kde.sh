@@ -58,6 +58,7 @@ show_help() {
     echo "  project, proj, namespace, ns                        project 管理 (可以使用 kde project -h 查看詳細說明)"
     echo "  projects, projs                                     projects(namespaces) 專案集合管理"
     echo "  tui                                                 互動式選單：環境 → 專案 → project 功能 → 參數輸入 → 執行"
+    echo "  tui2                                                fzf+gum 互動式選單（環境/專案/功能/參數）"
     echo "  ngrok                                               啟動 ngrok"
     echo "  cloudflare-tunnel <target> [options]                透過 Cloudflare Tunnel 建立連線 (可以使用 kde cloudflare-tunnel -h 查看詳細說明)"
     echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
@@ -280,6 +281,10 @@ case "$1" in
     tui)
         shift  # 移除 "tui" 指令
         source ${KDE_SCRIPTS_PATH}/tui/command.sh
+        ;;
+    tui2)
+        shift  # 移除 "tui2" 指令
+        source ${KDE_SCRIPTS_PATH}/tui2/command.sh
         ;;
     reset)
         shift  # 移除 "reset" 指令
