@@ -45,6 +45,7 @@
 | `KDE_PIPELINE_STAGES` | 自定義 CICD pipeline 流程階段 | `build,deploy`（建立專案時自動產生） | `KDE_PIPELINE_STAGES=build,test,release,deploy` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_IMAGE` | 指定特定階段使用的容器映像檔 | `DEPLOY_IMAGE`（未指定時使用） | `KDE_PIPELINE_STAGE_build_IMAGE=node:24` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_SCRIPT` | 指定特定階段執行的腳本檔案 | `[階段名稱].sh`（檔案存在時使用） | `KDE_PIPELINE_STAGE_build_SCRIPT=build.sh` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_WORKDIR` | 指定特定階段 script 的執行目錄 | `${PROJECT_PATH}` | `KDE_PIPELINE_STAGE_deploy_WORKDIR=infra/k8s` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_MOUNT_[自定義名稱]` | 掛載特定階段的檔案或資料夾 | 無 | `KDE_PIPELINE_STAGE_build_MOUNT_LIBS=${PROJECT_PATH}/libs:${PROJECT_PATH}/libs` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_SKIP` | 跳過特定階段 | `false` | `KDE_PIPELINE_STAGE_lint_SKIP=true` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY` | 只能透過 --manual 參數手動觸發 | `false` | `KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true` |
@@ -53,7 +54,9 @@
 | `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline | `true` | `KDE_PIPELINE_FAIL_FAST=false` |
 | `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | 無 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
 
-
+> `KDE_PIPELINE_STAGE_[階段名稱]_WORKDIR` 支援相對路徑與絕對路徑：
+> - 相對路徑：以 `${PROJECT_PATH}` 為基準（例如 `infra/k8s`）
+> - 絕對路徑：直接使用（例如 `/workspace/infra/k8s`）
 
 ## Pipeline 指令使用說明
 

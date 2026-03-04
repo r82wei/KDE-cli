@@ -102,6 +102,37 @@ get_stage_image() {
     fi
 }
 
+# 取得階段的執行目錄（WORKDIR）
+# 參數：
+#   $1 - 階段名稱
+#   $2 - 專案路徑
+# 返回：可直接用於 cd 的絕對路徑
+get_stage_workdir() {
+    local STAGE=$1
+    local PROJECT_PATH=$2
+
+    # 將 stage 中的連字號轉換為底線（環境變數命名規則）
+    local STAGE_VAR=$(echo "${STAGE}" | tr '-' '_')
+
+    # 取得自訂 workdir
+    local VAR_NAME="KDE_PIPELINE_STAGE_${STAGE_VAR}_WORKDIR"
+    local CUSTOM_WORKDIR="${!VAR_NAME}"
+
+    # 未設定時，使用專案根目錄（既有行為）
+    if [[ -z "${CUSTOM_WORKDIR}" ]]; then
+        echo "${PROJECT_PATH}"
+        return 0
+    fi
+
+    # 相對路徑：以專案根目錄為基準
+    if [[ "${CUSTOM_WORKDIR}" != /* ]]; then
+        echo "${PROJECT_PATH}/${CUSTOM_WORKDIR}"
+    else
+        # 絕對路徑：直接使用
+        echo "${CUSTOM_WORKDIR}"
+    fi
+}
+
 # 檢查階段是否應該跳過
 # 參數：
 #   $1 - 階段名稱
@@ -239,11 +270,22 @@ execute_stage() {
     local SCRIPT=$3
     local IMAGE=$4
     local PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+    local WORKDIR=$(get_stage_workdir "${STAGE}" "${PROJECT_PATH}")
+
+    if [[ ! -d "${WORKDIR}" ]]; then
+        echo ""
+        echo "❌ 階段 ${STAGE} 的 WORKDIR 不存在：${WORKDIR}"
+        return 1
+    fi
+
+    local WORKDIR_ESCAPED
+    WORKDIR_ESCAPED=$(printf '%q' "${WORKDIR}")
     
     echo ""
     echo "🔄 執行階段: ${STAGE}"
     echo "   📄 腳本: ${SCRIPT}"
     echo "   🐳 映像: ${IMAGE}"
+    echo "   📁 WORKDIR: ${WORKDIR}"
     echo ""
     
     # 如果是手動模式，進入互動式環境
@@ -252,7 +294,7 @@ execute_stage() {
         echo "   提示：執行 ./${SCRIPT} 來手動運行腳本，或執行其他命令進行調試"
         echo "   退出環境後將自動進入下一階段（如果有的話）"
         echo ""
-        exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "bash" ${STAGE}
+        exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "cd ${WORKDIR_ESCAPED} && bash" ${STAGE}
         local EXIT_CODE=$?
         echo ""
         echo "✅ 已退出階段 ${STAGE} 的執行環境"
@@ -267,7 +309,7 @@ execute_stage() {
     fi
     
     # 執行腳本
-    exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "${LOAD_PIPELINE_ENV}./${SCRIPT}" ${STAGE}
+    exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "cd ${WORKDIR_ESCAPED} && ${LOAD_PIPELINE_ENV}./${SCRIPT}" ${STAGE}
     local EXIT_CODE=$?
     
     if [[ ${EXIT_CODE} -ne 0 ]]; then
