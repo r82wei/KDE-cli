@@ -289,7 +289,7 @@ fetch_vault_secret_value() {
     fi
 
     # 使用 tools image 啟動一次性容器解析 JSON，結束即刪除（docker run --rm -i）
-    local TOOLS_IMAGE="${KDE_TOOLS_IMAGE:-r82wei/tools:1.0.0}"
+    local TOOLS_IMAGE="${KDE_TOOLS_IMAGE:-r82wei/kde-cli/tools:1.0.0}"
     local VALUE
     if ! VALUE=$(printf '%s' "${RESPONSE}" | docker run --rm -i -e SECRET_KEY="${SECRET_KEY}" "${TOOLS_IMAGE}" jq -er --arg key "${SECRET_KEY}" '.data.data[$key] // .data[$key]' 2>/dev/null); then
         return 4
