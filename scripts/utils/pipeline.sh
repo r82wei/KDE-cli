@@ -288,25 +288,15 @@ fetch_vault_secret_value() {
         return 3
     fi
 
-    # 優先使用 jq 解析（支援 KV v2: .data.data[key] 與 KV v1: .data[key]）
-    if command -v jq >/dev/null 2>&1; then
-        local VALUE
-        if VALUE=$(echo "${RESPONSE}" | jq -er --arg key "${SECRET_KEY}" '.data.data[$key] // .data[$key]'); then
-            printf '%s' "${VALUE}"
-            return 0
-        fi
+    # 使用 tools image 啟動一次性容器解析 JSON，結束即刪除（docker run --rm -i）
+    local TOOLS_IMAGE="${KDE_TOOLS_IMAGE:-r82wei/tools:1.0.0}"
+    local VALUE
+    if ! VALUE=$(printf '%s' "${RESPONSE}" | docker run --rm -i -e SECRET_KEY="${SECRET_KEY}" "${TOOLS_IMAGE}" jq -er --arg key "${SECRET_KEY}" '.data.data[$key] // .data[$key]' 2>/dev/null); then
         return 4
     fi
 
-    # 無 jq 時的降級解析（僅支援簡單 JSON 字串值）
-    local VALUE
-    VALUE=$(echo "${RESPONSE}" | tr -d '\n' | sed -nE "s/.*\"${SECRET_KEY}\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\1/p")
-    if [[ -n "${VALUE}" ]]; then
-        printf '%s' "${VALUE}"
-        return 0
-    fi
-
-    return 4
+    printf '%s' "${VALUE}"
+    return 0
 }
 
 # 將 Vault secrets 注入到 .pipeline.env（階段級）
