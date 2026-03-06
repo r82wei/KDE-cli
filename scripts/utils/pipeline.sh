@@ -257,7 +257,7 @@ filter_pipeline_stages() {
     echo "${FILTERED_STAGES}" | xargs
 }
 
-# 從 HashiCorp Vault 取得單一 secret value
+# 從 HashiCorp Vault 取得單一 secret value（純 Bash + curl）
 # 參數：
 #   $1 - Vault 位址
 #   $2 - Vault Token
@@ -272,57 +272,41 @@ fetch_vault_secret_value() {
     local SECRET_KEY="$4"
     local VAULT_CACERT="$5"
 
-    VAULT_ADDR="${VAULT_ADDR}" \
-    VAULT_TOKEN="${VAULT_TOKEN}" \
-    SECRET_PATH="${SECRET_PATH}" \
-    SECRET_KEY="${SECRET_KEY}" \
-    VAULT_CACERT="${VAULT_CACERT}" \
-    python3 - <<'PY'
-import json
-import os
-import ssl
-import sys
-import urllib.request
+    if [[ -z "${VAULT_ADDR}" || -z "${VAULT_TOKEN}" || -z "${SECRET_PATH}" || -z "${SECRET_KEY}" ]]; then
+        return 2
+    fi
 
-addr = os.environ.get("VAULT_ADDR", "").rstrip("/")
-token = os.environ.get("VAULT_TOKEN", "")
-secret_path = os.environ.get("SECRET_PATH", "")
-secret_key = os.environ.get("SECRET_KEY", "")
-cacert = os.environ.get("VAULT_CACERT", "")
+    local URL="${VAULT_ADDR%/}/v1/${SECRET_PATH#/}"
+    local CURL_ARGS=(--silent --show-error --fail --max-time 15 -H "X-Vault-Token: ${VAULT_TOKEN}")
 
-if not addr or not token or not secret_path or not secret_key:
-    sys.exit(2)
+    if [[ -n "${VAULT_CACERT}" ]]; then
+        CURL_ARGS+=(--cacert "${VAULT_CACERT}")
+    fi
 
-url = f"{addr}/v1/{secret_path.lstrip('/')}"
-req = urllib.request.Request(url)
-req.add_header("X-Vault-Token", token)
+    local RESPONSE
+    if ! RESPONSE=$(curl "${CURL_ARGS[@]}" "${URL}"); then
+        return 3
+    fi
 
-ctx = None
-if cacert:
-    ctx = ssl.create_default_context(cafile=cacert)
+    # 優先使用 jq 解析（支援 KV v2: .data.data[key] 與 KV v1: .data[key]）
+    if command -v jq >/dev/null 2>&1; then
+        local VALUE
+        if VALUE=$(echo "${RESPONSE}" | jq -er --arg key "${SECRET_KEY}" '.data.data[$key] // .data[$key]'); then
+            printf '%s' "${VALUE}"
+            return 0
+        fi
+        return 4
+    fi
 
-try:
-    with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
-except Exception:
-    sys.exit(3)
+    # 無 jq 時的降級解析（僅支援簡單 JSON 字串值）
+    local VALUE
+    VALUE=$(echo "${RESPONSE}" | tr -d '\n' | sed -nE "s/.*\"${SECRET_KEY}\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\1/p")
+    if [[ -n "${VALUE}" ]]; then
+        printf '%s' "${VALUE}"
+        return 0
+    fi
 
-# 支援 KV v2（data.data）與 KV v1（data）
-obj = payload.get("data", {})
-if isinstance(obj, dict) and isinstance(obj.get("data"), dict):
-    data = obj.get("data", {})
-else:
-    data = obj
-
-if secret_key not in data:
-    sys.exit(4)
-
-value = data.get(secret_key)
-if value is None:
-    value = ""
-
-print(str(value), end="")
-PY
+    return 4
 }
 
 # 將 Vault secrets 注入到 .pipeline.env（階段級）
