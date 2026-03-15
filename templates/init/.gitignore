@@ -35,6 +35,9 @@ environments/*/namespaces/*/.npmrc
 *.tgz
 *.tar
 
+# sandbox
+.sandbox
+
 # cloudflare
 .cloudflared
 

@@ -96,6 +96,18 @@ kde telepresence uninstall [ns]
 kde telepresence clear                      # 停止所有連線
 ```
 
+### Sandbox（MicroVM 沙箱）
+```bash
+kde sandbox start                          # 啟動 microVM（掛載 workspace）
+kde sandbox status                         # 查看狀態
+kde sandbox exec                           # 進入 VM（tmux session）
+kde sandbox exec <command>                 # 在 VM 內執行指令
+kde sandbox stop                           # 停止 VM
+kde sandbox snapshot create <tag>          # 建立快照
+kde sandbox snapshot list                  # 列出快照
+kde sandbox snapshot restore <tag>         # 還原快照
+```
+
 ### 對外代理
 ```bash
 kde ngrok service/pod/ingress
@@ -179,6 +191,7 @@ kubectl set image deployment/myapp myapp=${APP_IMAGE} -n myapp
 | 開發容器 | `kde proj exec myapp develop` | ❌ | ✅ | 快速開發、單元測試 |
 | K8s + PVC | 部署含 PVC 的 Deployment | ✅ | ✅ | 整合測試、接近生產環境 |
 | Telepresence | `kde telepresence replace myapp <workload>` | ✅ | ✅ | 遠端 K8s 開發 |
+| Sandbox | `kde sandbox start && kde sandbox exec` | ✅ | ✅ | 系統隔離、AI Agent 沙箱 |
 
 ### PVC Hot Reload 原理
 
@@ -242,3 +255,4 @@ kde proj pipeline myapp   # 一鍵部署
 
 - 完整 Pipeline 配置範例 → [pipeline-patterns.md](pipeline-patterns.md)
 - 完整指令速查表 → [commands.md](commands.md)
+- Sandbox 詳細參考 → [sandbox.md](sandbox.md)

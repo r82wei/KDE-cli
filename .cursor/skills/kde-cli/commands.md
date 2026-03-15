@@ -162,6 +162,20 @@ kde telepresence uninstall [namespace]     # 卸載代理程式
 kde telepresence clear                     # 停止所有連線
 ```
 
+## Sandbox
+
+```bash
+kde sandbox start                          # 啟動 microVM
+kde sandbox stop                           # 停止 microVM
+kde sandbox status                         # 查看狀態
+kde sandbox exec                           # 進入 VM（tmux session）
+kde sandbox exec <command>                 # 在 VM 內執行指令
+
+kde sandbox snapshot create <tag>          # 建立快照
+kde sandbox snapshot list                  # 列出快照
+kde sandbox snapshot restore <tag>         # 還原快照
+```
+
 ## Ngrok
 
 ```bash
@@ -254,4 +268,10 @@ CODE_SERVER_IMAGE               # Code Server 映像
 NGROK_PROXY_IMAGE               # Ngrok 映像
 CLOUDFLARE_TUNNEL_PROXY_IMAGE   # Cloudflare Tunnel 映像
 KDE_DEBUG                       # true = 啟用除錯模式
+
+# Sandbox 配置
+KDE_SANDBOX_BACKEND             # 後端（預設 lima）
+KDE_SANDBOX_CPUS                # CPU 數量（預設 2）
+KDE_SANDBOX_MEMORY              # 記憶體（預設 4GiB）
+KDE_SANDBOX_DISK                # 磁碟（預設 50GiB）
 ```
