@@ -103,6 +103,10 @@ kde sandbox status                         # 查看狀態
 kde sandbox exec                           # 進入 VM（tmux session）
 kde sandbox exec <command>                 # 在 VM 內執行指令
 kde sandbox stop                           # 停止 VM
+kde sandbox expose <guest_port> [host_port] # 轉發 VM port 到 host
+kde sandbox expose list                    # 列出活躍的轉發
+kde sandbox expose stop <host_port>        # 停止指定轉發
+kde sandbox expose stop-all                # 停止所有轉發
 kde sandbox snapshot create <tag>          # 建立快照
 kde sandbox snapshot list                  # 列出快照
 kde sandbox snapshot restore <tag>         # 還原快照

@@ -91,6 +91,9 @@ sandbox_stop() {
         return 0
     fi
 
+    # 停止前清理所有 port 轉發
+    sandbox_expose_stop_all
+
     # 停止前自動保存 tmux session
     sandbox_tmux_save "${instance_name}"
 
@@ -251,6 +254,124 @@ sandbox_snapshot_restore() {
 
     echo "重新啟動 Sandbox..."
     limactl start "${instance_name}"
+}
+
+sandbox_expose() {
+    local instance_name=$1
+    local guest_port=$2
+    local host_port=${3:-${guest_port}}
+    local expose_dir="${SANDBOX_DATA_DIR}/expose"
+    local pid_file="${expose_dir}/${host_port}.pid"
+    local ssh_config="${LIMA_HOME}/${instance_name}/ssh.config"
+
+    if [[ $(sandbox_is_running "${instance_name}") == "false" ]]; then
+        echo "錯誤：Sandbox '${instance_name}' 未在運行中"
+        exit 1
+    fi
+
+    if [[ ! -f "${ssh_config}" ]]; then
+        echo "錯誤：SSH config 不存在：${ssh_config}"
+        exit 1
+    fi
+
+    if [[ -f "${pid_file}" ]]; then
+        local old_pid
+        old_pid=$(cat "${pid_file}")
+        if kill -0 "${old_pid}" 2>/dev/null; then
+            echo "Host port ${host_port} 已有轉發在運行中 (PID: ${old_pid})"
+            return 0
+        fi
+        rm -f "${pid_file}"
+    fi
+
+    mkdir -p "${expose_dir}"
+
+    ssh -F "${ssh_config}" \
+        -L "${host_port}:localhost:${guest_port}" \
+        -N -f "lima-${instance_name}"
+
+    local ssh_pid
+    ssh_pid=$(ps aux | grep "ssh.*-L.*${host_port}:localhost:${guest_port}.*lima-${instance_name}" | grep -v grep | awk '{print $2}' | head -1)
+
+    if [[ -n "${ssh_pid}" ]]; then
+        echo "${ssh_pid}" > "${pid_file}"
+        echo "${guest_port}" > "${expose_dir}/${host_port}.guest"
+        echo "已建立轉發：VM:${guest_port} -> Host:${host_port} (PID: ${ssh_pid})"
+    else
+        echo "錯誤：無法建立 SSH tunnel"
+        exit 1
+    fi
+}
+
+sandbox_expose_list() {
+    local expose_dir="${SANDBOX_DATA_DIR}/expose"
+
+    if [[ ! -d "${expose_dir}" ]] || [[ -z "$(ls -A "${expose_dir}"/*.pid 2>/dev/null)" ]]; then
+        echo "目前沒有活躍的 port 轉發"
+        return 0
+    fi
+
+    printf "%-12s %-12s %-10s\n" "HOST PORT" "GUEST PORT" "PID"
+    printf "%-12s %-12s %-10s\n" "---------" "----------" "---"
+
+    for pid_file in "${expose_dir}"/*.pid; do
+        local host_port
+        host_port=$(basename "${pid_file}" .pid)
+        local pid
+        pid=$(cat "${pid_file}")
+        local guest_port="N/A"
+        if [[ -f "${expose_dir}/${host_port}.guest" ]]; then
+            guest_port=$(cat "${expose_dir}/${host_port}.guest")
+        fi
+
+        if kill -0 "${pid}" 2>/dev/null; then
+            printf "%-12s %-12s %-10s\n" "${host_port}" "${guest_port}" "${pid}"
+        else
+            rm -f "${pid_file}" "${expose_dir}/${host_port}.guest"
+        fi
+    done
+}
+
+sandbox_expose_stop() {
+    local host_port=$1
+    local expose_dir="${SANDBOX_DATA_DIR}/expose"
+    local pid_file="${expose_dir}/${host_port}.pid"
+
+    if [[ ! -f "${pid_file}" ]]; then
+        echo "Host port ${host_port} 沒有活躍的轉發"
+        return 1
+    fi
+
+    local pid
+    pid=$(cat "${pid_file}")
+
+    if kill -0 "${pid}" 2>/dev/null; then
+        kill "${pid}"
+        echo "已停止轉發：Host:${host_port} (PID: ${pid})"
+    fi
+
+    rm -f "${pid_file}" "${expose_dir}/${host_port}.guest"
+}
+
+sandbox_expose_stop_all() {
+    local expose_dir="${SANDBOX_DATA_DIR}/expose"
+
+    if [[ ! -d "${expose_dir}" ]]; then
+        return 0
+    fi
+
+    local has_active=false
+    for pid_file in "${expose_dir}"/*.pid 2>/dev/null; do
+        [[ -f "${pid_file}" ]] || continue
+        has_active=true
+        local host_port
+        host_port=$(basename "${pid_file}" .pid)
+        sandbox_expose_stop "${host_port}"
+    done
+
+    if [[ "${has_active}" == "true" ]]; then
+        echo "所有轉發已停止"
+    fi
 }
 
 sandbox_tmux_save() {

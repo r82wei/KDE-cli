@@ -12,6 +12,12 @@ kde sandbox status                         # 查看 VM 狀態（名稱、CPU、�
 kde sandbox exec                           # 進入 VM（自動 attach tmux session "kde"）
 kde sandbox exec <command>                 # 在 VM 內執行單一指令
 
+# Port 轉發
+kde sandbox expose <guest_port> [host_port] # 轉發 VM port 到 host（預設相同 port）
+kde sandbox expose list                    # 列出活躍的轉發
+kde sandbox expose stop <host_port>        # 停止指定轉發
+kde sandbox expose stop-all                # 停止所有轉發
+
 # 快照
 kde sandbox snapshot create <tag>          # 建立快照（會暫停 VM）
 kde sandbox snapshot list                  # 列出快照
@@ -82,6 +88,16 @@ kde init
 kde start dev-env kind
 kde proj create myapp
 kde proj pipeline myapp
+```
+
+### Port 轉發
+
+```bash
+kde sandbox expose 3000                      # VM:3000 -> Host:3000
+kde sandbox expose 8080 9090                 # VM:8080 -> Host:9090
+kde sandbox expose list                      # 查看活躍轉發
+kde sandbox expose stop 9090                 # 停止 Host:9090 轉發
+kde sandbox expose stop-all                  # 停止所有轉發
 ```
 
 ### 快照管理

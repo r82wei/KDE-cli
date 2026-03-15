@@ -12,6 +12,10 @@ show_help() {
     echo "  stop                        停止 Sandbox microVM"
     echo "  exec [command]              進入 Sandbox（預設使用 tmux），或執行指定指令"
     echo "  status                      查看 Sandbox 狀態"
+    echo "  expose <guest_port> [host_port]  將 VM port 轉發到 host port（預設相同 port）"
+    echo "  expose list                     列出活躍的 port 轉發"
+    echo "  expose stop <host_port>         停止指定的 port 轉發"
+    echo "  expose stop-all                 停止所有 port 轉發"
     echo "  snapshot create <tag>       建立快照"
     echo "  snapshot list               列出所有快照"
     echo "  snapshot restore <tag>      還原快照"
@@ -41,6 +45,37 @@ case "${COMMAND}" in
         ;;
     status)
         sandbox_status "${INSTANCE_NAME}"
+        ;;
+    expose)
+        shift
+        SUBCMD=$1
+        case "${SUBCMD}" in
+            list|ls)
+                sandbox_expose_list
+                ;;
+            stop)
+                shift
+                sandbox_expose_stop "$1"
+                ;;
+            stop-all)
+                sandbox_expose_stop_all
+                ;;
+            -h|--help|"")
+                echo "usage: kde sandbox expose <guest_port> [host_port]"
+                echo ""
+                echo "command:"
+                echo "  <guest_port> [host_port]   轉發 VM port 到 host（host_port 預設 = guest_port）"
+                echo "  list                       列出活躍的轉發"
+                echo "  stop <host_port>           停止指定轉發"
+                echo "  stop-all                   停止所有轉發"
+                ;;
+            *)
+                local guest_port="${SUBCMD}"
+                shift
+                local host_port="${1:-${guest_port}}"
+                sandbox_expose "${INSTANCE_NAME}" "${guest_port}" "${host_port}"
+                ;;
+        esac
         ;;
     snapshot)
         shift
