@@ -113,6 +113,44 @@ sandbox_stop() {
     echo "Sandbox '${instance_name}' 已停止"
 }
 
+sandbox_delete() {
+    local instance_name=$1
+    local force=$2
+
+    local exists
+    exists=$(limactl list --json 2>/dev/null | python3 -c "
+import sys, json
+for line in sys.stdin:
+    obj = json.loads(line)
+    if obj.get('name') == '${instance_name}':
+        print('yes')
+        sys.exit(0)
+print('no')
+" 2>/dev/null)
+
+    if [[ "${exists}" != "yes" ]]; then
+        echo "Sandbox '${instance_name}' 不存在"
+        return 1
+    fi
+
+    if [[ "${force}" != "true" ]]; then
+        read -p "確定要刪除 Sandbox '${instance_name}'？此操作無法復原 [y/N]: " confirm
+        if [[ "${confirm}" != "y" && "${confirm}" != "Y" ]]; then
+            echo "已取消刪除"
+            return 0
+        fi
+    fi
+
+    if [[ $(sandbox_is_running "${instance_name}") == "true" ]]; then
+        sandbox_stop "${instance_name}"
+    fi
+
+    echo "刪除 Sandbox '${instance_name}'..."
+    limactl delete "${instance_name}" --force
+    rm -rf "${SANDBOX_DATA_DIR}/expose"
+    echo "Sandbox '${instance_name}' 已刪除"
+}
+
 sandbox_exec() {
     local instance_name=$1
     shift

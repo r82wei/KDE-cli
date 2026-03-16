@@ -10,6 +10,7 @@ show_help() {
     echo "command:"
     echo "  start                       啟動 Sandbox microVM（將當前 workspace 掛載進 VM）"
     echo "  stop                        停止 Sandbox microVM"
+    echo "  delete [--force]            刪除 Sandbox microVM（--force 跳過確認）"
     echo "  exec [command]              進入 Sandbox（預設使用 tmux），或執行指定指令"
     echo "  status                      查看 Sandbox 狀態"
     echo "  expose <guest_port> [host_port]  將 VM port 轉發到 host port（預設相同 port）"
@@ -45,6 +46,14 @@ case "${COMMAND}" in
         ;;
     status)
         sandbox_status "${INSTANCE_NAME}"
+        ;;
+    delete)
+        shift
+        FORCE="false"
+        if [[ "$1" == "--force" || "$1" == "-f" ]]; then
+            FORCE="true"
+        fi
+        sandbox_delete "${INSTANCE_NAME}" "${FORCE}"
         ;;
     expose)
         shift
