@@ -20,7 +20,7 @@ mounts:
     mountPoint: "/usr/local/lib/kde-cli-host"
     writable: false
   - location: "~"
-    mountPoint: "~"
+    mountPoint: "{{HOME_PATH}}"
     writable: true
 
 containerd:

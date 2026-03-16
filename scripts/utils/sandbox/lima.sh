@@ -74,6 +74,7 @@ sandbox_start() {
             -e "s|{{KDE_CLI_PATH}}|${KDE_CLI_PATH}|g" \
             -e "s|{{VM_TYPE}}|${LIMA_VM_TYPE}|g" \
             -e "s|{{MOUNT_TYPE}}|${LIMA_MOUNT_TYPE}|g" \
+            -e "s|{{HOME_PATH}}|${HOME}|g" \
             "${LIMA_TEMPLATE_PATH}" > "${tmp_template}"
 
         limactl start --name="${instance_name}" "${tmp_template}" --tty=false
