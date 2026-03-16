@@ -49,12 +49,51 @@ detect_lima_vm_type() {
 
 detect_lima_vm_type
 
+_check_kvm_available() {
+    [[ "$(uname -s)" != "Linux" ]] && return 0
+
+    if [[ ! -e /dev/kvm ]]; then
+        echo "錯誤：/dev/kvm 不存在，Linux 上 QEMU 需要 KVM 加速"
+        echo ""
+        echo "請嘗試以下步驟："
+        echo "  1. 載入 KVM 核心模組："
+        echo "     sudo modprobe kvm_intel  # Intel CPU"
+        echo "     sudo modprobe kvm_amd    # AMD CPU"
+        echo ""
+        echo "  2. 確認 /dev/kvm 已建立："
+        echo "     ls -la /dev/kvm"
+        echo ""
+        echo "  3. 若仍無法使用，將使用者加入 kvm 群組："
+        echo "     sudo usermod -aG kvm \$USER"
+        echo "     # 重新登入後生效"
+        return 1
+    fi
+
+    if [[ ! -r /dev/kvm ]] || [[ ! -w /dev/kvm ]]; then
+        echo "錯誤：/dev/kvm 權限不足"
+        echo ""
+        echo "目前權限："
+        ls -la /dev/kvm
+        echo ""
+        echo "請將使用者加入 kvm 群組："
+        echo "  sudo usermod -aG kvm \$USER"
+        echo "  # 重新登入後生效"
+        return 1
+    fi
+
+    return 0
+}
+
 sandbox_start() {
     local instance_name=$1
     local workspace_path=$2
     local cpus=${KDE_SANDBOX_CPUS:-2}
     local memory=${KDE_SANDBOX_MEMORY:-4GiB}
     local disk=${KDE_SANDBOX_DISK:-50GiB}
+
+    if [[ "${LIMA_VM_TYPE}" == "qemu" ]]; then
+        _check_kvm_available || exit 1
+    fi
 
     if [[ $(sandbox_is_running "${instance_name}") == "true" ]]; then
         echo "Sandbox '${instance_name}' 已經在運行中"
