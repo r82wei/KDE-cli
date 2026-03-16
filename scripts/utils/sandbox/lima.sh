@@ -20,8 +20,10 @@ detect_lima_vm_type() {
             ;;
         Linux)
             LIMA_VM_TYPE="qemu"
-            if [[ -e /dev/kvm ]]; then
+            if [[ -e /dev/kvm ]] && command -v virtiofsd &>/dev/null && virtiofsd --version &>/dev/null; then
                 LIMA_MOUNT_TYPE="virtiofs"
+            elif [[ -e /dev/kvm ]]; then
+                LIMA_MOUNT_TYPE="reverse-sshfs"
             else
                 LIMA_MOUNT_TYPE="9p"
             fi
