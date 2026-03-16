@@ -20,12 +20,20 @@ detect_lima_vm_type() {
             ;;
         Linux)
             LIMA_VM_TYPE="qemu"
-            if [[ -e /dev/kvm ]] && command -v virtiofsd &>/dev/null && virtiofsd --version &>/dev/null; then
+            local _virtiofsd_ok=false
+            if [[ -e /dev/kvm ]]; then
+                # Lima 優先使用 /usr/lib/qemu/virtiofsd，需確認該路徑也能正常執行
+                local _virtiofsd_bin="/usr/lib/qemu/virtiofsd"
+                if [[ -x "${_virtiofsd_bin}" ]] && "${_virtiofsd_bin}" --version &>/dev/null; then
+                    _virtiofsd_ok=true
+                elif command -v virtiofsd &>/dev/null && virtiofsd --version &>/dev/null; then
+                    _virtiofsd_ok=true
+                fi
+            fi
+            if [[ "${_virtiofsd_ok}" == "true" ]]; then
                 LIMA_MOUNT_TYPE="virtiofs"
-            elif [[ -e /dev/kvm ]]; then
-                LIMA_MOUNT_TYPE="reverse-sshfs"
             else
-                LIMA_MOUNT_TYPE="9p"
+                LIMA_MOUNT_TYPE="reverse-sshfs"
             fi
             ;;
         *)
