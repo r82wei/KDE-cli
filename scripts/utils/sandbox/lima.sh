@@ -202,10 +202,10 @@ sandbox_exec() {
     fi
 
     if [[ -n "${command}" ]]; then
-        limactl shell "${instance_name}" --workdir /workspace ${command}
+        limactl shell --workdir /workspace "${instance_name}" ${command}
     else
         # 無指令時進入 tmux session
-        limactl shell "${instance_name}" --workdir /workspace \
+        limactl shell --workdir /workspace "${instance_name}" \
             bash -c 'if command -v tmux &>/dev/null; then
                 if tmux has-session -t kde 2>/dev/null; then
                     tmux attach-session -t kde
