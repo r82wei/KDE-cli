@@ -193,7 +193,17 @@ print('no')
 sandbox_exec() {
     local instance_name=$1
     shift
-    local command="$@"
+
+    local use_tmux=false
+    local args=()
+    for arg in "$@"; do
+        if [[ "$arg" == "--tmux" ]]; then
+            use_tmux=true
+        else
+            args+=("$arg")
+        fi
+    done
+    local command="${args[*]}"
 
     if [[ $(sandbox_is_running "${instance_name}") == "false" ]]; then
         echo "錯誤：Sandbox '${instance_name}' 未在運行中"
@@ -203,18 +213,15 @@ sandbox_exec() {
 
     if [[ -n "${command}" ]]; then
         limactl shell --workdir /workspace "${instance_name}" ${command}
-    else
-        # 無指令時進入 tmux session
+    elif [[ "${use_tmux}" == "true" ]]; then
         limactl shell --workdir /workspace "${instance_name}" \
-            bash -c 'if command -v tmux &>/dev/null; then
-                if tmux has-session -t kde 2>/dev/null; then
-                    tmux attach-session -t kde
-                else
-                    tmux new-session -s kde
-                fi
+            bash -c 'if tmux has-session -t kde 2>/dev/null; then
+                tmux attach-session -t kde
             else
-                bash
+                tmux new-session -s kde
             fi'
+    else
+        limactl shell --workdir /workspace "${instance_name}"
     fi
 }
 
