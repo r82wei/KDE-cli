@@ -361,7 +361,7 @@ sandbox_expose_stop_all() {
     fi
 
     local has_active=false
-    for pid_file in "${expose_dir}"/*.pid 2>/dev/null; do
+    for pid_file in "${expose_dir}"/*.pid; do
         [[ -f "${pid_file}" ]] || continue
         has_active=true
         local host_port
