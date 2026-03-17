@@ -3,6 +3,8 @@
 # Pipeline 執行工具
 # 支援快速 CICD 流程和自定義 Pipeline
 
+source ${KDE_SCRIPTS_PATH}/utils/secret-provider.sh
+
 # Pipeline 選項變數（全局變數，由 parse_pipeline_args 設置）
 PIPELINE_FROM_STAGE=""
 PIPELINE_TO_STAGE=""
@@ -435,6 +437,19 @@ execute_custom_pipeline() {
         fi
         local IMAGE=$(get_stage_image ${STAGE} ${DEFAULT_IMAGE})
         
+        # --- Secret injection ---
+        local secret_provider
+        secret_provider=$(get_stage_secret_provider "${STAGE}")
+        export PIPELINE_SECRET_ENV_FLAGS=""
+        if [[ -n "$secret_provider" ]]; then
+            echo "🔑 載入 secret provider: ${secret_provider}"
+            local secrets
+            secrets=$(run_secret_provider "$secret_provider" "${PROJECT_PATH}")
+            if [[ -n "$secrets" ]]; then
+                PIPELINE_SECRET_ENV_FLAGS=$(secrets_to_docker_env_flags "$secrets")
+            fi
+        fi
+
         # 執行階段
         execute_stage ${PROJECT_NAME} ${STAGE} ${SCRIPT} ${IMAGE}
         local EXIT_CODE=$?

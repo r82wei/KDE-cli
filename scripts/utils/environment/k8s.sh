@@ -460,6 +460,7 @@ exec_script_in_container_with_project() {
     -v /etc/group:/etc/group:ro \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
     ${DOCKER_VOLUMES} \
+    ${PIPELINE_SECRET_ENV_FLAGS} \
     -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
     ${DOCKER_IMAGE} \
     bash -c "${SCRIPT}"
