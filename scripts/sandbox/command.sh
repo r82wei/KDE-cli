@@ -33,6 +33,11 @@ WORKSPACE_PATH=${KDE_PATH}
 
 COMMAND=$1
 
+# 顯示棄用提示
+if [[ "${KDE_SANDBOX_DEPRECATION_NOTICE:-true}" != "false" ]]; then
+    echo "提示：'kde sandbox' 將在未來版本中被 'kde workspace' 取代。" >&2
+fi
+
 case "${COMMAND}" in
     start)
         sandbox_start "${INSTANCE_NAME}" "${WORKSPACE_PATH}"
