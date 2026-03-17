@@ -14,6 +14,10 @@ done
 
 env_create() {
     _backend_env_create "$@"
+    # Run init hooks after creation
+    if declare -f run_environment_hooks > /dev/null 2>&1; then
+        run_environment_hooks "init" "${ENV_PATH}"
+    fi
 }
 
 env_start() {
