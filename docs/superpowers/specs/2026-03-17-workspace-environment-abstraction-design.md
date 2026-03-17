@@ -39,15 +39,21 @@ Host (physical / cloud VM / any machine)
 │   │
 │   ├── environments/
 │   │   ├── dev-env/
-│   │   │   ├── environment.env        # TYPE=k8s, BACKEND=kind
+│   │   │   ├── environment.env        # TYPE=k8s, BACKEND=kind (version controlled)
+│   │   │   ├── .env                   # Local secrets (NOT version controlled)
 │   │   │   └── namespaces/
-│   │   │       └── my-app/            # project: git + pipeline
+│   │   │       └── my-app/
+│   │   │           ├── project.env    # Project config (version controlled)
+│   │   │           └── .env           # Local secrets (NOT version controlled)
 │   │   ├── gpu-worker/
-│   │   │   └── environment.env        # TYPE=vm, BACKEND=terraform-vm
+│   │   │   ├── environment.env        # TYPE=vm, BACKEND=terraform-vm
+│   │   │   └── .env
 │   │   └── quick-test/
-│   │       └── environment.env        # TYPE=container, BACKEND=docker
+│   │       ├── environment.env        # TYPE=container, BACKEND=docker
+│   │       └── .env
 │   │
-│   ├── kde.env
+│   ├── workspace.env                  # Workspace config (version controlled)
+│   ├── .env                           # Local secrets (NOT version controlled)
 │   └── (users run AI agents themselves, KDE-CLI does not manage them)
 │
 ├── Workspace B (User B) ─── backend: lima
@@ -147,8 +153,11 @@ npm install -g @anthropic-ai/claude-code
 ### Configuration
 
 ```bash
-# kde.env
+# workspace.env (version controlled)
 KDE_WORKSPACE_BACKEND="local"      # Default: local (no VM)
+
+# .env (NOT version controlled, gitignored)
+# Local secrets, API keys, credentials
 ```
 
 ### Dispatcher
@@ -275,7 +284,27 @@ KDE_ENVIRONMENT_BACKEND="kind"
 
 #### Backward Compatibility
 
-Existing `k8s.env` files continue to work. The config loader checks for `environment.env` first; if not found, falls back to `k8s.env` with implicit `KDE_ENVIRONMENT_TYPE="k8s"`. The backend is inferred from existing `KDE_ENVIRONMENT` variable in `k8s.env`. No migration script needed — old format works indefinitely.
+Existing `kde.env` and `k8s.env` files continue to work. The config loader checks for the new names first, then falls back:
+- `workspace.env` → fallback to `kde.env`
+- `environment.env` → fallback to `k8s.env` with implicit `KDE_ENVIRONMENT_TYPE="k8s"`
+
+No migration script needed — old format works indefinitely.
+
+### Configuration Hierarchy (load order)
+
+Each layer loads its versioned config first, then overlays local secrets:
+
+```
+1. workspace.env          → workspace config (version controlled)
+2. .env                   → workspace secrets (NOT version controlled)
+3. environment.env        → environment config (version controlled)
+4. .env                   → environment secrets (NOT version controlled)
+5. project.env            → project config (version controlled)
+6. .env                   → project secrets (NOT version controlled)
+7. .pipeline.env          → auto-generated inter-stage variables
+```
+
+Later values override earlier ones. The `.env` at each layer is for credentials, API keys, and machine-specific settings that should never enter version control.
 
 ### Dispatcher
 
