@@ -498,6 +498,71 @@ Project = git repo + `project.env` + pipeline scripts. The existing abstraction 
 
 ---
 
+## Pipeline: Dynamic Secret Injection
+
+The pipeline system supports dynamically importing environment variables from external secret managers (Vault, AWS Secrets Manager, GCP Secret Manager, etc.) before each stage executes.
+
+### Configuration
+
+In `project.env`, define secret sources:
+
+```bash
+# Secret provider — a shell script that outputs key=value pairs to stdout
+KDE_PIPELINE_SECRET_PROVIDER="scripts/secrets.sh"
+
+# Or per-stage secret provider (overrides the global one)
+KDE_PIPELINE_STAGE_build_SECRET_PROVIDER="scripts/build-secrets.sh"
+KDE_PIPELINE_STAGE_deploy_SECRET_PROVIDER="scripts/deploy-secrets.sh"
+```
+
+### Secret Provider Script
+
+A secret provider is any executable script that prints `key=value` pairs to stdout. KDE-CLI does not care how secrets are fetched — the provider script is the abstraction boundary.
+
+```bash
+#!/bin/bash
+# scripts/secrets.sh — Example: fetch from HashiCorp Vault
+
+vault kv get -format=json secret/myapp | jq -r '.data.data | to_entries[] | "\(.key)=\(.value)"'
+```
+
+```bash
+#!/bin/bash
+# scripts/deploy-secrets.sh — Example: fetch from AWS Secrets Manager
+
+aws secretsmanager get-secret-value --secret-id myapp/prod \
+    | jq -r '.SecretString | fromjson | to_entries[] | "\(.key)=\(.value)"'
+```
+
+### Execution Mode
+
+Secret provider scripts follow the same execution mode convention as hooks:
+
+```bash
+#!/bin/bash
+# KDE_HOOK_EXEC_MODE=direct          # Run directly in workspace (default)
+# KDE_HOOK_EXEC_MODE=container        # Run in a container (e.g., needs vault CLI)
+# KDE_HOOK_IMAGE=hashicorp/vault      # Container image for container mode
+
+vault kv get -format=json secret/myapp | jq -r '.data.data | to_entries[] | "\(.key)=\(.value)"'
+```
+
+### Pipeline Integration
+
+The pipeline executor injects secrets into each stage's environment:
+
+```
+For each stage:
+  1. Load .pipeline.env (inter-stage variables from previous stage)
+  2. Run secret provider script (global or stage-specific)
+  3. Export output as environment variables
+  4. Execute stage script in container with combined env
+```
+
+Secrets are never written to disk — they are piped directly into the stage container's environment via `--env` or process substitution.
+
+---
+
 ## AI Agent Playground
 
 No dedicated agent layer is needed. The playground is achieved through:
