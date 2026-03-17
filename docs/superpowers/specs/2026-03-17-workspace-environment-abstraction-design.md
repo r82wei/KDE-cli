@@ -97,6 +97,41 @@ workspace_expose()     # Port forwarding
 
 **Optional operation handling:** Unimplemented optional functions are defined as stubs by the dispatcher that print `"Operation not supported by backend: ${KDE_WORKSPACE_BACKEND}"` and return 1. The CLI layer can check capability before showing commands via `workspace_supports <operation>`, which tests whether the function has been overridden from the stub.
 
+### Provisioning Hooks
+
+When a non-local workspace starts (via `workspace_create` or `workspace_start`), KDE-CLI automatically executes provisioning scripts if they exist. This replaces hardcoded provisioning logic (like the current Lima template).
+
+```
+<workspace_path>/
+├── hooks/
+│   ├── workspace-init.sh          # Runs on first create only
+│   └── workspace-start.sh         # Runs on every start
+```
+
+Each hook script declares its execution mode in a comment header:
+
+```bash
+#!/bin/bash
+# KDE_HOOK_EXEC_MODE=direct        # Execute directly inside workspace (default)
+# KDE_HOOK_EXEC_MODE=container      # Execute inside a container (requires KDE_HOOK_IMAGE)
+# KDE_HOOK_IMAGE=ubuntu:24.04       # Container image (only for container mode)
+
+# Install AI runtimes, dev tools, etc.
+apt-get update && apt-get install -y nodejs
+npm install -g @anthropic-ai/claude-code
+```
+
+**Execution modes:**
+
+| Mode | Behavior | Use case |
+|------|----------|----------|
+| `direct` | `workspace_exec` runs the script inside the workspace | Install packages, configure system |
+| `container` | Script runs in a Docker container inside the workspace, with workspace filesystem mounted | Hermetic builds, tools that need specific OS/deps |
+
+**Execution order:**
+1. `workspace-init.sh` — runs once after `workspace_create`. A marker file (`.workspace-initialized`) prevents re-runs.
+2. `workspace-start.sh` — runs on every `workspace_start` (including after create).
+
 ### Backends
 
 | Backend | Description | workspace_exec() | Optional ops |
@@ -186,6 +221,40 @@ env_compose_exec()              # exec into a compose service
 env_compose_service_list()
 env_compose_service_logs()
 ```
+
+### Provisioning Hooks
+
+Environments also support provisioning hooks, following the same pattern as workspace hooks.
+
+```
+environments/<env-name>/
+├── hooks/
+│   ├── env-init.sh                # Runs on first create only
+│   └── env-start.sh               # Runs on every start
+├── environment.env
+└── namespaces/
+```
+
+Same execution mode header as workspace hooks:
+
+```bash
+#!/bin/bash
+# KDE_HOOK_EXEC_MODE=direct        # Execute directly inside the environment (default)
+# KDE_HOOK_EXEC_MODE=container      # Execute inside a container
+# KDE_HOOK_IMAGE=deploy-env:latest  # Container image (only for container mode)
+
+# Example: install CRDs, configure cluster add-ons
+kubectl apply -f https://raw.githubusercontent.com/...
+```
+
+**Context differences from workspace hooks:**
+- `direct` mode uses `env_<type>_exec()` (e.g., exec into K8s node, SSH into VM) rather than `workspace_exec()`
+- `container` mode runs a container with the environment's credentials mounted (e.g., kubeconfig for K8s type)
+- Environment hooks run after the environment is up and healthy (`env_status` returns running)
+
+**Execution order:**
+1. `env-init.sh` — runs once after `env_create`. Marker file: `.env-initialized`.
+2. `env-start.sh` — runs on every `env_start` (including after create).
 
 ### Type-Backend Matrix
 
