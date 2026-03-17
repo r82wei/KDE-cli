@@ -38,6 +38,29 @@ fi
 
 load_enviroment_env ${ENV_NAME}
 
+# --- New-style environment path ---
+# If environment.env exists, use the new environment abstraction layer
+if [[ -f "${ENV_PATH}/environment.env" ]]; then
+    source ${KDE_SCRIPTS_PATH}/utils/environment/environment.sh
+
+    if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
+        env_create
+    fi
+
+    if [[ $(is_env_init ${CUR_ENV}) == "false" ]]; then
+        if declare -f _backend_env_init > /dev/null 2>&1; then
+            _backend_env_init
+        fi
+    fi
+
+    set_default_env ${CUR_ENV}
+    env_start
+    exit 0
+fi
+# --- End new-style path ---
+
+# Legacy path below (existing code, unchanged)...
+
 # 建立環境(判斷是否有 k8s.env)
 if [[ $(is_env_exist ${CUR_ENV}) == "false" ]]; then
     create_k8s_env

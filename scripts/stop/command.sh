@@ -14,6 +14,16 @@ if [[ $1 == "--help" || $1 == "-h" ]]; then
     exit 0
 fi
 
+# --- New-style environment path ---
+if [[ -f "${ENV_PATH}/environment.env" ]]; then
+    source ${KDE_SCRIPTS_PATH}/utils/environment/environment.sh
+    env_stop
+    exit 0
+fi
+# --- End new-style path ---
+
+# Legacy path below (existing code, unchanged)...
+
 # 根據環境類型來選擇不同的處理流程
 case "${ENV_TYPE}" in
     k3d)
