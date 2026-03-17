@@ -326,6 +326,77 @@ kubectl apply -f https://raw.githubusercontent.com/...
 | `vm` | `terraform-vm`, `ansible-vm` |
 | `container` | `docker` |
 | `compose` | `docker-compose` |
+| `custom` | User-defined backend |
+
+### Custom Backend
+
+When `KDE_ENVIRONMENT_BACKEND="custom"`, the dispatcher sources user-provided scripts from the environment directory:
+
+```
+environments/<env-name>/
+├── backend/
+│   └── environment.sh     # User implements _backend_env_* and env_<type>_* functions
+├── environment.env         # KDE_ENVIRONMENT_TYPE="custom", KDE_ENVIRONMENT_BACKEND="custom"
+└── ...
+```
+
+Both type and backend can be custom independently:
+
+| TYPE | BACKEND | Behavior |
+|------|---------|----------|
+| `k8s` | `custom` | User implements `_backend_env_*`, KDE-CLI provides K8s type operations |
+| `custom` | `custom` | User implements everything — full control |
+| `custom` | `kind` | Unusual but allowed — user overrides type semantics on a built-in backend |
+
+When type is `custom`, the user defines both `_backend_env_*` functions and any `env_<type>_*` functions they need in `backend/environment.sh`.
+
+Example — a custom environment that uses Pulumi to create a K8s cluster:
+
+```bash
+# environments/pulumi-cluster/backend/environment.sh
+
+_backend_env_create() {
+    cd "${ENV_PATH}/backend"
+    pulumi up --yes
+}
+
+_backend_env_delete() {
+    cd "${ENV_PATH}/backend"
+    pulumi destroy --yes
+}
+
+_backend_env_start()  { _backend_env_create; }
+_backend_env_stop()   { echo "Pulumi environments are always running"; }
+_backend_env_status() { pulumi -chdir="${ENV_PATH}/backend" stack output status; }
+```
+
+```bash
+# environments/pulumi-cluster/environment.env
+KDE_ENVIRONMENT_TYPE="k8s"
+KDE_ENVIRONMENT_BACKEND="custom"
+```
+
+The dispatcher loads it:
+
+```bash
+load_environment() {
+    local type="${KDE_ENVIRONMENT_TYPE}"
+    local backend="${KDE_ENVIRONMENT_BACKEND}"
+
+    if [[ "$backend" == "custom" ]]; then
+        source "${ENV_PATH}/backend/environment.sh"
+    else
+        source "${KDE_SCRIPTS_PATH}/utils/environment/backends/${backend}.sh"
+    fi
+
+    if [[ "$type" == "custom" ]]; then
+        # Custom type: user already defined everything in backend/environment.sh
+        :
+    else
+        source "${KDE_SCRIPTS_PATH}/utils/environment/types/${type}.sh"
+    fi
+}
+```
 
 ### Configuration
 
