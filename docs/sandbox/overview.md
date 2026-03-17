@@ -1,3 +1,7 @@
+> **注意：** `kde sandbox` 指令將在未來版本中被 `kde workspace` 取代。
+> 新的 workspace 層提供了更多 backend 支援和 provisioning hook 機制。
+> 詳見設計文件：`docs/superpowers/specs/2026-03-17-workspace-environment-abstraction-design.md`
+
 # Sandbox - MicroVM 開發沙箱
 
 **透過 microVM 提供工作區級別的系統隔離，支援多租戶開發和 AI Agent 安全沙箱。**
