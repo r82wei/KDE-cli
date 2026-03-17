@@ -88,8 +88,9 @@ workspace_info()       # Print key=value pairs to stdout (IP, OS, CPUS, MEMORY)
 
 # Optional — backends implement if capable
 workspace_create()     # Create workspace
+workspace_start()      # Start a stopped workspace
 workspace_delete()     # Delete workspace
-workspace_stop()       # Stop workspace
+workspace_stop()       # Stop workspace (resumable)
 workspace_snapshot()   # Snapshot management
 workspace_expose()     # Port forwarding
 ```
@@ -236,6 +237,14 @@ env_create() {
 ```
 
 This avoids Bash function name collisions and makes the responsibility clear: backends do the low-level work, types add the domain semantics.
+
+The type file should validate that all required `_backend_*` functions exist after sourcing:
+```bash
+# types/k8s.sh (at the top)
+for fn in _backend_env_create _backend_env_start _backend_env_stop _backend_env_delete _backend_env_status; do
+    declare -f "$fn" > /dev/null || { echo "Backend missing required function: $fn"; exit 1; }
+done
+```
 
 ### Directory Structure
 
