@@ -58,6 +58,19 @@ Host (physical / cloud VM / any machine)
 
 ---
 
+## Execution Model: Host vs. Guest
+
+KDE-CLI operates in two contexts:
+
+1. **Guest mode** (default): KDE-CLI runs inside a workspace, managing environments and projects. It does not know or care whether it's on bare metal, a VM, or a container. This is the normal user-facing mode.
+2. **Host mode**: KDE-CLI runs on a host machine to manage multiple workspaces for different users (multi-tenant). Host mode only uses workspace commands (`kde workspace create/start/stop/exec/...`).
+
+Detection: if `KDE_WORKSPACE_BACKEND` is set to a non-local backend and `kde workspace` commands are used, KDE-CLI is in host mode. Otherwise it's in guest mode. Workspaces do not nest — a workspace cannot create sub-workspaces.
+
+KDE-CLI installation inside workspaces is handled by the workspace backend's provisioning step (e.g., Lima template mounts or installs KDE-CLI; SSH backend assumes KDE-CLI is already installed; DinD backend includes it in the image).
+
+---
+
 ## Layer 1: Workspace
 
 ### Definition
@@ -71,7 +84,7 @@ Host (physical / cloud VM / any machine)
 workspace_connect()    # Connect to workspace (local=noop, lima=limactl shell, remote=ssh)
 workspace_exec()       # Execute command inside workspace
 workspace_status()     # Return status (reachable / unreachable)
-workspace_info()       # Return basic info (IP, OS, resources)
+workspace_info()       # Print key=value pairs to stdout (IP, OS, CPUS, MEMORY)
 
 # Optional — backends implement if capable
 workspace_create()     # Create workspace
@@ -81,11 +94,13 @@ workspace_snapshot()   # Snapshot management
 workspace_expose()     # Port forwarding
 ```
 
+**Optional operation handling:** Unimplemented optional functions are defined as stubs by the dispatcher that print `"Operation not supported by backend: ${KDE_WORKSPACE_BACKEND}"` and return 1. The CLI layer can check capability before showing commands via `workspace_supports <operation>`, which tests whether the function has been overridden from the stub.
+
 ### Backends
 
 | Backend | Description | workspace_exec() | Optional ops |
 |---------|-------------|-------------------|--------------|
-| `local` | Default. Just a folder on host | Direct execution | None |
+| `local` | Default. Just a folder on host | Runs in a subshell with workspace env vars sourced | None |
 | `lima` | Lima microVM (existing sandbox) | `limactl shell` | create, delete, stop, snapshot, expose |
 | `ssh` | Remote VM (already exists) | `ssh user@host` | None |
 | `dind` | Docker-in-Docker container | `docker exec` | create, delete, stop |
@@ -143,26 +158,30 @@ env_start()         # Start environment
 env_stop()          # Stop environment
 env_delete()        # Delete environment
 env_status()        # Return status
-env_exec()          # Execute command inside environment
 ```
+
+Note: `env_exec()` is type-specific, not shared. What "exec into" means differs fundamentally by type (K8s: exec into node container; VM: SSH; container: docker exec; compose: exec into a service). Each type defines its own exec semantics.
 
 #### Type-specific operations
 
 ```bash
 # type: k8s
+env_k8s_exec()                  # exec into K8s node container
 env_k8s_load_kubeconfig()
 env_k8s_create_namespace()
 env_k8s_delete_namespace()
 
 # type: vm
-env_vm_ssh()
+env_vm_exec()                   # SSH into VM
 env_vm_info()
 
 # type: container
+env_container_exec()            # docker exec into container
 env_container_logs()
 env_container_attach()
 
 # type: compose
+env_compose_exec()              # exec into a compose service
 env_compose_service_list()
 env_compose_service_logs()
 ```
@@ -179,10 +198,14 @@ env_compose_service_logs()
 ### Configuration
 
 ```bash
-# environments/<env-name>/environment.env
+# environments/<env-name>/environment.env (new format)
 KDE_ENVIRONMENT_TYPE="k8s"
 KDE_ENVIRONMENT_BACKEND="kind"
 ```
+
+#### Backward Compatibility
+
+Existing `k8s.env` files continue to work. The config loader checks for `environment.env` first; if not found, falls back to `k8s.env` with implicit `KDE_ENVIRONMENT_TYPE="k8s"`. The backend is inferred from existing `KDE_ENVIRONMENT` variable in `k8s.env`. No migration script needed — old format works indefinitely.
 
 ### Dispatcher
 
@@ -197,7 +220,22 @@ load_environment() {
 }
 ```
 
-Backend implements the shared operations (`env_create`, `env_start`, etc.). Type layer sources the backend and adds type-specific operations on top.
+**Loading order and responsibility split:**
+
+1. Backend file is sourced first — it implements shared operations (`env_create`, `env_start`, etc.) using a `_backend_` prefix (e.g., `_backend_env_create()`).
+2. Type file is sourced second — it wraps backend functions with type-specific logic and exposes the public `env_*` interface.
+
+Example for K8s + Kind:
+```bash
+# backends/kind.sh defines: _backend_env_create(), _backend_env_start(), ...
+# types/k8s.sh wraps them:
+env_create() {
+    _backend_env_create "$@"
+    env_k8s_load_kubeconfig    # K8s-specific post-create step
+}
+```
+
+This avoids Bash function name collisions and makes the responsibility clear: backends do the low-level work, types add the domain semantics.
 
 ### Directory Structure
 
@@ -241,7 +279,7 @@ No dedicated agent layer is needed. The playground is achieved through:
 
 ### Multi-Tenant Model
 
-One host runs KDE-CLI to manage multiple workspaces for different users. Each workspace is an isolated environment (VM, container, or remote machine). Users cannot access each other's workspaces.
+One host runs KDE-CLI to manage multiple workspaces for different users. Each workspace is an isolated environment (VM, container, or remote machine). Isolation is provided by the workspace backend itself (VM boundary, container boundary, or separate machine). User-to-workspace mapping and access control mechanisms are deferred to the platform API layer (future work) — the current scope focuses on the workspace lifecycle primitives that the platform layer will build upon.
 
 ---
 
