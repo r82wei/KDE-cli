@@ -149,6 +149,59 @@ npm install -g @anthropic-ai/claude-code
 | `pve` | Proxmox VE VM | API + SSH | create, delete, stop, snapshot |
 | `esxi` | ESXi VM | API + SSH | create, delete, stop, snapshot |
 | `cloud-vm` | Cloud VM (AWS/GCP/Azure) | SSH | create, delete, stop |
+| `custom` | User-defined backend | Defined by user scripts | Defined by user scripts |
+
+### Custom Backend
+
+When `KDE_WORKSPACE_BACKEND="custom"`, the dispatcher does not load a built-in backend file. Instead, it sources user-provided scripts from the workspace directory:
+
+```
+<workspace_path>/
+├── backend/
+│   └── workspace.sh       # User implements workspace_* functions here
+├── workspace.env
+└── ...
+```
+
+The user implements whichever `workspace_*` functions they need in `backend/workspace.sh`. For example, a Terraform-based workspace:
+
+```bash
+# backend/workspace.sh
+workspace_create() {
+    cd "${KDE_PATH}/backend"
+    terraform init && terraform apply -auto-approve
+}
+
+workspace_exec() {
+    local ip=$(terraform -chdir="${KDE_PATH}/backend" output -raw ip)
+    ssh "user@${ip}" "$@"
+}
+
+workspace_status() {
+    terraform -chdir="${KDE_PATH}/backend" output -raw status 2>/dev/null && echo "reachable" || echo "unreachable"
+}
+
+workspace_delete() {
+    cd "${KDE_PATH}/backend"
+    terraform destroy -auto-approve
+}
+```
+
+The dispatcher loads it the same way:
+
+```bash
+load_workspace_backend() {
+    local backend="${KDE_WORKSPACE_BACKEND:-local}"
+
+    if [[ "$backend" == "custom" ]]; then
+        source "${KDE_PATH}/backend/workspace.sh"
+    else
+        source "${KDE_SCRIPTS_PATH}/utils/workspace/${backend}.sh"
+    fi
+}
+```
+
+This allows users to integrate any infrastructure (Terraform, Pulumi, Vagrant, cloud APIs, internal tools) without forking KDE-CLI.
 
 ### Configuration
 
