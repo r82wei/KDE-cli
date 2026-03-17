@@ -3,7 +3,7 @@
 # 檢查 $1 的環境在 enviroments 底下是否存在，而且 enviroments 底下有 ENV_NAME 資料夾，而且存在 k8s.env 檔案，存在則回傳 true，不存在則回傳 false
 is_env_exist() {
     ENV_NAME=$1
-    if [[ -n ${ENV_NAME} && -d ${ENVIROMENTS_PATH}/${ENV_NAME} && -n "$(ls -A ${ENVIROMENTS_PATH}/${ENV_NAME})" && -f ${ENVIROMENTS_PATH}/${ENV_NAME}/k8s.env ]]; then
+    if [[ -n ${ENV_NAME} && -d ${ENVIROMENTS_PATH}/${ENV_NAME} && -n "$(ls -A ${ENVIROMENTS_PATH}/${ENV_NAME})" && ( -f ${ENVIROMENTS_PATH}/${ENV_NAME}/k8s.env || -f ${ENVIROMENTS_PATH}/${ENV_NAME}/environment.env ) ]]; then
         echo "true"
     else
         echo "false"
@@ -108,16 +108,27 @@ get_env_type() {
 load_enviroment_env() {
     ENV_NAME=${1:-${CUR_ENV}}
     export ENV_PATH=${ENVIROMENTS_PATH}/${ENV_NAME}
-    if [[ $(is_env_exist ${ENV_NAME}) == "true" ]]; then
+
+    # New format: environment.env (with k8s.env fallback)
+    if [[ -f "${ENV_PATH}/environment.env" ]]; then
+        source "${ENV_PATH}/environment.env"
+    elif [[ $(is_env_exist ${ENV_NAME}) == "true" ]]; then
         source ${ENV_PATH}/k8s.env
     fi
+
+    # Load local secrets
+    if [[ -f "${ENV_PATH}/.env" ]]; then
+        source "${ENV_PATH}/.env"
+    fi
+
     if [[ $(is_env_init ${ENV_NAME}) == "true" ]]; then
-        if [[ ! -f ${ENV_PATH}/.env ]]; then
-            touch ${ENV_PATH}/.env
-        fi
-        source ${ENV_PATH}/.env
         export KUBECONFIG=${ENV_PATH}/${KUBE_CONFIG_DIR}/config
     fi
+}
+
+# Alias with fixed typo for new code
+load_environment_env() {
+    load_enviroment_env "$@"
 }
 
 # 設定預設的 k8s 環境
