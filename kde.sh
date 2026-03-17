@@ -30,7 +30,12 @@ export KUBE_CONFIG_DIR=kubeconfig
 # 設定 VOLUMES_DIR
 export VOLUMES_DIR=namespaces
 # 設定 kde env 檔案路徑
-export KDE_ENV_FILE=${KDE_PATH}/kde.env
+# workspace.env (new) with kde.env fallback (backward compat)
+if [[ -f "${KDE_PATH}/workspace.env" ]]; then
+    export KDE_ENV_FILE=${KDE_PATH}/workspace.env
+else
+    export KDE_ENV_FILE=${KDE_PATH}/kde.env
+fi
 
 # 定義顯示說明的函數
 show_help() {
@@ -100,6 +105,11 @@ case "$1" in
     sandbox)
         shift
         source ${KDE_SCRIPTS_PATH}/sandbox/command.sh
+        exit 0
+        ;;
+    workspace|ws)
+        shift
+        source ${KDE_SCRIPTS_PATH}/workspace/command.sh
         exit 0
         ;;
     -h|help|--help)
