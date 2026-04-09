@@ -296,8 +296,15 @@ kde code-server -d -v ./environments/dev/namespaces/api    # 明確指定
 ### 容器環境操作
 
 ```bash
-# 進入 K8s 節點容器
+# 進入 K8s 節點容器（互動式）
 kde exec [env_name]
+
+# 在 K8s 節點容器執行指定指令（非互動式，不使用 TTY）
+kde exec [env_name] --command "<command>"
+
+# 範例
+kde exec --command "kubectl get nodes"
+kde exec dev-env --command "kubectl get pods -A"
 
 # 載入 Docker 映像（Kind/K3D only）
 kde load-image <image> [env_name]
@@ -748,8 +755,12 @@ kubectl get events -A
 ### 網路除錯
 
 ```bash
-# 進入 K8s 節點容器
+# 進入 K8s 節點容器（互動式）
 kde exec
+
+# 非互動式執行指令（AI agent / 腳本）
+kde exec --command "kubectl get nodes"
+kde exec --command "ip addr"
 
 # 檢查網路配置
 ip addr
