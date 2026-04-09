@@ -211,6 +211,10 @@ case "${COMMAND}" in
         while [[ $i -lt ${#args[@]} ]]; do
             if [[ "${args[$i]}" == "--command" ]]; then
                 i=$((i+1))
+                if [[ $i -ge ${#args[@]} ]]; then
+                    echo "錯誤：--command 需要一個指令參數" >&2
+                    exit 1
+                fi
                 EXEC_COMMAND="${args[$i]}"
             fi
             i=$((i+1))
@@ -223,12 +227,12 @@ case "${COMMAND}" in
                 echo "錯誤：使用 --command 時必須明確指定 pod 名稱" >&2
                 exit 1
             fi
-            exec_pod_no_tty ${PROJECT_NAME} ${TARGET_POD} "${EXEC_COMMAND}"
+            exec_pod_no_tty "${PROJECT_NAME}" "${TARGET_POD}" "${EXEC_COMMAND}"
         else
             if [[ -z "${TARGET_POD}" ]]; then
-                select_pod ${PROJECT_NAME}
+                select_pod "${PROJECT_NAME}"
             fi
-            exec_pod ${PROJECT_NAME} ${TARGET_POD}
+            exec_pod "${PROJECT_NAME}" "${TARGET_POD}"
         fi
         ;;
     remove|rm)
