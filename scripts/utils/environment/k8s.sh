@@ -826,6 +826,7 @@ exec_pod() {
 }
 
 # 在指定 pod 執行特定指令（不使用 TTY，供 AI agent 等非互動式環境使用）
+# 注意：COMMAND 須為單一引號字串（如 "ls -la /tmp"），呼叫方須確保內容安全
 exec_pod_no_tty() {
     NAMESPACE=$1
     POD=$2
