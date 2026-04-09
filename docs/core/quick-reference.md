@@ -150,6 +150,18 @@ kde project exec <project_name> dep
 # 指定端口
 kde project exec <project_name> develop 3000
 kde project exec <project_name> deploy 8080
+
+# 掛載額外 Volume（可重複使用 -v）
+kde proj exec <project_name> -v /local/path:/container/path
+kde proj exec <project_name> develop -v /path1:/path1 -v /path2:/path2
+kde proj exec <project_name> deploy 8080 -v /data:/data
+
+# 非互動式執行指令（不使用 TTY，適合 AI agent / 腳本）
+kde proj exec <project_name> --command "ls -la"
+kde proj exec <project_name> deploy --command "kubectl get pods"
+
+# 組合使用 -v 與 --command
+kde proj exec <project_name> --command "ls /data" -v /local/data:/data
 ```
 
 ### 專案監控

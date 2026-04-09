@@ -111,6 +111,13 @@ kde proj exec <project_name> -v /local/path:/path        # interactive with extr
 kde proj exec <project_name> --command "ls -la"          # non-interactive (AI agent)
 kde proj exec <project_name> --command "ls /d" -v /h:/d  # non-interactive with volume
 
+# Also: exec into the project container with optional volumes and non-interactive mode
+kde proj exec <project_name>                             # interactive (develop container)
+kde proj exec <project_name> deploy                      # interactive (deploy container)
+kde proj exec <project_name> -v /local/path:/path        # interactive with extra volume
+kde proj exec <project_name> --command "ls -la"          # non-interactive (AI agent)
+kde proj exec <project_name> --command "ls /d" -v /h:/d  # non-interactive with volume
+
 # 4. Exec into the K8s node container for node-level debugging
 kde exec                                            # interactive bash session
 kde exec --command "kubectl get nodes"              # non-interactive (AI agent / scripts)
