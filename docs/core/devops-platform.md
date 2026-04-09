@@ -77,7 +77,8 @@ kde proj pipeline myapp --manual  # 開發模式
 kde proj create myapp           # 建立專案
 kde proj deploy myapp           # 部署專案
 kde proj tail myapp             # 查看日誌
-kde proj pod-exec myapp         # 進入 pod
+kde proj pod-exec myapp                              # 進入 pod（互動式）
+kde proj pod-exec myapp mypod --command "ls /app"   # 在 pod 內執行指令（非互動式）
 ```
 
 #### 核心價值
