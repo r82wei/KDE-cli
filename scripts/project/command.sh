@@ -28,13 +28,19 @@ show_help() {
 
 show_exec_help() {
     echo "usage:"
-    echo "  kde [project|proj] exec <project_name> [option] [port] 進入專案相關環境 container"
+    echo "  kde project exec <project_name> [develop|deploy] [port] [-v host:container ...] [--command <script>]"
     echo ""
-    echo "option:"
-    echo "  develop, dev        進入專案 DEVELOP_IMAGE 啟動的 container (default)"
-    echo "  deploy, dep         進入專案 DEPLOY_IMAGE 啟動的 container"
+    echo "  進入專案開發或部署容器。"
+    echo "  使用 -v 掛載多個額外 Volume，使用 --command 在非互動式模式下執行指定指令。"
     echo ""
-    echo "port:                 專案使用的 port"
+    echo "  範例："
+    echo "    kde proj exec myapp"
+    echo "    kde proj exec myapp develop"
+    echo "    kde proj exec myapp deploy 8080"
+    echo "    kde proj exec myapp -v /local/path:/container/path"
+    echo "    kde proj exec myapp develop -v /path1:/path1 -v /path2:/path2"
+    echo "    kde proj exec myapp --command \"ls -la\""
+    echo "    kde proj exec myapp deploy --command \"kubectl get pods\" -v /tmp:/tmp"
 }
 
 show_fetch_help() {
@@ -242,18 +248,47 @@ case "${COMMAND}" in
         ;;
     exec)
         check_project_name ${PROJECT_NAME}
-        IMAGE_TYPE=$3
-        PORT=$4
-        if [[ "${IMAGE_TYPE}" == "-h" || "${IMAGE_TYPE}" == "--help" ]]; then
-            show_exec_help
-            exit 1
-        fi
+        IMAGE_TYPE=""
+        PORT=""
+        EXEC_COMMAND=""
+        MOUNT_COUNT=0
+
+        # 掃描所有參數，找出 image 類型、port、-v 掛載旗標與 --command 旗標
+        args=("$@")
+        i=2  # 跳過子命令（args[0]）與專案名稱（args[1]）
+        while [[ $i -lt ${#args[@]} ]]; do
+            if [[ "${args[$i]}" == "-h" || "${args[$i]}" == "--help" ]]; then
+                show_exec_help
+                exit 1
+            elif [[ "${args[$i]}" == "-v" ]]; then
+                i=$((i+1))
+                if [[ $i -ge ${#args[@]} ]]; then
+                    echo "錯誤：-v 需要一個掛載路徑參數（格式：host:container）" >&2
+                    exit 1
+                fi
+                MOUNT_COUNT=$((MOUNT_COUNT+1))
+                export KDE_MOUNT_CLI_${MOUNT_COUNT}="${args[$i]}"
+            elif [[ "${args[$i]}" == "--command" ]]; then
+                i=$((i+1))
+                if [[ $i -ge ${#args[@]} ]]; then
+                    echo "錯誤：--command 需要一個指令參數" >&2
+                    exit 1
+                fi
+                EXEC_COMMAND="${args[$i]}"
+            elif [[ -z "${IMAGE_TYPE}" && "${args[$i]}" =~ ^(deploy|dep|develop|dev)$ ]]; then
+                IMAGE_TYPE="${args[$i]}"
+            elif [[ -z "${PORT}" && "${args[$i]}" =~ ^[0-9]+$ ]]; then
+                PORT="${args[$i]}"
+            fi
+            i=$((i+1))
+        done
+
         case "${IMAGE_TYPE}" in
             deploy|dep)
-                exec_project_deploy_container ${PROJECT_NAME} ${PORT}
+                exec_project_deploy_container ${PROJECT_NAME} ${PORT} "${EXEC_COMMAND}"
                 ;;
             develop|dev|"")
-                exec_project_develop_container ${PROJECT_NAME} ${PORT}
+                exec_project_develop_container ${PROJECT_NAME} ${PORT} "${EXEC_COMMAND}"
                 ;;
             *)
                 show_exec_help
