@@ -336,12 +336,15 @@ remove_project() {
 exec_project_develop_container() {
     PROJECT_NAME=$1
     PORT=$2
+    COMMAND=$3  # 可選：指定要執行的指令（no-tty 模式）
 
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
     REPO_NAME=$(git_repo_name ${GIT_REPO_URL})
     echo "REPO_NAME: ${REPO_NAME}"
-    if [[ -z "${PORT}" ]]; then
+    if [[ -n "${COMMAND}" ]]; then
+        exec_script_in_container_with_project_no_tty ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && ${COMMAND}"
+    elif [[ -z "${PORT}" ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash"
     else
         exec_script_in_container_with_project_and_port ${PROJECT_NAME} ${DEVELOP_IMAGE} "cd ${REPO_NAME} && bash" ${PORT}
@@ -351,10 +354,13 @@ exec_project_develop_container() {
 exec_project_deploy_container() {
     PROJECT_NAME=$1
     PORT=$2
+    COMMAND=$3  # 可選：指定要執行的指令（no-tty 模式）
 
     exit_if_project_not_exist ${PROJECT_NAME}
     source ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}/project.env
-    if [[ -z "${PORT}" ]]; then
+    if [[ -n "${COMMAND}" ]]; then
+        exec_script_in_container_with_project_no_tty ${PROJECT_NAME} ${DEPLOY_IMAGE} "${COMMAND}"
+    elif [[ -z "${PORT}" ]]; then
         exec_script_in_container_with_project ${PROJECT_NAME} ${DEPLOY_IMAGE} bash
     else
         exec_script_in_container_with_project_and_port ${PROJECT_NAME} ${DEPLOY_IMAGE} bash ${PORT}
