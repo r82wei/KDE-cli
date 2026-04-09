@@ -172,6 +172,7 @@ kde project pod <project_name>
 
 # 進入 Pod Shell
 kde project pod-exec <project_name> [pod_name]
+kde project pod-exec <project_name> <pod_name> --command "<script>"   # 非互動式執行指定指令（AI agent 適用）
 ```
 
 ## 開發工具
