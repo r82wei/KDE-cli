@@ -285,10 +285,10 @@ case "${COMMAND}" in
 
         case "${IMAGE_TYPE}" in
             deploy|dep)
-                exec_project_deploy_container ${PROJECT_NAME} ${PORT} "${EXEC_COMMAND}"
+                exec_project_deploy_container ${PROJECT_NAME} "${PORT}" "${EXEC_COMMAND}"
                 ;;
             develop|dev|"")
-                exec_project_develop_container ${PROJECT_NAME} ${PORT} "${EXEC_COMMAND}"
+                exec_project_develop_container ${PROJECT_NAME} "${PORT}" "${EXEC_COMMAND}"
                 ;;
             *)
                 show_exec_help
