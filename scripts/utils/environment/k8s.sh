@@ -468,6 +468,70 @@ exec_script_in_container_with_project() {
     fi
 }
 
+# 在 Docker 容器中執行指令（不使用 TTY，供 AI agent 等非互動式環境使用）
+# 注意：SCRIPT 須確保內容安全，呼叫方須自行驗證
+exec_script_in_container_with_project_no_tty() {
+    PROJECT_NAME=$1
+    DOCKER_IMAGE=$2
+    SCRIPT=$3
+    STAGE=$4  # 可選參數
+    export PROJECT_PATH=${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}
+    PROJECT_ENV_FILE=${PROJECT_PATH}/project.env
+    PROJECT_ENV_FILE_TMP=${PROJECT_ENV_FILE}.tmp
+
+    touch ${HOME}/.netrc
+
+    envsubst < ${PROJECT_ENV_FILE} > ${PROJECT_ENV_FILE_TMP}
+
+    if [ ! -f ${PROJECT_PATH}/.env ]; then
+        touch ${PROJECT_PATH}/.env
+    fi
+
+    set -a
+    . ${KDE_ENV_FILE}
+    . ${ENVIROMENTS_PATH}/${CUR_ENV}/k8s.env
+    . ${ENVIROMENTS_PATH}/${CUR_ENV}/.env
+    . ${PROJECT_ENV_FILE_TMP}
+    . ${PROJECT_PATH}/.env
+    set +a
+
+    # 收集所有掛載點
+    # 1. 全局掛載 KDE_MOUNT_*
+    set +e
+    DOCKER_VOLUMES=$(env | grep '^KDE_MOUNT_' | cut -d= -f2- | sed 's/^/-v /' | xargs)
+
+    # 2. 如果提供了 STAGE 參數，則加入階段特定掛載
+    if [ -n "${STAGE}" ]; then
+        local STAGE_VAR=$(echo "${STAGE}" | tr '-' '_')
+        STAGE_VOLUMES=$(env | grep "^KDE_PIPELINE_STAGE_${STAGE_VAR}_MOUNT_" | cut -d= -f2- | sed 's/^/-v /' | xargs)
+        DOCKER_VOLUMES="${DOCKER_VOLUMES} ${STAGE_VOLUMES}"
+    fi
+    set -e
+
+    docker run --rm -i \
+    --user $UID:$(id -g) \
+    --net ${DOCKER_NETWORK} \
+    --workdir ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
+    --group-add $( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock) ) \
+    --env-file ${PROJECT_ENV_FILE_TMP} \
+    --env-file ${PROJECT_PATH}/.env \
+    -e KUBECONFIG=/.kube/config \
+    -v ${KUBECONFIG}:/.kube/config \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
+    -v ${HOME}/.docker:/${HOME}/.docker \
+    -v ${HOME}/.netrc:/${HOME}/.netrc \
+    ${DOCKER_VOLUMES} \
+    -v ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME}:${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/${PROJECT_NAME} \
+    ${DOCKER_IMAGE} \
+    bash -c "${SCRIPT}"
+
+    if [[ -f "${PROJECT_ENV_FILE_TMP}" ]]; then
+        rm -f ${PROJECT_ENV_FILE_TMP}
+    fi
+}
+
 # 進入 deploy-env 容器中的 Bash 環境，並且把 Volumes/{PROJECT_NAME} 的資料夾掛載進去 (使用 TTY 模式執行命令)
 exec_k8s_node() {
     docker exec -it ${K8S_CONTAINER_NAME} bash
