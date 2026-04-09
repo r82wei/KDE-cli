@@ -824,3 +824,12 @@ exec_pod() {
 
     exec_script_in_deploy_env "kubectl -n ${NAMESPACE} exec -it ${POD} -- bash || kubectl -n ${NAMESPACE} exec -it ${POD} -- sh"
 }
+
+# 在指定 pod 執行特定指令（不使用 TTY，供 AI agent 等非互動式環境使用）
+exec_pod_no_tty() {
+    NAMESPACE=$1
+    POD=$2
+    COMMAND=$3
+
+    exec_script_in_deploy_env_stream_no_tty "kubectl -n ${NAMESPACE} exec -i ${POD} -- ${COMMAND}"
+}
