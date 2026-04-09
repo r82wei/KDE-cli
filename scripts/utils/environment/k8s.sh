@@ -798,6 +798,25 @@ tail_pod_logs() {
     exec_script_in_deploy_env "kubectl -n ${NAMESPACE} logs --tail ${TAIL_COUNT} -f ${POD}"
 }
 
+# 在 deploy-env 容器中執行指令（不使用 TTY，直接串流輸出，供 AI agent 等非互動式環境使用）
+exec_script_in_deploy_env_stream_no_tty() {
+    docker run --rm -i \
+    --net ${DOCKER_NETWORK} \
+    -e KUBECONFIG=/.kube/config \
+    -v ${KUBECONFIG}:/.kube/config \
+    ${KDE_DEPLOY_ENV_IMAGE} \
+    bash -c "$1"
+}
+
+tail_pod_logs_no_tty() {
+    NAMESPACE=$1
+    POD=$2
+    TAIL_COUNT=${3:-100}
+
+    # 不加 -f，取 snapshot（不 follow），適合非互動式環境
+    exec_script_in_deploy_env_stream_no_tty "kubectl -n ${NAMESPACE} logs --tail ${TAIL_COUNT} ${POD}"
+}
+
 exec_pod() {
     NAMESPACE=$1
     POD=$2

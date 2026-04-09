@@ -163,6 +163,10 @@ kde proj tail <project_name>
 kde project tail <project_name> <pod_name> [line_count]
 kde proj tail <project_name> <pod_name> 200
 
+# 非互動式模式（AI agent / 腳本，不需要 TTY）
+kde proj tail <project_name> <pod_name> --no-tty
+kde proj tail <project_name> <pod_name> 200 --no-tty
+
 # 列出專案的 Pods
 kde project pod <project_name>
 

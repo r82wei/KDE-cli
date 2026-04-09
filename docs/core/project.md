@@ -346,6 +346,10 @@ kde proj tail myapp myapp-pod-xxx 200
 
 # 不指定參數，會顯示選單供選擇
 kde proj tail
+
+# 非互動式模式（AI agent / 腳本使用，不需要 TTY）
+kde proj tail myapp myapp-pod-xxx --no-tty
+kde proj tail myapp myapp-pod-xxx 200 --no-tty
 ```
 
 ### 專案網路管理

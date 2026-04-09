@@ -17,7 +17,7 @@ show_help() {
     echo "  pipeline, deploy    執行自定義的 CICD Pipeline（支援 --from, --to, --only, --manual）"
     echo "  undeploy            解除部署專案"
     echo "  redeploy            重新部署專案 (解除部署後再執行 Pipeline)"
-    echo "  tail                查看 pod 的 log，預設查看最後 100 行"
+    echo "  tail                查看 pod 的 log，預設查看最後 100 行（--no-tty 供非互動式環境使用）"
     echo "  pod                 列出專案內所有的 pod"
     echo "  pod-exec            進入專案內指定的 pod"
     echo "  remove, rm          刪除專案"
@@ -156,15 +156,38 @@ case "${COMMAND}" in
         execute_pipeline ${PROJECT_NAME}
         ;;
     tail)
-        if [[ -z "${PROJECT_NAME}" ]]; then
-            check_project_name ${PROJECT_NAME}
-        fi
+        # 解析 --no-tty 旗標（供 AI agent 等非互動式環境使用）
+        NO_TTY=false
         TARGET_POD=$3
-        if [[ -z "${TARGET_POD}" ]]; then
-            select_pod ${PROJECT_NAME}
-        fi
         TAIL_COUNT=$4
-        tail_pod_logs ${PROJECT_NAME} ${TARGET_POD} ${TAIL_COUNT}
+
+        # 掃描所有參數，找出 --no-tty 旗標
+        for arg in "$@"; do
+            if [[ "$arg" == "--no-tty" ]]; then
+                NO_TTY=true
+            fi
+        done
+        # 若 --no-tty 出現在位置參數中，清除對應位置
+        [[ "${TARGET_POD}" == "--no-tty" ]] && TARGET_POD="" && TAIL_COUNT=""
+        [[ "${TAIL_COUNT}" == "--no-tty" ]] && TAIL_COUNT=""
+
+        if [[ -z "${PROJECT_NAME}" ]]; then
+            check_project_name "${PROJECT_NAME}"
+        fi
+
+        if [[ -z "${TARGET_POD}" ]]; then
+            if [[ "${NO_TTY}" == "true" ]]; then
+                echo "錯誤：使用 --no-tty 模式時，必須提供 pod 名稱" >&2
+                exit 1
+            fi
+            select_pod "${PROJECT_NAME}"
+        fi
+
+        if [[ "${NO_TTY}" == "true" ]]; then
+            tail_pod_logs_no_tty "${PROJECT_NAME}" "${TARGET_POD}" "${TAIL_COUNT}"
+        else
+            tail_pod_logs "${PROJECT_NAME}" "${TARGET_POD}" "${TAIL_COUNT}"
+        fi
         ;;
     pod)
         if [[ -z "${PROJECT_NAME}" ]]; then
