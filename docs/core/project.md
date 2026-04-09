@@ -218,6 +218,25 @@ kde project redeploy <project_name>
 kde proj redeploy myapp
 ```
 
+#### 本地開發模式（Hot Reload，不需 Redeploy）
+
+使用 Kind 環境搭配 local-path 儲存類別時，可將專案目錄透過 Volume 掛載進 Pod，
+應用程式以 watch 模式啟動（如 nodemon、air、watchexec、vite dev）。
+
+這種情況下**修改程式碼即可自動生效，不需要執行 redeploy**：
+
+```bash
+# 修改程式碼後，確認 watcher 有重新啟動：
+kde proj tail <project_name>
+```
+
+何時用 redeploy vs hot reload：
+| 變更類型 | 做法 |
+|---------|------|
+| 修改程式碼（volume mount + watch 模式） | 直接改，自動生效 |
+| 修改 Docker image、K8s manifest、env var | `kde proj redeploy` |
+| 新增或修改 pipeline 設定 | `kde proj redeploy` |
+
 ### 專案容器環境
 
 #### 進入開發容器

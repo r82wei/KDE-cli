@@ -447,32 +447,35 @@ kde init
 # 2. 建立並啟動開發環境
 kde start dev-env kind
 
-# 3. 建立專案
+# 3. 建立專案（互動式，包含 git clone）
 kde project create myapp
 
-# 4. 從 Git 抓取程式碼
-kde project fetch myapp https://github.com/user/myapp.git main
-
-# 5. 部署專案
+# 4. 部署專案
 kde project deploy myapp
 
-# 6. 查看日誌
+# 5. 查看日誌
 kde project tail myapp
 ```
 
 ### 本地開發與除錯
 
+**方式 A：Hot Reload 模式（Kind + Volume Mount）**
+
+使用 local-path 將專案目錄掛載進 Pod，搭配 watch 模式（nodemon、air 等），
+修改程式碼即自動重啟，**不需要 redeploy**：
+
 ```bash
-# 1. 進入開發容器
-kde project exec myapp develop
+# 修改程式碼後確認 watcher 有接收到變更
+kde project tail myapp
+```
 
-# 2. 在容器中開發和測試
-# （編輯程式碼、執行測試等）
+**方式 B：Pipeline Redeploy 模式**
 
-# 3. 重新部署
+```bash
+# 修改 image、K8s manifest 或 env var 後才需要 redeploy
 kde project redeploy myapp
 
-# 4. 查看運行狀態
+# 查看運行狀態
 kde k9s
 ```
 
