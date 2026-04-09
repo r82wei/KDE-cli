@@ -473,6 +473,12 @@ exec_k8s_node() {
     docker exec -it ${K8S_CONTAINER_NAME} bash
 }
 
+# 在 k8s node container 中執行特定指令（不使用 TTY，供 AI agent 等非互動式環境使用）
+exec_k8s_node_no_tty() {
+    COMMAND=$1
+    docker exec -i ${K8S_CONTAINER_NAME} bash -c "${COMMAND}"
+}
+
 create_namespace() {
     NAMESPACE=$1
     exec_script_in_deploy_env "kubectl create namespace ${NAMESPACE}"
