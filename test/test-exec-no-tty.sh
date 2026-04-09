@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 
 # 測試 exec_k8s_node_no_tty 函式行為
 
