@@ -203,10 +203,33 @@ case "${COMMAND}" in
             check_project_name ${PROJECT_NAME}
         fi
         TARGET_POD=$3
-        if [[ -z "${TARGET_POD}" ]]; then
-            select_pod ${PROJECT_NAME}
+        EXEC_COMMAND=""
+
+        # 掃描所有參數，找出 --command 旗標
+        args=("$@")
+        i=0
+        while [[ $i -lt ${#args[@]} ]]; do
+            if [[ "${args[$i]}" == "--command" ]]; then
+                i=$((i+1))
+                EXEC_COMMAND="${args[$i]}"
+            fi
+            i=$((i+1))
+        done
+        # 若 pod 名稱位置的參數是旗標，清除 TARGET_POD
+        [[ "${TARGET_POD}" == "--command" ]] && TARGET_POD=""
+
+        if [[ -n "${EXEC_COMMAND}" ]]; then
+            if [[ -z "${TARGET_POD}" ]]; then
+                echo "錯誤：使用 --command 時必須明確指定 pod 名稱" >&2
+                exit 1
+            fi
+            exec_pod_no_tty ${PROJECT_NAME} ${TARGET_POD} "${EXEC_COMMAND}"
+        else
+            if [[ -z "${TARGET_POD}" ]]; then
+                select_pod ${PROJECT_NAME}
+            fi
+            exec_pod ${PROJECT_NAME} ${TARGET_POD}
         fi
-        exec_pod ${PROJECT_NAME} ${TARGET_POD}
         ;;
     remove|rm)
         check_project_name ${PROJECT_NAME}
