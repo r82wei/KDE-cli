@@ -8,6 +8,7 @@ PIPELINE_FROM_STAGE=""
 PIPELINE_TO_STAGE=""
 PIPELINE_ONLY_STAGE=""
 PIPELINE_MANUAL_MODE=false
+PIPELINE_SHELL_MODE=false
 REMAINING_ARGS=()
 
 # 解析 Pipeline 階段列表
@@ -288,9 +289,9 @@ execute_stage() {
     echo "   📁 WORKDIR: ${WORKDIR}"
     echo ""
     
-    # 如果是手動模式，進入互動式環境
-    if [[ "${PIPELINE_MANUAL_MODE}" == "true" ]]; then
-        echo "🔧 手動模式：進入階段 ${STAGE} 的執行環境"
+    # 如果是 shell 模式，進入互動式環境（除錯用）
+    if [[ "${PIPELINE_SHELL_MODE}" == "true" ]]; then
+        echo "🔧 Shell 模式：進入階段 ${STAGE} 的執行環境"
         echo "   提示：執行 ./${SCRIPT} 來手動運行腳本，或執行其他命令進行調試"
         echo "   退出環境後將自動進入下一階段（如果有的話）"
         echo ""
@@ -443,8 +444,8 @@ execute_custom_pipeline() {
         
         # 檢查是否失敗
         if [[ ${EXIT_CODE} -ne 0 ]]; then
-            # 手動模式不算失敗
-            if [[ "${PIPELINE_MANUAL_MODE}" == "true" ]]; then
+            # Shell 模式不算失敗
+            if [[ "${PIPELINE_SHELL_MODE}" == "true" ]]; then
                 continue
             fi
             
@@ -497,7 +498,7 @@ execute_custom_pipeline() {
 # 解析 Pipeline 命令行參數
 # 參數：
 #   $@ - 所有命令行參數
-# 副作用：設置全局變數 PIPELINE_FROM_STAGE, PIPELINE_TO_STAGE, PIPELINE_ONLY_STAGE, PIPELINE_MANUAL_MODE, REMAINING_ARGS
+# 副作用：設置全局變數 PIPELINE_FROM_STAGE, PIPELINE_TO_STAGE, PIPELINE_ONLY_STAGE, PIPELINE_MANUAL_MODE, PIPELINE_SHELL_MODE, REMAINING_ARGS
 # 返回：狀態碼（0=成功, 1=錯誤, 2=顯示說明）
 parse_pipeline_args() {
     # 重置所有 Pipeline 選項變數，確保不會從環境變數繼承
@@ -505,8 +506,9 @@ parse_pipeline_args() {
     PIPELINE_TO_STAGE=""
     PIPELINE_ONLY_STAGE=""
     PIPELINE_MANUAL_MODE=false
+    PIPELINE_SHELL_MODE=false
     REMAINING_ARGS=()
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --from=*)
@@ -564,6 +566,11 @@ parse_pipeline_args() {
                 PIPELINE_MANUAL_MODE=true
                 shift
                 ;;
+            -s|--shell)
+                PIPELINE_SHELL_MODE=true
+                PIPELINE_MANUAL_MODE=true
+                shift
+                ;;
             -h|--help)
                 show_pipeline_help
                 return 2
@@ -600,7 +607,8 @@ show_pipeline_help() {
     echo "  --to=<stage>      等號語法"
     echo "  --only <stage>    僅執行指定階段（不可與 --from/--to 一起使用）"
     echo "  --only=<stage>    等號語法"
-    echo "  -m, --manual      進入每個階段的執行環境手動測試"
+    echo "  -m, --manual      觸發 MANUAL_ONLY 階段並自動執行 script"
+    echo "  -s, --shell       進入每個階段的互動式執行環境（除錯用，隱含 --manual）"
     echo "  -h, --help        顯示此說明"
     echo ""
     echo "環境變數配置："
@@ -629,8 +637,11 @@ show_pipeline_help() {
     echo "  # 只執行 test 階段"
     echo "  kde proj pipeline myapp --only=test"
     echo ""
-    echo "  # 手動模式：進入每個階段環境"
+    echo "  # 手動模式：觸發 MANUAL_ONLY 階段並自動執行"
     echo "  kde proj pipeline myapp --manual"
+    echo ""
+    echo "  # Shell 模式：進入每個階段的互動式環境（除錯用）"
+    echo "  kde proj pipeline myapp --shell"
     echo ""
     echo "  # 從 build 到 test，手動模式"
     echo "  kde proj pipeline myapp --from=build --to=test --manual"
@@ -638,5 +649,6 @@ show_pipeline_help() {
     echo "  # 設定 lint 階段只能手動觸發"
     echo "  export KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true"
     echo "  kde proj pipeline myapp              # lint 階段會被跳過"
-    echo "  kde proj pipeline myapp --manual     # lint 階段會執行"
+    echo "  kde proj pipeline myapp --manual     # lint 階段會自動執行"
+    echo "  kde proj pipeline myapp --shell      # 進入 lint 階段的互動式環境"
 }

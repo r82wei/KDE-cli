@@ -31,6 +31,7 @@ test_parse() {
     echo "  PIPELINE_FROM_STAGE：'${PIPELINE_FROM_STAGE}'"
     echo "  PIPELINE_TO_STAGE：'${PIPELINE_TO_STAGE}'"
     echo "  PIPELINE_MANUAL_MODE：${PIPELINE_MANUAL_MODE}"
+    echo "  PIPELINE_SHELL_MODE：${PIPELINE_SHELL_MODE}"
     echo "  REMAINING_ARGS：${REMAINING_ARGS[@]}"
     echo ""
     
@@ -55,7 +56,42 @@ test_parse "手動模式" myapp --manual
 # 測試 6：--only build --manual
 test_parse "只執行 build + 手動模式" myapp --only build --manual
 
-# 測試 7：錯誤測試 - --only 與 --from 同時使用
+# 測試 7：--shell
+test_parse "Shell 模式" myapp --shell
+
+# 測試 8：-s（--shell 短寫）
+test_parse "Shell 模式（短寫）" myapp -s
+
+# 測試 9：--only build --shell
+test_parse "只執行 build + shell 模式" myapp --only build --shell
+
+# 測試 10：驗證 --shell 同時設定 PIPELINE_SHELL_MODE 和 PIPELINE_MANUAL_MODE
+echo "測試：--shell 同時設定 SHELL_MODE 和 MANUAL_MODE"
+parse_pipeline_args myapp --shell
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [[ "${PIPELINE_SHELL_MODE}" == "true" && "${PIPELINE_MANUAL_MODE}" == "true" ]]; then
+    echo "  ✅ --shell 正確設定 SHELL_MODE=true 和 MANUAL_MODE=true"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+else
+    echo "  ❌ SHELL_MODE=${PIPELINE_SHELL_MODE}, MANUAL_MODE=${PIPELINE_MANUAL_MODE}（應該都是 true）"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+echo ""
+
+# 測試 11：驗證 --manual 不設定 PIPELINE_SHELL_MODE
+echo "測試：--manual 不設定 SHELL_MODE"
+parse_pipeline_args myapp --manual
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [[ "${PIPELINE_SHELL_MODE}" == "false" && "${PIPELINE_MANUAL_MODE}" == "true" ]]; then
+    echo "  ✅ --manual 正確設定 MANUAL_MODE=true，SHELL_MODE=false"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+else
+    echo "  ❌ SHELL_MODE=${PIPELINE_SHELL_MODE}, MANUAL_MODE=${PIPELINE_MANUAL_MODE}（應該 SHELL=false, MANUAL=true）"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+echo ""
+
+# 測試 12：錯誤測試 - --only 與 --from 同時使用
 echo "測試：錯誤情況 - --only 與 --from 同時使用"
 echo "參數：myapp --only test --from build"
 parse_pipeline_args myapp --only test --from build

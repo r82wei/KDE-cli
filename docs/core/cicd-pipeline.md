@@ -11,7 +11,8 @@
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_IMAGE=node:24` CICD pipeline 特定階段容器映像檔
     - 可以透過 project.env 定義 `KDE_PIPELINE_STAGE_[階段名稱]_SCRIPT=build.sh` CICD pipeline 特定階段腳本
 - 開發模式
-    - 透過執行 pipeline 的時候加入 `--manual` 參數，進入 stage 執行環境
+    - 透過執行 pipeline 的時候加入 `--manual` 參數，觸發 MANUAL_ONLY 階段並自動執行 script
+    - 透過執行 pipeline 的時候加入 `--shell` 參數，進入 stage 互動式執行環境（除錯用）
 - 環境變數
     - 預設環境變數：
         - `KDE_PATH` - workspace 目錄路徑
@@ -114,17 +115,31 @@ kde proj pipeline myapp --only=build
 
 #### 手動模式（--manual）
 ```bash
-# 進入每個階段的執行環境（用於除錯和測試）
+# 觸發 MANUAL_ONLY 階段並自動執行 script
 kde proj pipeline myapp --manual
 
-# 只進入 build 階段的環境
+# 只執行 build 階段（包含 MANUAL_ONLY 階段）
 kde proj pipeline myapp --only build --manual
 
-# 從 test 到 deploy，逐個進入環境
+# 從 test 到 deploy，觸發所有階段（包含 MANUAL_ONLY）
 kde proj pipeline myapp --from test --to deploy --manual
 ```
 
-在手動模式下，退出單一階段環境後會自動進入下一階段環境。
+手動模式會觸發設定為 `MANUAL_ONLY` 的階段，並自動執行其 script（與一般模式相同的執行方式）。
+
+#### Shell 模式（--shell）
+```bash
+# 進入每個階段的互動式執行環境（除錯用）
+kde proj pipeline myapp --shell
+
+# 只進入 build 階段的環境
+kde proj pipeline myapp --only build --shell
+
+# 從 test 到 deploy，逐個進入環境
+kde proj pipeline myapp --from test --to deploy --shell
+```
+
+Shell 模式會進入每個階段的互動式 bash 環境，可手動執行 script 或其他除錯命令。退出單一階段環境後會自動進入下一階段環境。`--shell` 隱含 `--manual`，因此 `MANUAL_ONLY` 階段也會被觸發。
 
 ### 使用場景說明
 
@@ -150,8 +165,8 @@ kde proj pipeline myapp --from build
 
 **除錯特定階段**：
 ```bash
-# 進入 build 階段環境手動測試
-kde proj pipeline myapp --only build --manual
+# 進入 build 階段的互動式環境除錯
+kde proj pipeline myapp --only build --shell
 ```
 
 **部分流程測試**：
@@ -256,11 +271,14 @@ KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
 # 一般執行：會跳過 lint（MANUAL_ONLY）和 security-scan（SKIP）
 kde proj pipeline myapp
 
-# 手動模式：會執行 lint，但仍跳過 security-scan（SKIP）
+# 手動模式：會自動執行 lint，但仍跳過 security-scan（SKIP）
 kde proj pipeline myapp --manual
 
 # 只執行 lint 階段（手動模式）
 kde proj pipeline myapp --only lint --manual
+
+# Shell 模式：進入 lint 階段的互動式環境除錯
+kde proj pipeline myapp --only lint --shell
 ```
 
 ### 範例 5：暫停確認 - Pause
@@ -575,10 +593,13 @@ echo "✅ 部署完成！"
 kde proj pipeline myapp
 
 # 或分別測試各階段
-kde proj pipeline myapp --only build --manual
-kde proj pipeline myapp --only test --manual
-kde proj pipeline myapp --only release --manual
-kde proj pipeline myapp --only deploy --manual
+kde proj pipeline myapp --only build
+kde proj pipeline myapp --only test
+kde proj pipeline myapp --only release
+kde proj pipeline myapp --only deploy
+
+# 進入特定階段的互動式環境除錯
+kde proj pipeline myapp --only build --shell
 ```
 
 ## 除錯 Pipeline
@@ -591,8 +612,8 @@ kde proj pipeline myapp --only deploy --manual
 # 顯示 KDE CLI 層級的執行命令
 KDE_DEBUG=true kde proj pipeline myapp
 
-# 使用 --manual 進入每個階段手動測試
-kde proj pipeline myapp --only build --manual
+# 使用 --shell 進入每個階段的互動式環境除錯
+kde proj pipeline myapp --only build --shell
 
 # 在腳本內加上 set -x 追蹤腳本執行
 # 在 build.sh 或 deploy.sh 開頭加入：
@@ -603,13 +624,13 @@ set -x  # 啟用腳本除錯模式
 
 **Pipeline 執行失敗**：
 - 檢查腳本檔案是否存在且有執行權限（`chmod +x *.sh`）
-- 使用 `--manual` 進入環境手動測試
+- 使用 `--shell` 進入環境手動測試
 - 檢查映像是否存在：`docker pull <image>`
 - 查看退出碼和錯誤訊息
 
 **環境變數問題**：
 - 確認 `project.env` 中的變數是否正確定義
-- 使用 `--manual` 進入環境後執行 `env` 查看所有環境變數
+- 使用 `--shell` 進入環境後執行 `env` 查看所有環境變數
 - 檢查 `.pipeline.env` 是否正確生成（階段間傳遞）
 
 **階段跳過問題**：
