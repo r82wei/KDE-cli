@@ -121,6 +121,61 @@ else
 fi
 echo ""
 
+# 測試：--no-tty 基本解析
+echo "測試：--no-tty 設定 KDE_PIPELINE_NO_TTY=true"
+parse_pipeline_args myapp --no-tty
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [[ "${KDE_PIPELINE_NO_TTY}" == "true" ]]; then
+    echo "  ✅ --no-tty 正確設定 KDE_PIPELINE_NO_TTY=true"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+else
+    echo "  ❌ KDE_PIPELINE_NO_TTY=${KDE_PIPELINE_NO_TTY}（應該是 true）"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+echo ""
+
+# 測試：--no-tty 與 --only 組合
+echo "測試：--no-tty 與 --only build 組合"
+parse_pipeline_args myapp --only build --no-tty
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [[ "${KDE_PIPELINE_NO_TTY}" == "true" && "${PIPELINE_ONLY_STAGE}" == "build" ]]; then
+    echo "  ✅ --no-tty + --only build 正確設定"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+else
+    echo "  ❌ KDE_PIPELINE_NO_TTY=${KDE_PIPELINE_NO_TTY}, PIPELINE_ONLY_STAGE=${PIPELINE_ONLY_STAGE}"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+echo ""
+
+# 測試：--no-tty 與 --shell 互斥
+echo "測試：錯誤情況 - --no-tty 與 --shell 同時使用"
+echo "參數：myapp --no-tty --shell"
+parse_pipeline_args myapp --no-tty --shell 2>/dev/null
+exit_code=$?
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [[ ${exit_code} -eq 1 ]]; then
+    echo "  ✅ 正確檢測到 --no-tty 與 --shell 互斥錯誤"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+else
+    echo "  ❌ 應該要報錯（exit_code=${exit_code}）"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+echo ""
+
+# 測試：KDE_PIPELINE_NO_TTY 在 parse_pipeline_args 間正確重置
+echo "測試：KDE_PIPELINE_NO_TTY 在呼叫間正確重置"
+parse_pipeline_args myapp --no-tty
+parse_pipeline_args myapp
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+if [[ "${KDE_PIPELINE_NO_TTY}" == "false" ]]; then
+    echo "  ✅ KDE_PIPELINE_NO_TTY 在第二次呼叫後正確重置為 false"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+else
+    echo "  ❌ KDE_PIPELINE_NO_TTY=${KDE_PIPELINE_NO_TTY}（應該是 false）"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+fi
+echo ""
+
 # 測試 9：filter_pipeline_stages 功能測試
 echo "===== filter_pipeline_stages 測試 ====="
 echo ""

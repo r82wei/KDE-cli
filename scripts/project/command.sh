@@ -14,7 +14,7 @@ show_help() {
     echo "  fetch               透過 git url 抓取專案"
     echo "  pull                透過 project.env 內的 git repo 設定更新專案（git pull）"
     echo "                      使用 --force 或 -f 參數可刪除 repo 目錄並重新 clone"
-    echo "  pipeline, deploy    執行自定義的 CICD Pipeline（支援 --from, --to, --only, --manual）"
+    echo "  pipeline, deploy    執行自定義的 CICD Pipeline（支援 --from, --to, --only, --manual, --no-tty）"
     echo "  undeploy            解除部署專案"
     echo "  redeploy            重新部署專案 (解除部署後再執行 Pipeline)"
     echo "  tail                查看 pod 的 log，預設查看最後 100 行（--no-tty 供非互動式環境使用）"
@@ -155,6 +155,10 @@ case "${COMMAND}" in
         undeploy_project ${PROJECT_NAME}
         ;;
     redeploy)
+        # 掃描 --no-tty 旗標（供 AI agent / CI 等非互動式環境使用）
+        for arg in "$@"; do
+            [[ "$arg" == "--no-tty" ]] && export KDE_PIPELINE_NO_TTY=true
+        done
         # 檢查專案名稱（如果未提供，會跳出選單讓使用者選擇）
         check_project_name ${PROJECT_NAME}
         # 解除部署專案（undeploy_project 內部會檢查專案是否存在）

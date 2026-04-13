@@ -141,6 +141,20 @@ kde proj pipeline myapp --from test --to deploy --shell
 
 Shell 模式會進入每個階段的互動式 bash 環境，可手動執行 script 或其他除錯命令。退出單一階段環境後會自動進入下一階段環境。`--shell` 隱含 `--manual`，因此 `MANUAL_ONLY` 階段也會被觸發。
 
+#### 非互動式模式（--no-tty）
+```bash
+# 不使用 TTY 模式執行（供 AI agent / CI 等非互動式環境使用）
+kde proj pipeline myapp --no-tty
+
+# 與其他選項組合使用
+kde proj pipeline myapp --only build --no-tty
+kde proj pipeline myapp --from build --to deploy --no-tty
+```
+
+非互動式模式不會配置 pseudo-TTY（使用 `docker run -i` 而非 `docker run -it`），適合 AI agent、CI 系統等無法操作 TTY 的環境。設有 `PAUSE` 的階段在此模式下會自動繼續，不會等待使用者確認。
+
+**注意**：`--no-tty` 不可與 `--shell` 一起使用（shell 模式需要 TTY）。
+
 ### 使用場景說明
 
 **完整執行（適合 CI/CD）**：

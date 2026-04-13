@@ -309,8 +309,12 @@ execute_stage() {
         LOAD_PIPELINE_ENV="source .pipeline.env 2>/dev/null || true; "
     fi
     
-    # 執行腳本
-    exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "cd ${WORKDIR_ESCAPED} && ${LOAD_PIPELINE_ENV}./${SCRIPT}" ${STAGE}
+    # 執行腳本（--no-tty 模式使用不配置 TTY 的函數，供 AI agent / CI 等非互動式環境使用）
+    if [[ "${KDE_PIPELINE_NO_TTY}" == "true" ]]; then
+        exec_script_in_container_with_project_no_tty ${PROJECT_NAME} ${IMAGE} "cd ${WORKDIR_ESCAPED} && ${LOAD_PIPELINE_ENV}./${SCRIPT}" ${STAGE}
+    else
+        exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "cd ${WORKDIR_ESCAPED} && ${LOAD_PIPELINE_ENV}./${SCRIPT}" ${STAGE}
+    fi
     local EXIT_CODE=$?
     
     if [[ ${EXIT_CODE} -ne 0 ]]; then
@@ -399,6 +403,7 @@ execute_custom_pipeline() {
         [[ -n "${PIPELINE_TO_STAGE}" ]] && echo "   到: ${PIPELINE_TO_STAGE}"
     fi
     [[ "${PIPELINE_MANUAL_MODE}" == "true" ]] && echo "   模式: 手動模式"
+    [[ "${KDE_PIPELINE_NO_TTY}" == "true" ]] && echo "   模式: 非互動式（--no-tty）"
     echo ""
     
     # 執行每個階段
@@ -470,17 +475,22 @@ execute_custom_pipeline() {
         # 檢查是否需要暫停等待使用者確認（手動模式跳過）
         if [[ ${EXIT_CODE} -eq 0 && "${PIPELINE_MANUAL_MODE}" != "true" ]]; then
             if [[ $(is_stage_pause ${STAGE}) == "true" ]]; then
-                echo ""
-                echo "⏸️  階段 ${STAGE} 執行完成，Pipeline 已暫停"
-                echo "   請確認上方輸出後決定是否繼續執行後續階段"
-                echo -n "   繼續執行？(y/N): "
-                read -r CONFIRM </dev/tty
-                if [[ "${CONFIRM}" != "y" && "${CONFIRM}" != "Y" ]]; then
+                if [[ "${KDE_PIPELINE_NO_TTY}" == "true" ]]; then
                     echo ""
-                    echo "🛑 Pipeline 已在階段 ${STAGE} 後暫停，未繼續執行後續階段"
-                    return 0
+                    echo "⏸️  階段 ${STAGE} 設有 PAUSE，但 --no-tty 模式下自動繼續"
+                else
+                    echo ""
+                    echo "⏸️  階段 ${STAGE} 執行完成，Pipeline 已暫停"
+                    echo "   請確認上方輸出後決定是否繼續執行後續階段"
+                    echo -n "   繼續執行？(y/N): "
+                    read -r CONFIRM </dev/tty
+                    if [[ "${CONFIRM}" != "y" && "${CONFIRM}" != "Y" ]]; then
+                        echo ""
+                        echo "🛑 Pipeline 已在階段 ${STAGE} 後暫停，未繼續執行後續階段"
+                        return 0
+                    fi
+                    echo ""
                 fi
-                echo ""
             fi
         fi
     done
@@ -498,7 +508,7 @@ execute_custom_pipeline() {
 # 解析 Pipeline 命令行參數
 # 參數：
 #   $@ - 所有命令行參數
-# 副作用：設置全局變數 PIPELINE_FROM_STAGE, PIPELINE_TO_STAGE, PIPELINE_ONLY_STAGE, PIPELINE_MANUAL_MODE, PIPELINE_SHELL_MODE, REMAINING_ARGS
+# 副作用：設置全局變數 PIPELINE_FROM_STAGE, PIPELINE_TO_STAGE, PIPELINE_ONLY_STAGE, PIPELINE_MANUAL_MODE, PIPELINE_SHELL_MODE, KDE_PIPELINE_NO_TTY, REMAINING_ARGS
 # 返回：狀態碼（0=成功, 1=錯誤, 2=顯示說明）
 parse_pipeline_args() {
     # 重置所有 Pipeline 選項變數，確保不會從環境變數繼承
@@ -507,6 +517,7 @@ parse_pipeline_args() {
     PIPELINE_ONLY_STAGE=""
     PIPELINE_MANUAL_MODE=false
     PIPELINE_SHELL_MODE=false
+    export KDE_PIPELINE_NO_TTY=false
     REMAINING_ARGS=()
 
     while [[ $# -gt 0 ]]; do
@@ -571,6 +582,10 @@ parse_pipeline_args() {
                 PIPELINE_MANUAL_MODE=true
                 shift
                 ;;
+            --no-tty)
+                export KDE_PIPELINE_NO_TTY=true
+                shift
+                ;;
             -h|--help)
                 show_pipeline_help
                 return 2
@@ -585,6 +600,12 @@ parse_pipeline_args() {
     # 驗證參數組合
     if [[ -n "${PIPELINE_ONLY_STAGE}" && (-n "${PIPELINE_FROM_STAGE}" || -n "${PIPELINE_TO_STAGE}") ]]; then
         echo "❌ 錯誤：--only 不能與 --from 或 --to 一起使用" >&2
+        return 1
+    fi
+
+    # --no-tty 與 --shell 互斥（shell 模式需要 TTY）
+    if [[ "${KDE_PIPELINE_NO_TTY}" == "true" && "${PIPELINE_SHELL_MODE}" == "true" ]]; then
+        echo "❌ 錯誤：--no-tty 不能與 --shell 一起使用（shell 模式需要 TTY）" >&2
         return 1
     fi
     
@@ -609,6 +630,7 @@ show_pipeline_help() {
     echo "  --only=<stage>    等號語法"
     echo "  -m, --manual      觸發 MANUAL_ONLY 階段並自動執行 script"
     echo "  -s, --shell       進入每個階段的互動式執行環境（除錯用，隱含 --manual）"
+    echo "  --no-tty          不使用 TTY 模式執行（供 AI agent / CI 等非互動式環境使用）"
     echo "  -h, --help        顯示此說明"
     echo ""
     echo "環境變數配置："
@@ -651,4 +673,8 @@ show_pipeline_help() {
     echo "  kde proj pipeline myapp              # lint 階段會被跳過"
     echo "  kde proj pipeline myapp --manual     # lint 階段會自動執行"
     echo "  kde proj pipeline myapp --shell      # 進入 lint 階段的互動式環境"
+    echo ""
+    echo "  # 非互動式模式（CI / AI agent 適用）"
+    echo "  kde proj pipeline myapp --no-tty"
+    echo "  kde proj pipeline myapp --only=build --no-tty"
 }
