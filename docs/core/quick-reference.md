@@ -134,6 +134,18 @@ kde project redeploy <project_name>
 kde proj redeploy <project_name>
 ```
 
+### 何時用 deploy，何時用 redeploy
+
+**直接用 `deploy`**（不需要先清除現有部署）：
+- 首次部署專案
+- 修改程式碼、image、env var、K8s manifest，且 `deploy.sh` 使用 `kubectl apply -f` 或 `helm upgrade`（支援就地更新）
+- 修改程式碼且使用 Kind volume mount + hot reload（watcher 自動重啟，甚至不需要重新 deploy）
+
+**用 `redeploy`**（= `undeploy` + `deploy`，需要先清除現有資源）：
+- 需要執行 `undeploy.sh` 才能乾淨重建的情況（例如 `deploy.sh` 使用 `kubectl create` 而非 `apply`）
+- StatefulSet 有不相容的欄位變更，`kubectl apply` 無法就地更新
+- 部署狀態損壞、資源卡住，需要完整重建
+
 ### 專案容器
 
 ```bash
@@ -800,7 +812,10 @@ nslookup kubernetes.default
 
 1. 使用 `kde project exec` 進入開發容器
 2. 在容器內進行開發和測試
-3. 使用 `kde project redeploy` 重新部署
+3. 重新部署：
+   - Hot reload 模式（Kind + volume mount）：修改程式碼後 `kde proj tail` 確認 watcher 接收到變更，不需要重新 deploy
+   - `deploy.sh` 用 `kubectl apply` 或 `helm upgrade`：直接 `kde proj deploy` 即可
+   - 需要清除現有部署再重建：`kde proj redeploy`
 4. 使用 `kde k9s` 或 `kde dashboard` 監控狀態
 
 ### 安全性建議
