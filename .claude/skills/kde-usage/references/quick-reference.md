@@ -123,7 +123,9 @@ kde proj deploy [project_name]
 kde project pipeline <project_name> --from <step>    # 從特定步驟開始
 kde project pipeline <project_name> --to <step>      # 執行到特定步驟
 kde project pipeline <project_name> --only <step>    # 只執行特定步驟
-kde project pipeline <project_name> --manual         # 執行手動步驟
+kde project pipeline <project_name> --manual         # 觸發 MANUAL_ONLY 階段並自動執行 script
+kde project pipeline <project_name> --shell          # 進入互動式環境除錯（隱含 --manual）
+kde project pipeline <project_name> --no-tty         # 不使用 TTY 模式執行（AI agent / CI 適用）
 
 # 解除部署
 kde project undeploy <project_name>
@@ -133,6 +135,18 @@ kde proj undeploy <project_name>
 kde project redeploy <project_name>
 kde proj redeploy <project_name>
 ```
+
+### 何時用 deploy，何時用 redeploy
+
+**直接用 `deploy`**（不需要先清除現有部署）：
+- 首次部署專案
+- 修改程式碼、image、env var、K8s manifest，且 `deploy.sh` 使用 `kubectl apply -f` 或 `helm upgrade`（支援就地更新）
+- 修改程式碼且使用 Kind volume mount + hot reload（watcher 自動重啟，甚至不需要重新 deploy）
+
+**用 `redeploy`**（= `undeploy` + `deploy`，需要先清除現有資源）：
+- 需要執行 `undeploy.sh` 才能乾淨重建的情況（例如 `deploy.sh` 使用 `kubectl create` 而非 `apply`）
+- StatefulSet 有不相容的欄位變更，`kubectl apply` 無法就地更新
+- 部署狀態損壞、資源卡住，需要完整重建
 
 ### 專案容器
 
@@ -150,6 +164,18 @@ kde project exec <project_name> dep
 # 指定端口
 kde project exec <project_name> develop 3000
 kde project exec <project_name> deploy 8080
+
+# 掛載額外 Volume（可重複使用 -v）
+kde proj exec <project_name> -v /local/path:/container/path
+kde proj exec <project_name> develop -v /path1:/path1 -v /path2:/path2
+kde proj exec <project_name> deploy 8080 -v /data:/data
+
+# 非互動式執行指令（不使用 TTY，適合 AI agent / 腳本）
+kde proj exec <project_name> --command "ls -la"
+kde proj exec <project_name> deploy --command "kubectl get pods"
+
+# 組合使用 -v 與 --command
+kde proj exec <project_name> --command "ls /data" -v /local/data:/data
 ```
 
 ### 專案監控
@@ -168,6 +194,7 @@ kde project pod <project_name>
 
 # 進入 Pod Shell
 kde project pod-exec <project_name> [pod_name]
+kde project pod-exec <project_name> <pod_name> --command "<script>"   # 非互動式執行指定指令（AI agent 適用）
 ```
 
 ## 開發工具
@@ -251,8 +278,15 @@ kde code-server -p 9090 -d
 ### 容器環境操作
 
 ```bash
-# 進入 K8s 節點容器
+# 進入 K8s 節點容器（互動式）
 kde exec [env_name]
+
+# 在 K8s 節點容器執行指定指令（非互動式，不使用 TTY）
+kde exec [env_name] --command "<command>"
+
+# 範例
+kde exec --command "kubectl get nodes"
+kde exec dev-env --command "kubectl get pods -A"
 
 # 載入 Docker 映像（Kind/K3D only）
 kde load-image <image> [env_name]
@@ -392,32 +426,38 @@ kde init
 # 2. 建立並啟動開發環境
 kde start dev-env kind
 
-# 3. 建立專案
+# 3. 建立專案（互動式，包含 git clone）
 kde project create myapp
 
-# 4. 從 Git 抓取程式碼
-kde project fetch myapp https://github.com/user/myapp.git main
-
-# 5. 部署專案
+# 4. 部署專案
 kde project deploy myapp
 
-# 6. 查看日誌
+# 5. 查看日誌
 kde project tail myapp
 ```
 
 ### 本地開發與除錯
 
+**方式 A：Hot Reload 模式（Kind + Volume Mount）**
+
+使用 local-path 將專案目錄掛載進 Pod，搭配 watch 模式（nodemon、air 等），
+修改程式碼即自動重啟，**不需要 redeploy**：
+
 ```bash
-# 1. 進入開發容器
-kde project exec myapp develop
+# 修改程式碼後確認 watcher 有接收到變更
+kde project tail myapp
+```
 
-# 2. 在容器中開發和測試
-# （編輯程式碼、執行測試等）
+**方式 B：Pipeline Deploy 模式**
 
-# 3. 重新部署
+```bash
+# deploy.sh 使用 kubectl apply -f 或 helm upgrade 時，直接 deploy 即可
+kde project deploy myapp
+
+# 需要先清除現有資源才能重建時，才用 redeploy（undeploy + deploy）
 kde project redeploy myapp
 
-# 4. 查看運行狀態
+# 查看運行狀態
 kde k9s
 ```
 
@@ -685,8 +725,12 @@ kubectl get events -A
 ### 網路除錯
 
 ```bash
-# 進入 K8s 節點容器
+# 進入 K8s 節點容器（互動式）
 kde exec
+
+# 非互動式執行指令（AI agent / 腳本）
+kde exec --command "kubectl get nodes"
+kde exec --command "ip addr"
 
 # 檢查網路配置
 ip addr
@@ -714,7 +758,10 @@ nslookup kubernetes.default
 
 1. 使用 `kde project exec` 進入開發容器
 2. 在容器內進行開發和測試
-3. 使用 `kde project redeploy` 重新部署
+3. 重新部署：
+   - Hot reload 模式（Kind + volume mount）：修改程式碼後 `kde proj tail` 確認 watcher 接收到變更，不需要重新 deploy
+   - `deploy.sh` 用 `kubectl apply` 或 `helm upgrade`：直接 `kde proj deploy` 即可
+   - 需要清除現有部署再重建：`kde proj redeploy`
 4. 使用 `kde k9s` 或 `kde dashboard` 監控狀態
 
 ### 安全性建議

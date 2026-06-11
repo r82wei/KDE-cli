@@ -555,6 +555,8 @@ kde use test-env
     - 需要模擬多節點/排程行為時：可額外新增 1–2 個 worker 節點，避免過多節點影響啟動速度與資源。
 - **自訂 kind-config**
     - 建議將自訂的 `kind-config.template.yaml` 放在專案或環境目錄並納入版本控制，團隊共用同一份模板以確保一致性。
+    - 每次 `kde start` 都會從模板重新渲染 `kind-config.yaml`，模板中的 `${VAR}` 可引用 `kde.env`、`k8s.env`、`.env` 的變數；修改設定後重啟環境即生效。
+    - 請勿直接修改生成的 `kind-config.yaml`（啟動時會被模板覆蓋），要調整配置請修改模板或環境變數檔。
 - **儲存與 Volume**
     - Volume 資料實際存放在 `environments/<env_name>/namespaces/<namespace>/<pvc-name>/`，可直接在宿主機上檢查與備份。
     - 在 Kind 環境中預先建立這些資料夾，可以方便預置資料或檢查 PVC 掛載內容。

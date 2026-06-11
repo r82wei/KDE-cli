@@ -108,14 +108,24 @@ get_env_type() {
 load_enviroment_env() {
     ENV_NAME=${1:-${CUR_ENV}}
     export ENV_PATH=${ENVIROMENTS_PATH}/${ENV_NAME}
+    # envsubst 只看得到 exported 的環境變數，必須用 set -a 載入，
+    # 否則渲染 kind/k3d config 模板時變數會被替換成空字串
     if [[ $(is_env_exist ${ENV_NAME}) == "true" ]]; then
+        set -a
         source ${ENV_PATH}/k8s.env
+        set +a
+    fi
+    # .env 存在就載入，不以 is_env_init 為條件：
+    # 重新初始化環境時 kubeconfig 尚未建立，但 port 等設定已存在 .env
+    if [[ $(is_env_init ${ENV_NAME}) == "true" && ! -f ${ENV_PATH}/.env ]]; then
+        touch ${ENV_PATH}/.env
+    fi
+    if [[ -f ${ENV_PATH}/.env ]]; then
+        set -a
+        source ${ENV_PATH}/.env
+        set +a
     fi
     if [[ $(is_env_init ${ENV_NAME}) == "true" ]]; then
-        if [[ ! -f ${ENV_PATH}/.env ]]; then
-            touch ${ENV_PATH}/.env
-        fi
-        source ${ENV_PATH}/.env
         export KUBECONFIG=${ENV_PATH}/${KUBE_CONFIG_DIR}/config
     fi
 }
