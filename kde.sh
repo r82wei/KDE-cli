@@ -108,11 +108,14 @@ source ${KDE_SCRIPTS_PATH}/utils/environment/k3d.sh
 source ${KDE_SCRIPTS_PATH}/utils/k9s.sh
 
 # 新增或載入 kde.env 環境變數設定檔
+# 使用 set -a 載入，讓 envsubst 渲染 config 模板時看得到 kde.env 的變數
 if [[ ! -f ${KDE_ENV_FILE} ]]; then
     echo "kde.env 不存在，請先執行 kde init 初始化環境"
     exit 1
 else
+    set -a
     source ${KDE_ENV_FILE}
+    set +a
 fi
 
 # 設定 KDE 的 debug 模式

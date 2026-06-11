@@ -294,6 +294,12 @@ bash -x init.sh  # -x 顯示執行過程
 - 系統會使用模板生成最終的 `k3d-config.yaml`，支援環境變數替換
 - 自訂模板可加入版控，生成的配置檔案建議加入 .gitignore
 
+**模板渲染規則（kind/k3d 共通）**：
+- 模板中的 `${VAR}` 可引用 `kde.env`、`environments/<env_name>/k8s.env`、`environments/<env_name>/.env` 中定義的變數
+- 每次 `kde start` 都會從模板重新渲染配置檔案，修改 `k8s.env`、`.env` 或模板後，重啟環境即生效
+- 請勿直接修改生成的 `kind-config.yaml` / `k3d-config.yaml`（啟動時會被模板覆蓋），要調整配置請修改模板或環境變數檔
+- 模板中未定義的 `${VAR}` 會被替換成空字串，請確認變數名稱與環境變數檔一致
+
 ---
 
 ## 遠端 K8S

@@ -493,6 +493,9 @@ kubectl expose deployment nginx --port=80
 - **資源與環境配置**
     - K3D 預設配置已經很輕量，適合在筆電、開發 VM 或 CI runner 上頻繁建立/刪除環境。
     - 如需高可用，可配置多個 server 節點；一般開發與測試場景通常 1 個 server 即可。
+- **自訂 k3d-config**
+    - 每次 `kde start` 都會從模板重新渲染 `k3d-config.yaml`，模板中的 `${VAR}` 可引用 `kde.env`、`k8s.env`、`.env` 的變數；修改設定後重啟環境即生效。
+    - 請勿直接修改生成的 `k3d-config.yaml`（啟動時會被模板覆蓋），要調整配置請修改 `k3d-config.template.yaml` 或環境變數檔。
 - **CI/CD 整合**
     - 在 CI pipeline 中使用 K3D 進行整合測試，可以將「建環境 → 測試 → 清理」控制在數分鐘內完成。
     - 測試完成後建議直接 `kde remove <env_name>` 釋放資源，避免留下長時間閒置的集群。

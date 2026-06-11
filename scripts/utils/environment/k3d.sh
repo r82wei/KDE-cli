@@ -73,11 +73,9 @@ init_k3d_config() {
 }
 
 start_k3d() {
-    # 避免環境資料夾位置發生變動的防禦性機制
-    # 如果 VOLUMES_PATH 不等于 ENV_PATH/${VOLUMES_DIR}，則重新初始化 k3d-config.yaml
-    if [[ ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
-        init_k3d_config
-    fi
+    # 每次啟動都重新渲染 k3d-config.yaml，
+    # 讓 k8s.env / .env / 模板的修改在重啟後生效（手動修改 k3d-config.yaml 會被覆蓋，請改模板）
+    init_k3d_config
 
     # Ensure Docker network
     if [ -z "$( docker network ls | awk '{print $2}' | grep ^$DOCKER_NETWORK$ )" ]; then

@@ -73,12 +73,10 @@ init_kind_config() {
 }
 
 start_kind() {
-    # 避免環境資料夾位置發生變動的防禦性機制
-    # 如果 VOLUMES_PATH 不等于 ENV_PATH/${VOLUMES_DIR}，則重新初始化 kind-config.yaml
-    if [[ ${VOLUMES_PATH} != ${ENV_PATH}/${VOLUMES_DIR} ]]; then
-        init_kind_config
-    fi
-    
+    # 每次啟動都重新渲染 kind-config.yaml，
+    # 讓 k8s.env / .env / 模板的修改在重啟後生效（手動修改 kind-config.yaml 會被覆蓋，請改模板）
+    init_kind_config
+
     # Ensure Docker network
     if [ -z "$( docker network ls | awk '{print $2}' | grep ^$DOCKER_NETWORK$ )" ]; then
         docker network create $DOCKER_NETWORK
