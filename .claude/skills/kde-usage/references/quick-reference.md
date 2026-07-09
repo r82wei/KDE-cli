@@ -271,8 +271,24 @@ kde code-server --port <port>
 kde code-server -d
 kde code-server --daemon
 
+# 指定容器名稱（同時啟動多個實例時用來區分，預設 code-server）
+kde code-server -n <name>
+kde code-server --name <name>
+
+# 指定掛載目錄（預設當前路徑）與開啟的資料夾（預設同掛載目錄）
+kde code-server -v <mount_dir>
+kde code-server -v <mount_dir> -w <open_dir>
+
 # 組合使用
 kde code-server -p 9090 -d
+
+# 同時啟動多個實例（用不同的 port 與 -n 名稱）
+kde code-server -d -p 8080 -n code-server-a
+kde code-server -d -p 8081 -n code-server-b
+
+# 只掛載/開啟某個 project 目錄（隔離，不掛整個 workspace）
+cd environments/dev/namespaces/api && kde code-server -d   # 預設掛當前路徑
+kde code-server -d -v ./environments/dev/namespaces/api    # 明確指定
 ```
 
 ### 容器環境操作
