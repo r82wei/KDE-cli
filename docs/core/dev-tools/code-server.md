@@ -42,6 +42,9 @@ kde code-server [options]
 | `--help` | `-h` | 顯示說明 | - |
 | `--daemon` | `-d` | 在背景執行 | false（前景執行） |
 | `--port` | `-p` | 指定 code-server 的 port | 8080 |
+| `--name` | `-n` | 指定容器名稱（同時啟動多個實例時用來區分） | code-server |
+| `--volume` | `-v` | 指定掛載到 container 的目錄 | 當前路徑（PWD） |
+| `--workdir` | `-w` | 指定 code-server 開啟的資料夾（必須位於 `--volume` 底下） | 與 `--volume` 相同 |
 
 ### 基本使用方式
 
@@ -136,14 +139,15 @@ docker rm code-server
 
 ```bash
 # 終端機 1：專案 A 的開發環境
-kde code-server -d -p 8080
+kde code-server -d -p 8080 -n code-server-a
 # 存取：http://localhost:8080
 
 # 終端機 2：專案 B 的開發環境
-kde code-server -d -p 8081
+kde code-server -d -p 8081 -n code-server-b
 # 存取：http://localhost:8081
 
-# 注意：需要使用不同的容器名稱，或先停止前一個
+# 使用 -n 指定不同的容器名稱即可同時啟動多個實例；
+# 每個實例的設定會各自儲存在 ${KDE_PATH}/.code-server/<name>（例如 .code-server/code-server-a、.code-server/code-server-b）
 ```
 
 ### 範例 4：與 KDE 專案整合
@@ -210,7 +214,7 @@ kde code-server -d
 # - Python
 # - Go
 
-# 4. 擴充功能會儲存在 ${KDE_PATH}/.code-server/
+# 4. 擴充功能會儲存在 ${KDE_PATH}/.code-server/<容器名稱>/（預設 .code-server/code-server/）
 # 下次啟動時會自動載入
 ```
 
@@ -334,14 +338,14 @@ Code Server 容器包含以下配置：
 
 ```bash
 # 容器設定
---name code-server                    # 容器名稱
---workdir ${KDE_PATH}                 # 工作目錄（KDE workspace）
+--name ${NAME}                        # 容器名稱（-n 指定，預設 code-server）
+--workdir ${OPEN_PATH}                # 工作目錄 / 開啟的資料夾（-w 指定，預設同 --volume）
 -p ${PORT}:8080                       # 端口對應（預設 8080）
 -e "PASSWORD=${PASSWORD}"             # 登入密碼
 
 # Volume 掛載
--v "${KDE_PATH}/.code-server:/home/coder"           # VSCode 配置目錄
--v "${KDE_PATH}:${KDE_PATH}"                        # KDE workspace（可編輯所有專案）
+-v "${KDE_PATH}/.code-server/${NAME}:/home/coder"   # VSCode 配置目錄（集中收納在 .code-server/<容器名稱> 底下）
+-v "${MOUNT_PATH}:${MOUNT_PATH}"                    # 掛載的目錄（-v 指定，預設當前路徑 PWD）
 -v /var/run/docker.sock:/var/run/docker.sock:ro    # Docker socket（唯讀）
 
 # 使用者權限
@@ -356,15 +360,18 @@ Code Server 容器包含以下配置：
 
 Code Server 的配置和擴充功能儲存在：
 
+每個實例的配置依容器名稱（`-n`，預設 `code-server`）集中收納在 `.code-server/<容器名稱>/` 底下：
+
 ```
 ${KDE_PATH}/.code-server/
-├── data/                    # VSCode 資料
-│   ├── User/                # 使用者設定
-│   │   ├── settings.json    # VSCode 設定
-│   │   ├── keybindings.json # 快捷鍵設定
-│   │   └── snippets/        # 程式碼片段
-│   └── extensions/          # 擴充功能
-└── .config/                 # Code Server 配置
+└── <容器名稱>/              # 例如 code-server（預設）、code-server-api
+    ├── data/                # VSCode 資料
+    │   ├── User/            # 使用者設定
+    │   │   ├── settings.json    # VSCode 設定
+    │   │   ├── keybindings.json # 快捷鍵設定
+    │   │   └── snippets/        # 程式碼片段
+    │   └── extensions/      # 擴充功能
+    └── .config/             # Code Server 配置
 ```
 
 ### 持久化配置
@@ -795,18 +802,11 @@ chmod +x install-extensions.sh
 
 # 使用者 1
 kde code-server -d -p 8080
-# 配置儲存在：${KDE_PATH}/.code-server
+# 容器名稱：code-server，配置儲存在：${KDE_PATH}/.code-server/code-server
 
-# 使用者 2（需要先停止 code-server 或使用不同容器名稱）
-# 手動啟動並指定不同的配置目錄
-docker run -it -d \
-    --name code-server-user2 \
-    -p 8081:8080 \
-    -e "PASSWORD=user2password" \
-    -v "${KDE_PATH}/.code-server-user2:/home/coder" \
-    -v "${KDE_PATH}:${KDE_PATH}" \
-    ${CODE_SERVER_IMAGE} \
-    ${KDE_PATH}
+# 使用者 2：用 -n 指定不同的容器名稱即可，配置會自動獨立
+kde code-server -d -p 8081 -n code-server-user2
+# 容器名稱：code-server-user2，配置儲存在：${KDE_PATH}/.code-server/code-server-user2
 ```
 
 ## 與本地 VSCode 比較
