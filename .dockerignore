@@ -1,0 +1,9 @@
+# 此檔僅在以 repo 根目錄為 build context 時生效(目前為 kde-code-server image)。
+# 這裡只「排除」明顯不需要進 image 的東西,新增要安裝的檔案/目錄不必在此登記。
+.git
+.gitignore
+dockerfiles
+examples
+test
+test.sh
+*.md

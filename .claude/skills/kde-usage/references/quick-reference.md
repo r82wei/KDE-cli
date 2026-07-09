@@ -291,6 +291,9 @@ cd environments/dev/namespaces/api && kde code-server -d   # 預設掛當前路�
 kde code-server -d -v ./environments/dev/namespaces/api    # 明確指定
 ```
 
+> 註：`kde code-server` 會自動把主機當前的 kde-cli 掛載進容器，容器內 `kde` 版本與主機一致。
+> 若主機未安裝 kde-cli，也可直接 `docker run r82wei/kde-code-server:latest`（用 image 內建版本），詳見 README 的「免安裝」章節。
+
 ### 容器環境操作
 
 ```bash

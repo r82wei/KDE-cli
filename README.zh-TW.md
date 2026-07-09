@@ -145,6 +145,42 @@ sudo ./local-install.sh
 kde --version
 ```
 
+#### 方式 3：免安裝 —— 用 Docker 直接開瀏覽器 IDE（code-server）
+
+如果不想在主機上安裝任何東西,可以直接執行 `kde-code-server` image。這是一個
+**已預裝 `kde-cli`** 的瀏覽器版 VSCode（code-server）,主機只要有 Docker,
+就能在 IDE 裡使用完整的 `kde` 工具鏈。
+
+```bash
+# 建立一個工作目錄（放你的程式碼與 IDE 設定）
+mkdir -p kde-workspace/.code-server && cd kde-workspace
+
+docker run -it --rm \
+  --name kde-code-server \
+  -p 8080:8080 \
+  -e PASSWORD=changeme \
+  --group-add "$(stat -c '%g' /var/run/docker.sock)" \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v "$PWD:$PWD" -w "$PWD" \
+  -v "$PWD/.code-server:/home/coder" \
+  -u "$(id -u):$(id -g)" \
+  -e DOCKER_USER="$USER" \
+  r82wei/kde-code-server:latest \
+  "$PWD"
+```
+
+接著打開 <http://localhost:8080>（密碼:`changeme`）。在 IDE 的終端機裡,
+`kde` 即可直接使用:
+
+```bash
+kde --version
+```
+
+> **說明**:image 內含 Docker CLI 並掛載主機的 Docker socket,因此 `kde` 可以直接
+> 在 IDE 裡建立環境、執行 pipeline（Docker outside of Docker)。若主機上已經安裝
+> `kde-cli`,建議改用 `kde code-server` —— 它會把主機的 `kde-cli` 掛載進容器,
+> 版本永遠與主機一致。
+
 ### 5 分鐘快速體驗
 
 ```bash

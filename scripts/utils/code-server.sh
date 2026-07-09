@@ -45,6 +45,7 @@ start_code_server() {
         -e "PASSWORD=${PASSWORD}" \
         -v "${CONFIG_DIR}:/home/coder" \
         -v "${MOUNT_PATH}:${MOUNT_PATH}" \
+        -v "${KDE_CLI_PATH}:/usr/local/lib/kde:ro" \
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -u "$(id -u):$(id -g)" \
         -e "DOCKER_USER=$USER" \
@@ -65,6 +66,7 @@ start_code_server() {
         -e "PASSWORD=${PASSWORD}" \
         -v "${CONFIG_DIR}:/home/coder" \
         -v "${MOUNT_PATH}:${MOUNT_PATH}" \
+        -v "${KDE_CLI_PATH}:/usr/local/lib/kde:ro" \
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -u "$(id -u):$(id -g)" \
         -e "DOCKER_USER=$USER" \
