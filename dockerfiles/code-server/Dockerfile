@@ -2,8 +2,6 @@ FROM codercom/code-server:latest
 
 USER root
 
-ARG KDE_CLI_VERSION
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -19,12 +17,10 @@ RUN chmod a+r /etc/apt/keyrings/docker.gpg
 RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" > /etc/apt/sources.list.d/docker.list
 RUN apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && rm -rf /var/lib/apt/lists/*
 
-# Install kde-cli
-RUN set -eux; \
-    git clone -b ${KDE_CLI_VERSION} https://github.com/r82wei/KDE-cli.git; \
-    cd KDE-cli; \
-    ./install.sh; \
-    cd ..; \
-    rm -rf KDE-cli
+# 安裝 kde-cli:直接把 build context(repo 根目錄)整包複製進來,交給 local-install.sh 安裝,
+# 不再對外 clone。要裝哪些東西完全由 local-install.sh 決定(唯一真實來源),Dockerfile 不需跟著改。
+# 情境 1(獨立啟動)用這份 baked-in;情境 2(kde code-server)會以 volume 覆蓋掉。
+COPY . /tmp/kde-src/
+RUN cd /tmp/kde-src && bash local-install.sh && cd / && rm -rf /tmp/kde-src
 
 USER coder

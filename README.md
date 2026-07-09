@@ -145,6 +145,43 @@ sudo ./local-install.sh
 kde --version
 ```
 
+#### Method 3: No Installation — Browser IDE via Docker (code-server)
+
+If you don't want to install anything on the host, run the `kde-code-server` image
+directly. It's a browser-based VSCode (code-server) with `kde-cli` **pre-installed**,
+so you get the full `kde` toolchain inside the IDE with only Docker on the host.
+
+```bash
+# Create a workspace directory (used for your code and the IDE's config)
+mkdir -p kde-workspace/.code-server && cd kde-workspace
+
+docker run -it --rm \
+  --name kde-code-server \
+  -p 8080:8080 \
+  -e PASSWORD=changeme \
+  --group-add "$(stat -c '%g' /var/run/docker.sock)" \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v "$PWD:$PWD" -w "$PWD" \
+  -v "$PWD/.code-server:/home/coder" \
+  -u "$(id -u):$(id -g)" \
+  -e DOCKER_USER="$USER" \
+  r82wei/kde-code-server:latest \
+  "$PWD"
+```
+
+Then open <http://localhost:8080> (password: `changeme`). In the IDE terminal,
+`kde` is ready to use:
+
+```bash
+kde --version
+```
+
+> **Note**: The image bundles Docker CLI and mounts the host's Docker socket, so
+> `kde` can create environments and run pipelines from inside the IDE (Docker outside
+> of Docker). If you already have `kde-cli` installed on the host, prefer
+> `kde code-server` instead — it mounts your host's `kde-cli` into the container so the
+> version always matches.
+
 ### 5-Minute Quick Experience
 
 ```bash

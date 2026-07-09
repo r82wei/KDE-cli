@@ -15,6 +15,7 @@ Code Server 是一個在瀏覽器中運行的 VSCode 開發環境。它讓您可
 - **環境一致性**：所有開發都在容器內進行，確保環境一致
 - **Docker 整合**：自動掛載 Docker socket，可以在 Code Server 內使用 Docker
 - **專案整合**：自動掛載 KDE workspace，可以直接編輯所有專案
+- **kde-cli 內建**：容器內已預裝 `kde`，可直接在 IDE 終端機操作 KDE-CLI
 - **配置持久化**：設定和擴充功能儲存在本地，重啟後保留
 
 ### 使用場景
@@ -26,6 +27,13 @@ Code Server 是一個在瀏覽器中運行的 VSCode 開發環境。它讓您可
 | **輕量級裝置** | 在 iPad 或低規格電腦上開發 | 運算在伺服器端 |
 | **多環境切換** | 快速在不同專案間切換 | 獨立的容器環境 |
 | **臨時開發** | 快速啟動臨時開發環境 | 用完即刪、不污染本地 |
+
+### 容器內的 kde-cli
+
+Code Server image 已預裝 `kde-cli`，並依啟動方式決定使用哪一份:
+
+- **透過 `kde code-server` 啟動**：自動把「主機當前安裝的 kde-cli」以 volume 掛載進容器，覆蓋 image 內建的版本，確保容器內 `kde` 與主機**版本一致**（在主機上更新 kde-cli 後，重啟 code-server 即同步）。
+- **直接 `docker run` image 啟動**（主機未安裝 kde-cli）：使用 image 內建（baked-in）的 kde-cli。啟動指令與說明請見 README 的「免安裝」章節。
 
 ## 使用說明
 
