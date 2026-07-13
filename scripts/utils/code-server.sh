@@ -18,7 +18,7 @@ start_code_server() {
     local -a DIR_MOUNTS=()   # 其中的目錄型掛載
     local m abs
     for m in "${RAW_MOUNTS[@]}"; do
-        abs=$(readlink -f "$m")
+        abs=$(readlink -f "$m" 2>/dev/null) || true
         if [[ ! -e "$abs" ]]; then
             echo "❌ 掛載目標不存在：$m"
             return 1
@@ -83,7 +83,7 @@ start_code_server() {
     done
 
     local DOCKER_SOCK_GID
-    DOCKER_SOCK_GID=$( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock 2>/dev/null) )
+    DOCKER_SOCK_GID=$( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock 2>/dev/null) ) || true
 
     if [[ "${DAEMON}" == "true" ]]; then
         docker run -it -d \
