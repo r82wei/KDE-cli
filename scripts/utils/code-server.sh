@@ -20,6 +20,11 @@ start_code_server() {
     local -a MOUNT_SPECS=()  # 顯示用的 src:dst[:opt] 字串
     local raw src dst opt abs_src nfields
     for raw in "${RAW_MOUNTS[@]}"; do
+        # 結尾多餘的冒號代表空欄位（read 會吃掉尾端空欄位，需另外擋）
+        if [[ "$raw" == *: ]]; then
+            echo "❌ 掛載格式錯誤（結尾多餘的冒號或空欄位）：$raw（應為 src[:dst[:ro|rw]]）"
+            return 1
+        fi
         # 以 : 切分欄位（here-string 會補上換行，read 回傳 0，set -e 安全）
         local -a parts=()
         IFS=':' read -ra parts <<< "$raw"
@@ -43,9 +48,12 @@ start_code_server() {
             return 1
         fi
 
-        # dst：未給定則等於 src 絕對路徑；給定則必須是絕對路徑
-        if [[ -z "$dst" ]]; then
+        # dst：欄位省略則等於 src 絕對路徑；有給定則必須是非空絕對路徑
+        if [[ ${nfields} -eq 1 ]]; then
             dst=$abs_src
+        elif [[ -z "$dst" ]]; then
+            echo "❌ 掛載目的路徑（container 內）不可為空：$raw"
+            return 1
         elif [[ "$dst" != /* ]]; then
             echo "❌ 掛載目的路徑（container 內）必須是絕對路徑：$dst"
             return 1
@@ -57,8 +65,12 @@ start_code_server() {
             return 1
         fi
 
-        # 以 dst 去重（同一 container 路徑只掛一次）
-        if [[ " ${DSTS[*]} " == *" $dst "* ]]; then
+        # 以 dst 去重（同一 container 路徑只掛一次）；逐一字面比對，避免空白/萬用字元誤判
+        local dd dup=false
+        for dd in "${DSTS[@]}"; do
+            if [[ "$dd" == "$dst" ]]; then dup=true; break; fi
+        done
+        if [[ "$dup" == "true" ]]; then
             continue
         fi
         DSTS+=("$dst")
