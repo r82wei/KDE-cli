@@ -130,6 +130,21 @@ cnt=$(echo "$out" | grep -o -- "-v [^ ]*:/mnt/x" | wc -l)
 [[ "$cnt" -eq 1 ]]
 check "以 dst 去重（同一 container 路徑只掛一次）" $?
 
+# 測試 17：明確給定但為空的 dst（src:）時報錯
+if start_code_server 8080 false cs-17 "" "${KDE_PATH}/dir-a:" >/dev/null 2>&1; then r=1; else r=0; fi
+check "空的 dst 欄位報錯" $r
+
+# 測試 18：rw 選項也能傳給 docker
+out=$(start_code_server 8080 false cs-18 "" "${KDE_PATH}/dir-a:/mnt/a:rw" 2>&1)
+echo "$out" | grep -q -- "-v ${KDE_PATH}/dir-a:/mnt/a:rw"
+check "src:dst:rw 形式帶讀寫選項" $?
+
+# 測試 19：相對路徑 -w 的向後相容（plain-form 下 dst=host 絕對路徑）
+mkdir -p "${KDE_PATH}/dir-a/sub"
+( cd "${KDE_PATH}/dir-a" && out=$(start_code_server 8080 false cs-19 "./sub" "${KDE_PATH}/dir-a" 2>&1)
+  echo "$out" | grep -q -- "--workdir ${KDE_PATH}/dir-a/sub" )
+check "相對路徑 -w 向後相容" $?
+
 rm -rf "${KDE_PATH}"
 
 echo ""
