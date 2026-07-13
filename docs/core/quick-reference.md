@@ -248,9 +248,13 @@ kde code-server --daemon
 kde code-server -n <name>
 kde code-server --name <name>
 
-# 指定掛載目錄（預設當前路徑）與開啟的資料夾（預設同掛載目錄）
+# 指定掛載目錄/檔案（預設當前路徑）與開啟的資料夾（預設第一個目錄型掛載）
 kde code-server -v <mount_dir>
 kde code-server -v <mount_dir> -w <open_dir>
+
+# -v 可重複指定多次，掛載多個資料夾或單一檔案
+kde code-server -v ~/proj-a -v ~/proj-b -v ~/.gitconfig
+# 未指定 -w 時開啟第一個「目錄型」掛載（此例為 ~/proj-a）
 
 # 組合使用
 kde code-server -p 9090 -d
