@@ -73,3 +73,38 @@
 
 - 既有用法 `kde code-server`（無參數）與 `kde code-server -v <dir> -w <dir>` 行為不變。
 - 只擴充 `-v` 的重複與檔案能力，不移除任何現有旗標。
+
+---
+
+## 擴充（2026-07-13 增補）：`-v` 支援 `src[:dst[:ro|rw]]` 顯式對映
+
+### 背景
+初版 `-v` 只支援單欄位（host 路徑 = container 路徑）。擴充後 `-v` 值可用 docker 風格的 `src:dst` 語法，讓 container 內掛載路徑與 host 不同，並可加 `:ro`/`:rw`。例：
+
+```
+kde code-server -v ./aio -v .claude:/home/coder/.claude:ro
+```
+
+### 解析規則（每個 `-v` 值以 `:` 切分欄位）
+| 欄位數 | 範例 | 解讀 |
+|---|---|---|
+| 1 | `./aio` | `src=./aio`，`dst=` src 絕對路徑（host=container，維持初版行為） |
+| 2 | `.claude:/home/coder/.claude` | `src=.claude`，`dst=/home/coder/.claude` |
+| 3 | `.claude:/home/coder/.claude:ro` | 同上，`opt=ro` |
+| >3 | — | 報錯並中止 |
+
+### 各欄位處理
+- **src**：`readlink -f` 解析為絕對 host 路徑（相對路徑對使用者 CWD 解析）；必須存在，且為目錄或一般檔案，否則報錯。
+- **dst**：顯式給定時原樣採用為 container 路徑，且必須為絕對路徑（以 `/` 開頭），否則報錯。未給定時 `dst = src 絕對路徑`。
+- **opt**：僅允許 `ro` 或 `rw`，其他值報錯。
+- docker 參數：`-v "${src}:${dst}"`，有 opt 時 `-v "${src}:${dst}:${opt}"`。
+
+### workdir 與去重（覆寫初版對應規則）
+- 每個掛載記為 `(src_abs, dst, is_dir)`，`is_dir` 由 **host src** 判定。
+- 預設 `--workdir` = 第一個「目錄型」掛載的 **dst**（container 路徑）。全為檔案且未給 `-w` → 報錯。
+- **去重以 dst（container 路徑）為鍵**：同一 container 路徑只掛一次（避免 docker duplicate target）。相同的單欄位重複 `-v` 仍會被去重（dst 相同）。
+- `-w/--workdir`：以 `/` 開頭 → 視為 container 路徑原樣採用；否則 `readlink -f`（保留相對路徑舊行為）。驗證其須等於或位於某個掛載 dst 底下。因 workdir 可能是 container-only 路徑，不再強制其於 host 端存在。
+
+### 相容性（擴充）
+- 單欄位 `-v <dir>` 等同 `src` 且 `dst=src 絕對路徑`，與初版完全一致。
+- 既有 `-v <dir> -w <subdir>`：plain-form 下 dst = host 絕對路徑，`-w` 經上述規則解析後仍落在該 dst 底下，行為不變。
