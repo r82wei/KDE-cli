@@ -18,6 +18,9 @@ mkdir -p "${KDE_PATH}/cli"
 mkdir -p "${KDE_PATH}/dir-a" "${KDE_PATH}/dir-b"
 touch "${KDE_PATH}/file-c.conf"
 
+# 準備給 $PWD 預設掛載測試用的目錄
+mkdir -p "${KDE_PATH}/pwd-test"
+
 source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/code-server.sh"
 
 # stub：攔截 docker run，ps 回傳空（無同名容器），stat 回傳固定 gid
@@ -65,6 +68,31 @@ check "重複掛載路徑去重" $?
 # 測試 6：全部為檔案且未給 workdir 時報錯
 if start_code_server 8080 false cs-6 "" "${KDE_PATH}/file-c.conf" >/dev/null 2>&1; then r=1; else r=0; fi
 check "全為檔案且無 workdir 時報錯" $r
+
+# 測試 7（FIX 1 回歸測試）：中間路徑不存在時，readlink -f 失敗也不應讓整個
+# 程序在 set -e 下靜默中止，而是要落到「掛載目標不存在」的檢查並印出錯誤
+# 注意：不可寫成 out=$(start_code_server ...) 這種「純賦值」形式，因為
+# start_code_server 預期回傳非 0，該寫法在 set -e 下會直接中止整支測試腳本；
+# 改用 if/then/else（其在 set -e 下不會觸發中止）並把輸出導向暫存檔案檢查。
+test7_out="${KDE_PATH}/test7.out"
+if start_code_server 8080 false cs-7 "" "${KDE_PATH}/no-such-dir/app" >"${test7_out}" 2>&1; then
+    ok7=false
+else
+    ok7=true
+fi
+grep -q "掛載目標不存在" "${test7_out}" || ok7=false
+[[ "${ok7}" == "true" ]]
+check "中間路徑不存在時不會靜默中止，且回報錯誤" $?
+
+# 測試 8：未給任何掛載參數時，預設掛載 $PWD 且 workdir 為 $PWD
+( cd "${KDE_PATH}/pwd-test" && out=$(start_code_server 8080 false cs-8 "" 2>&1)
+  echo "$out" | grep -q -- "-v ${PWD}:${PWD}" \
+    && echo "$out" | grep -q -- "--workdir ${PWD}" )
+check "未給掛載目標時預設掛載並開啟 \$PWD" $?
+
+# 測試 9：明確指定的開啟資料夾不在任何目錄型掛載底下時報錯
+if start_code_server 8080 false cs-9 "${KDE_PATH}/dir-b" "${KDE_PATH}/dir-a" >/dev/null 2>&1; then r=1; else r=0; fi
+check "開啟資料夾不在掛載目錄底下時報錯" $r
 
 rm -rf "${KDE_PATH}"
 
