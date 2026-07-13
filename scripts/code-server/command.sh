@@ -11,7 +11,8 @@ show_help() {
     echo "  -p, --port          指定 code-server 的 port (預設為 8080)"
     echo "  -n, --name          指定 code-server 的容器名稱 (預設為 code-server，可用來同時啟動多個實例)"
     echo "  -v, --volume        指定掛載到 container 的目錄或檔案 (可重複指定多次，預設為當前路徑)"
-    echo "  -w, --workdir       指定 code-server 開啟的資料夾 (預設與 --volume 相同，必須位於掛載目錄底下)"
+    echo "                      格式 src[:dst[:ro|rw]]，例如 ./aio 或 .claude:/home/coder/.claude:ro"
+    echo "  -w, --workdir       指定 code-server 開啟的資料夾 (container 路徑，預設為第一個目錄型掛載，須位於某個掛載底下)"
     echo "  -h, --help          顯示此幫助訊息"
 }
 

@@ -283,6 +283,11 @@ kde code-server -v <mount_dir> -w <open_dir>
 kde code-server -v ~/proj-a -v ~/proj-b -v ~/.gitconfig
 # 未指定 -w 時開啟第一個「目錄型」掛載（此例為 ~/proj-a）
 
+# -v 支援 docker 風格的 src[:dst[:ro|rw]]：dst 指定 container 內掛載路徑，可加 :ro/:rw
+# src 未帶 dst 時 container 路徑 = host 路徑；dst 必須是絕對路徑
+kde code-server -v ./aio -v .claude:/home/coder/.claude:ro
+# 此例開啟第一個目錄型掛載 ./aio 的 container 路徑
+
 # 組合使用
 kde code-server -p 9090 -d
 

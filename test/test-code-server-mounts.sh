@@ -80,7 +80,7 @@ if start_code_server 8080 false cs-7 "" "${KDE_PATH}/no-such-dir/app" >"${test7_
 else
     ok7=true
 fi
-grep -q "掛載目標不存在" "${test7_out}" || ok7=false
+grep -q "掛載來源不存在" "${test7_out}" || ok7=false
 [[ "${ok7}" == "true" ]]
 check "中間路徑不存在時不會靜默中止，且回報錯誤" $?
 
@@ -93,6 +93,42 @@ check "未給掛載目標時預設掛載並開啟 \$PWD" $?
 # 測試 9：明確指定的開啟資料夾不在任何目錄型掛載底下時報錯
 if start_code_server 8080 false cs-9 "${KDE_PATH}/dir-b" "${KDE_PATH}/dir-a" >/dev/null 2>&1; then r=1; else r=0; fi
 check "開啟資料夾不在掛載目錄底下時報錯" $r
+
+# ===== src:dst[:ro|rw] 顯式對映擴充 =====
+
+# 測試 10：src:dst 形式，container 路徑與 host 不同
+out=$(start_code_server 8080 false cs-10 "" "${KDE_PATH}/dir-a:/mnt/a" 2>&1)
+echo "$out" | grep -q -- "-v ${KDE_PATH}/dir-a:/mnt/a" \
+  && echo "$out" | grep -q -- "--workdir /mnt/a"
+check "src:dst 形式掛載並以 dst 為 workdir" $?
+
+# 測試 11：src:dst:ro 形式，唯讀選項要傳給 docker
+out=$(start_code_server 8080 false cs-11 "" "${KDE_PATH}/dir-a" "${KDE_PATH}/file-c.conf:/etc/x.conf:ro" 2>&1)
+echo "$out" | grep -q -- "-v ${KDE_PATH}/file-c.conf:/etc/x.conf:ro"
+check "src:dst:ro 形式帶唯讀選項" $?
+
+# 測試 12：dst 非絕對路徑時報錯
+if start_code_server 8080 false cs-12 "" "${KDE_PATH}/dir-a:relative" >/dev/null 2>&1; then r=1; else r=0; fi
+check "dst 非絕對路徑報錯" $r
+
+# 測試 13：無效 opt（非 ro/rw）時報錯
+if start_code_server 8080 false cs-13 "" "${KDE_PATH}/dir-a:/mnt/a:xx" >/dev/null 2>&1; then r=1; else r=0; fi
+check "無效掛載選項報錯" $r
+
+# 測試 14：欄位過多（>3）時報錯
+if start_code_server 8080 false cs-14 "" "${KDE_PATH}/dir-a:/a:/b:ro" >/dev/null 2>&1; then r=1; else r=0; fi
+check "掛載欄位過多報錯" $r
+
+# 測試 15：混合檔案(帶 dst)與目錄(帶 dst)時，預設 workdir 為第一個目錄型掛載的 dst
+out=$(start_code_server 8080 false cs-15 "" "${KDE_PATH}/file-c.conf:/etc/c" "${KDE_PATH}/dir-b:/work" 2>&1)
+echo "$out" | grep -q -- "--workdir /work"
+check "預設 workdir 為第一個目錄型掛載的 dst" $?
+
+# 測試 16：以 dst 去重（兩個不同 src 對映同一 container 路徑只掛一次）
+out=$(start_code_server 8080 false cs-16 "" "${KDE_PATH}/dir-a:/mnt/x" "${KDE_PATH}/dir-b:/mnt/x" 2>&1)
+cnt=$(echo "$out" | grep -o -- "-v [^ ]*:/mnt/x" | wc -l)
+[[ "$cnt" -eq 1 ]]
+check "以 dst 去重（同一 container 路徑只掛一次）" $?
 
 rm -rf "${KDE_PATH}"
 

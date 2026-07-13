@@ -13,49 +13,91 @@ start_code_server() {
         RAW_MOUNTS=("$PWD")
     fi
 
-    # 解析、驗證、去重
-    local -a MOUNTS=()       # 全部掛載目標（絕對路徑）
-    local -a DIR_MOUNTS=()   # 其中的目錄型掛載
-    local m abs
-    for m in "${RAW_MOUNTS[@]}"; do
-        abs=$(readlink -f "$m" 2>/dev/null) || true
-        if [[ ! -e "$abs" ]]; then
-            echo "❌ 掛載目標不存在：$m"
+    # 解析每個掛載值：支援 src、src:dst、src:dst:ro|rw
+    local -a DSTS=()         # 每個掛載的 container 路徑（dst），作為去重與 workdir 依據
+    local -a DIR_DSTS=()     # 其中 host src 為目錄者的 dst
+    local -a MOUNT_ARGS=()   # 傳給 docker 的 -v 參數
+    local -a MOUNT_SPECS=()  # 顯示用的 src:dst[:opt] 字串
+    local raw src dst opt abs_src nfields
+    for raw in "${RAW_MOUNTS[@]}"; do
+        # 以 : 切分欄位（here-string 會補上換行，read 回傳 0，set -e 安全）
+        local -a parts=()
+        IFS=':' read -ra parts <<< "$raw"
+        nfields=${#parts[@]}
+        if [[ ${nfields} -gt 3 ]]; then
+            echo "❌ 掛載格式錯誤（欄位過多）：$raw（應為 src[:dst[:ro|rw]]）"
             return 1
         fi
-        if [[ ! -d "$abs" && ! -f "$abs" ]]; then
-            echo "❌ 掛載目標必須是目錄或檔案：$m"
+        src=${parts[0]}
+        dst=${parts[1]:-}
+        opt=${parts[2]:-}
+
+        # src 解析為絕對 host 路徑並驗證
+        abs_src=$(readlink -f "$src" 2>/dev/null) || true
+        if [[ ! -e "$abs_src" ]]; then
+            echo "❌ 掛載來源不存在：$src"
             return 1
         fi
-        # 去重（相同絕對路徑只掛一次）
-        if [[ " ${MOUNTS[*]} " == *" $abs "* ]]; then
+        if [[ ! -d "$abs_src" && ! -f "$abs_src" ]]; then
+            echo "❌ 掛載來源必須是目錄或檔案：$src"
+            return 1
+        fi
+
+        # dst：未給定則等於 src 絕對路徑；給定則必須是絕對路徑
+        if [[ -z "$dst" ]]; then
+            dst=$abs_src
+        elif [[ "$dst" != /* ]]; then
+            echo "❌ 掛載目的路徑（container 內）必須是絕對路徑：$dst"
+            return 1
+        fi
+
+        # opt：僅允許 ro / rw
+        if [[ -n "$opt" && "$opt" != "ro" && "$opt" != "rw" ]]; then
+            echo "❌ 掛載選項只能是 ro 或 rw：$opt"
+            return 1
+        fi
+
+        # 以 dst 去重（同一 container 路徑只掛一次）
+        if [[ " ${DSTS[*]} " == *" $dst "* ]]; then
             continue
         fi
-        MOUNTS+=("$abs")
-        if [[ -d "$abs" ]]; then
-            DIR_MOUNTS+=("$abs")
+        DSTS+=("$dst")
+        if [[ -d "$abs_src" ]]; then
+            DIR_DSTS+=("$dst")
+        fi
+        if [[ -n "$opt" ]]; then
+            MOUNT_ARGS+=(-v "${abs_src}:${dst}:${opt}")
+            MOUNT_SPECS+=("${abs_src}:${dst}:${opt}")
+        else
+            MOUNT_ARGS+=(-v "${abs_src}:${dst}")
+            MOUNT_SPECS+=("${abs_src}:${dst}")
         fi
     done
 
-    # 決定開啟資料夾（workdir）
+    # 決定開啟資料夾（workdir，為 container 路徑）
     local OPEN_PATH
     if [[ -n "$OPEN_PATH_ARG" ]]; then
-        OPEN_PATH=$(readlink -f "$OPEN_PATH_ARG")
-        if [[ ! -d "$OPEN_PATH" ]]; then
-            echo "❌ 開啟資料夾不存在或不是目錄：${OPEN_PATH}"
+        # 以 / 開頭視為 container 路徑原樣採用；否則對 host CWD 解析（相容相對路徑舊行為）
+        if [[ "$OPEN_PATH_ARG" == /* ]]; then
+            OPEN_PATH=$OPEN_PATH_ARG
+        else
+            OPEN_PATH=$(readlink -f "$OPEN_PATH_ARG" 2>/dev/null) || true
+        fi
+        if [[ -z "$OPEN_PATH" ]]; then
+            echo "❌ 無效的開啟資料夾：${OPEN_PATH_ARG}"
             return 1
         fi
     else
-        if [[ ${#DIR_MOUNTS[@]} -eq 0 ]]; then
+        if [[ ${#DIR_DSTS[@]} -eq 0 ]]; then
             echo "❌ 沒有可開啟的目錄型掛載，請用 -w/--workdir 明確指定開啟資料夾"
             return 1
         fi
-        OPEN_PATH=${DIR_MOUNTS[0]}
+        OPEN_PATH=${DIR_DSTS[0]}
     fi
 
-    # 開啟資料夾必須位於任一目錄型掛載底下，否則 container 內看不到
+    # 開啟資料夾必須等於或位於某個目錄型掛載 (dst) 底下，否則 container 內看不到
     local under=false d
-    for d in "${DIR_MOUNTS[@]}"; do
+    for d in "${DIR_DSTS[@]}"; do
         if [[ "$OPEN_PATH" == "$d" || "$OPEN_PATH" == "$d"/* ]]; then
             under=true
             break
@@ -75,12 +117,6 @@ start_code_server() {
 
     local CONFIG_DIR=${KDE_PATH}/.code-server/${NAME}
     mkdir -p ${CONFIG_DIR}
-
-    # 組出掛載參數（每個目標 host 路徑 = container 路徑）
-    local -a MOUNT_ARGS=()
-    for m in "${MOUNTS[@]}"; do
-        MOUNT_ARGS+=(-v "${m}:${m}")
-    done
 
     local DOCKER_SOCK_GID
     DOCKER_SOCK_GID=$( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock 2>/dev/null) ) || true
@@ -103,7 +139,7 @@ start_code_server() {
 
         echo "✓ code-server 已在背景啟動 (${NAME})"
         echo "掛載目標:"
-        for m in "${MOUNTS[@]}"; do echo "  - ${m}"; done
+        for m in "${MOUNT_SPECS[@]}"; do echo "  - ${m}"; done
         echo "開啟資料夾: ${OPEN_PATH}"
         echo "存取網址: http://localhost:${PORT}"
         echo "停止服務: docker stop ${NAME}"
