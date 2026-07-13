@@ -12,6 +12,40 @@ check_project_name() {
     fi
 }
 
+# 解析 kde proj pod-exec 專案名稱之後的參數（即 pod 名稱與旗標）。
+# 輸出（全域變數）：
+#   POD_EXEC_TARGET_POD  指定的 pod 名稱（未指定則為空，交由呼叫方決定互動選擇或報錯）
+#   POD_EXEC_COMMAND     --command 指定的指令（未指定則為空）
+# 第一個非旗標參數視為 pod 名稱；回傳非零代表參數錯誤（訊息已輸出至 stderr）。
+parse_pod_exec_args() {
+    POD_EXEC_TARGET_POD=""
+    POD_EXEC_COMMAND=""
+
+    local args=("$@")
+    local i=0
+    local seen_pod="false"
+    while [[ $i -lt ${#args[@]} ]]; do
+        case "${args[$i]}" in
+            --command)
+                i=$((i+1))
+                if [[ $i -ge ${#args[@]} ]]; then
+                    echo "錯誤：--command 需要一個指令參數" >&2
+                    return 1
+                fi
+                POD_EXEC_COMMAND="${args[$i]}"
+                ;;
+            *)
+                if [[ "${seen_pod}" == "false" ]]; then
+                    POD_EXEC_TARGET_POD="${args[$i]}"
+                    seen_pod="true"
+                fi
+                ;;
+        esac
+        i=$((i+1))
+    done
+    return 0
+}
+
 is_project_exist() {
     if [[ ! -d ${ENVIROMENTS_PATH}/${CUR_ENV}/${VOLUMES_DIR}/$1 ]]; then
         echo "false"

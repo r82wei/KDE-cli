@@ -20,7 +20,8 @@ show_help() {
     echo "  tail                查看 pod 的 log，預設查看最後 100 行（--no-tty 供非互動式環境使用）"
     echo "  pod                 列出專案內所有的 pod"
     echo "  pod-exec [pod] [--command <script>]"
-    echo "                      進入專案內指定的 pod；--command 供非互動式執行指定指令（AI agent 適用）"
+    echo "                      進入專案內指定的 pod（詳見 kde proj pod-exec -h）；"
+    echo "                      --command 供非互動式執行指定指令，需明確指定 pod（AI agent 適用）"
     echo "  remove, rm          刪除專案"
     echo "  exec                進入專案 container"
     echo "  ingress             建立 ingress"
@@ -41,6 +42,21 @@ show_exec_help() {
     echo "    kde proj exec myapp develop -v /path1:/path1 -v /path2:/path2"
     echo "    kde proj exec myapp --command \"ls -la\""
     echo "    kde proj exec myapp deploy --command \"kubectl get pods\" -v /tmp:/tmp"
+}
+
+show_pod_exec_help() {
+    echo "usage:"
+    echo "  kde project pod-exec <project_name> [pod] [--command <script>]"
+    echo ""
+    echo "  進入專案內指定的 pod。"
+    echo "  未指定 pod 時，會列出專案內所有 pod 供互動選擇。"
+    echo "  使用 --command 以非互動式模式執行指定指令並直接串流輸出（AI agent 適用）；"
+    echo "  搭配 --command 時必須明確指定 pod 名稱。"
+    echo ""
+    echo "  範例："
+    echo "    kde proj pod-exec myapp                                  # 互動選擇 pod 後進入"
+    echo "    kde proj pod-exec myapp mypod                            # 直接進入指定 pod"
+    echo "    kde proj pod-exec myapp mypod --command \"ls -la /app\"    # 非互動式執行指令"
 }
 
 show_fetch_help() {
@@ -210,28 +226,20 @@ case "${COMMAND}" in
         done
         ;;
     pod-exec)
-        if [[ -z "${PROJECT_NAME}" ]]; then
-            check_project_name ${PROJECT_NAME}
-        fi
-        TARGET_POD=$3
-        EXEC_COMMAND=""
-
-        # 掃描所有參數，找出 --command 旗標
-        args=("$@")
-        i=0
-        while [[ $i -lt ${#args[@]} ]]; do
-            if [[ "${args[$i]}" == "--command" ]]; then
-                i=$((i+1))
-                if [[ $i -ge ${#args[@]} ]]; then
-                    echo "錯誤：--command 需要一個指令參數" >&2
-                    exit 1
-                fi
-                EXEC_COMMAND="${args[$i]}"
+        # -h/--help 可出現在任意位置（含專案名稱位置）
+        for _arg in "$@"; do
+            if [[ "${_arg}" == "-h" || "${_arg}" == "--help" ]]; then
+                show_pod_exec_help
+                exit 0
             fi
-            i=$((i+1))
         done
-        # 若 pod 名稱位置的參數是旗標，清除 TARGET_POD
-        [[ "${TARGET_POD}" == "--command" ]] && TARGET_POD=""
+
+        check_project_name "${PROJECT_NAME}"
+
+        # 解析專案名稱之後的參數（pod 名稱與 --command）
+        parse_pod_exec_args "${@:3}" || exit 1
+        TARGET_POD="${POD_EXEC_TARGET_POD}"
+        EXEC_COMMAND="${POD_EXEC_COMMAND}"
 
         if [[ -n "${EXEC_COMMAND}" ]]; then
             if [[ -z "${TARGET_POD}" ]]; then
