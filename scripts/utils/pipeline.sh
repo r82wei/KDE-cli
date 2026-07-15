@@ -257,6 +257,137 @@ filter_pipeline_stages() {
     echo "${FILTERED_STAGES}" | xargs
 }
 
+# 從 HashiCorp Vault 取得單一 secret value（純 Bash + curl）
+# 參數：
+#   $1 - Vault 位址
+#   $2 - Vault Token
+#   $3 - Secret Path
+#   $4 - Secret Key
+#   $5 - CA 憑證路徑（可選）
+# 返回：stdout 輸出 secret value
+fetch_vault_secret_value() {
+    local VAULT_ADDR="$1"
+    local VAULT_TOKEN="$2"
+    local SECRET_PATH="$3"
+    local SECRET_KEY="$4"
+    local VAULT_CACERT="$5"
+
+    if [[ -z "${VAULT_ADDR}" || -z "${VAULT_TOKEN}" || -z "${SECRET_PATH}" || -z "${SECRET_KEY}" ]]; then
+        return 2
+    fi
+
+    local URL="${VAULT_ADDR%/}/v1/${SECRET_PATH#/}"
+    local CURL_ARGS=(--silent --show-error --fail --max-time 15 -H "X-Vault-Token: ${VAULT_TOKEN}")
+
+    if [[ -n "${VAULT_CACERT}" ]]; then
+        CURL_ARGS+=(--cacert "${VAULT_CACERT}")
+    fi
+
+    local RESPONSE
+    if ! RESPONSE=$(curl "${CURL_ARGS[@]}" "${URL}"); then
+        return 3
+    fi
+
+    # 使用 tools image 啟動一次性容器解析 JSON，結束即刪除（docker run --rm -i）
+    local TOOLS_IMAGE="${KDE_TOOLS_IMAGE:-r82wei/kde-cli/tools:1.0.0}"
+    local VALUE
+    if ! VALUE=$(printf '%s' "${RESPONSE}" | docker run --rm -i -e SECRET_KEY="${SECRET_KEY}" "${TOOLS_IMAGE}" jq -er --arg key "${SECRET_KEY}" '.data.data[$key] // .data[$key]' 2>/dev/null); then
+        return 4
+    fi
+
+    printf '%s' "${VALUE}"
+    return 0
+}
+
+# 將 Vault secrets 注入到 .pipeline.env（階段級）
+# 參數：
+#   $1 - 階段名稱
+#   $2 - 專案路徑
+# 返回：0 成功，非 0 失敗
+inject_stage_env_from_vault() {
+    local STAGE="$1"
+    local PROJECT_PATH="$2"
+    local STAGE_VAR=$(echo "${STAGE}" | tr '-' '_')
+
+    local ENABLED_VAR="KDE_PIPELINE_STAGE_${STAGE_VAR}_ENV_FROM_VAULT_ENABLED"
+    local ADDR_VAR="KDE_PIPELINE_STAGE_${STAGE_VAR}_ENV_FROM_VAULT_ADDR"
+    local TOKEN_VAR="KDE_PIPELINE_STAGE_${STAGE_VAR}_ENV_FROM_VAULT_TOKEN"
+    local CACERT_VAR="KDE_PIPELINE_STAGE_${STAGE_VAR}_ENV_FROM_VAULT_CACERT"
+    local MAP_VAR="KDE_PIPELINE_STAGE_${STAGE_VAR}_ENV_FROM_VAULT_MAP"
+    local STRICT_VAR="KDE_PIPELINE_STAGE_${STAGE_VAR}_ENV_FROM_VAULT_STRICT"
+
+    local ENABLED="${!ENABLED_VAR}"
+    local VAULT_ADDR="${!ADDR_VAR}"
+    local VAULT_TOKEN="${!TOKEN_VAR}"
+    local VAULT_CACERT="${!CACERT_VAR}"
+    local VAULT_MAP="${!MAP_VAR}"
+    local STRICT_MODE="${!STRICT_VAR}"
+    local PIPELINE_ENV_FILE="${PROJECT_PATH}/.pipeline.env"
+
+    # 若未明確啟用，直接跳過
+    if [[ "${ENABLED}" != "true" ]]; then
+        return 0
+    fi
+
+    # strict 預設啟用
+    if [[ -z "${STRICT_MODE}" ]]; then
+        STRICT_MODE="true"
+    fi
+
+    if [[ -z "${VAULT_ADDR}" || -z "${VAULT_TOKEN}" || -z "${VAULT_MAP}" ]]; then
+        echo "❌ 階段 ${STAGE} Vault 設定不完整（需要 ADDR/TOKEN/MAP）"
+        [[ "${STRICT_MODE}" == "true" ]] && return 1 || return 0
+    fi
+
+    echo "🔐 從 Vault 載入階段 ${STAGE} 的敏感環境變數..."
+
+    local HAS_ERROR=false
+    IFS=',' read -ra MAPPINGS <<< "${VAULT_MAP}"
+    for ITEM in "${MAPPINGS[@]}"; do
+        local ENTRY=$(echo "${ITEM}" | xargs)
+        [[ -z "${ENTRY}" ]] && continue
+
+        # 格式：ENV_NAME=secret/path#key
+        if [[ "${ENTRY}" != *=* || "${ENTRY}" != *#* ]]; then
+            echo "❌ 無效的 Vault mapping：${ENTRY}（需符合 ENV=path#key）"
+            HAS_ERROR=true
+            [[ "${STRICT_MODE}" == "true" ]] && break
+            continue
+        fi
+
+        local ENV_NAME="${ENTRY%%=*}"
+        local PATH_AND_KEY="${ENTRY#*=}"
+        local SECRET_PATH="${PATH_AND_KEY%#*}"
+        local SECRET_KEY="${PATH_AND_KEY##*#}"
+
+        if [[ -z "${ENV_NAME}" || -z "${SECRET_PATH}" || -z "${SECRET_KEY}" ]]; then
+            echo "❌ 無效的 Vault mapping：${ENTRY}"
+            HAS_ERROR=true
+            [[ "${STRICT_MODE}" == "true" ]] && break
+            continue
+        fi
+
+        local SECRET_VALUE
+        if ! SECRET_VALUE=$(fetch_vault_secret_value "${VAULT_ADDR}" "${VAULT_TOKEN}" "${SECRET_PATH}" "${SECRET_KEY}" "${VAULT_CACERT}"); then
+            echo "❌ 讀取 Vault 失敗：${SECRET_PATH}#${SECRET_KEY}"
+            HAS_ERROR=true
+            [[ "${STRICT_MODE}" == "true" ]] && break
+            continue
+        fi
+
+        # 僅輸出 key，不輸出 value，避免敏感資訊洩漏
+        printf 'export %s=%q\n' "${ENV_NAME}" "${SECRET_VALUE}" >> "${PIPELINE_ENV_FILE}"
+        echo "   ✅ 已注入：${ENV_NAME}"
+    done
+
+    if [[ "${HAS_ERROR}" == "true" && "${STRICT_MODE}" == "true" ]]; then
+        echo "❌ 階段 ${STAGE} Vault 注入失敗（strict 模式）"
+        return 1
+    fi
+
+    return 0
+}
+
 # 執行單一階段
 # 參數：
 #   $1 - 專案名稱
@@ -301,13 +432,20 @@ execute_stage() {
         return 0
     fi
     
-    # 載入上一階段的環境變數（如果存在 .pipeline.env）
+    # 在執行階段前，按需從 Vault 載入敏感環境變數到 .pipeline.env
     local PIPELINE_ENV_FILE="${PROJECT_PATH}/.pipeline.env"
+    inject_stage_env_from_vault "${STAGE}" "${PROJECT_PATH}"
+    local VAULT_INJECT_EXIT_CODE=$?
+    if [[ ${VAULT_INJECT_EXIT_CODE} -ne 0 ]]; then
+        return ${VAULT_INJECT_EXIT_CODE}
+    fi
+
+    # 載入上一階段（或 Vault 注入）的環境變數
     local LOAD_PIPELINE_ENV=""
     if [[ -f "${PIPELINE_ENV_FILE}" ]]; then
-        LOAD_PIPELINE_ENV="source .pipeline.env 2>/dev/null || true; "
+        LOAD_PIPELINE_ENV="source ${PIPELINE_ENV_FILE} 2>/dev/null || true; "
     fi
-    
+
     # 執行腳本
     exec_script_in_container_with_project ${PROJECT_NAME} ${IMAGE} "cd ${WORKDIR_ESCAPED} && ${LOAD_PIPELINE_ENV}./${SCRIPT}" ${STAGE}
     local EXIT_CODE=$?
@@ -608,6 +746,18 @@ show_pipeline_help() {
     echo "                    設定該階段只能透過 --manual 參數手動觸發（預設：false）"
     echo "  KDE_PIPELINE_STAGE_<stage>_ALLOW_FAILURE=true"
     echo "                    允許該階段失敗但不影響後續階段執行（預設：false）"
+    echo "  KDE_PIPELINE_STAGE_<stage>_ENV_FROM_VAULT_ENABLED=true"
+    echo "                    啟用從 HashiCorp Vault 載入該階段環境變數"
+    echo "  KDE_PIPELINE_STAGE_<stage>_ENV_FROM_VAULT_ADDR=..."
+    echo "                    Vault 位址（例如：https://vault.example.com）"
+    echo "  KDE_PIPELINE_STAGE_<stage>_ENV_FROM_VAULT_TOKEN=..."
+    echo "                    Vault Token（建議放在 .env）"
+    echo "  KDE_PIPELINE_STAGE_<stage>_ENV_FROM_VAULT_MAP=ENV=path#key,..."
+    echo "                    Secret 對應表（只注入 mapping 指定變數）"
+    echo "  KDE_PIPELINE_STAGE_<stage>_ENV_FROM_VAULT_CACERT=/path/to/ca.pem"
+    echo "                    自簽 CA 憑證路徑（可選）"
+    echo "  KDE_PIPELINE_STAGE_<stage>_ENV_FROM_VAULT_STRICT=true"
+    echo "                    strict 模式（預設：true，注入失敗即中止階段）"
     echo ""
     echo "注意："
     echo "  - 所有選項都從命令行參數讀取，不會從環境變數繼承"

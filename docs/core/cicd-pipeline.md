@@ -51,6 +51,13 @@
 | `KDE_PIPELINE_STAGE_[階段名稱]_MANUAL_ONLY` | 只能透過 --manual 參數手動觸發 | `false` | `KDE_PIPELINE_STAGE_lint_MANUAL_ONLY=true` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_ALLOW_FAILURE` | 允許該階段失敗但不影響後續階段 | `false` | `KDE_PIPELINE_STAGE_lint_ALLOW_FAILURE=true` |
 | `KDE_PIPELINE_STAGE_[階段名稱]_PAUSE` | 階段執行完畢後暫停，等待使用者確認是否繼續 | `false` | `KDE_PIPELINE_STAGE_preview_PAUSE=true` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_ENV_FROM_VAULT_ENABLED` | 啟用該階段從 Vault 載入 secrets | `false` | `KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_ENABLED=true` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_ENV_FROM_VAULT_ADDR` | Vault API 位址 | 無 | `KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_ADDR=https://vault.example.com` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_ENV_FROM_VAULT_TOKEN` | Vault Token（建議放 `.env`） | 無 | `KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_TOKEN=s.xxxxx` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_ENV_FROM_VAULT_CACERT` | 自簽 CA 憑證路徑 | 無 | `KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_CACERT=/path/to/ca.pem` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_ENV_FROM_VAULT_MAP` | Secret mapping（`ENV=path#key`，逗號分隔） | 無 | `KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_MAP=DB_PASS=kv/data/prod/app#db_password` |
+| `KDE_PIPELINE_STAGE_[階段名稱]_ENV_FROM_VAULT_STRICT` | 注入失敗時是否中止階段 | `true` | `KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_STRICT=false` |
+| `KDE_TOOLS_IMAGE` | tools 容器映像（Vault JSON 解析用，啟動即用完即刪） | `r82wei/kde-cli/tools:1.0.0` | `KDE_TOOLS_IMAGE=r82wei/kde-cli/tools:1.0.0` |
 | `KDE_PIPELINE_FAIL_FAST` | 任何階段失敗時立即停止整個 pipeline | `true` | `KDE_PIPELINE_FAIL_FAST=false` |
 | `KDE_MOUNT_[自定義名稱]` | 掛載所有階段共用的檔案或資料夾 | 無 | `KDE_MOUNT_SSH=${}/.ssh:${PROJECT_PATH}/.ssh` |
 
@@ -344,6 +351,40 @@ kde proj pipeline myapp
 # - security-scan 失敗 → 顯示警告，繼續執行 deploy
 # - build 失敗 → Pipeline 立即停止（預設 Fail Fast 行為）
 ```
+
+### 範例 7：Deploy 階段從 HashiCorp Vault 載入敏感資訊
+
+```bash
+# project.env
+KDE_PIPELINE_STAGES="build,deploy"
+
+KDE_PIPELINE_STAGE_build_SCRIPT=build.sh
+KDE_PIPELINE_STAGE_build_IMAGE=node:24
+
+KDE_PIPELINE_STAGE_deploy_SCRIPT=deploy.sh
+KDE_PIPELINE_STAGE_deploy_IMAGE=r82wei/deploy-env:1.0.0
+
+# 啟用 Vault 注入（deploy 階段）
+KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_ENABLED=true
+KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_ADDR=https://vault.example.com
+KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_MAP=DB_PASS=kv/data/prod/myapp#db_password,API_KEY=kv/data/prod/myapp#api_key
+
+# (optional) 自簽 CA
+KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_CACERT=/path/to/ca.pem
+
+# (optional) 失敗不中斷
+# KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_STRICT=false
+```
+
+```bash
+# .env（避免 token 進版控）
+KDE_PIPELINE_STAGE_deploy_ENV_FROM_VAULT_TOKEN=s.xxxxx
+```
+
+說明：
+- 僅注入 `ENV_FROM_VAULT_MAP` 指定的變數，降低洩漏風險。
+- 注入後變數會寫入 `.pipeline.env`，並在該階段腳本執行前自動載入。
+- JSON 解析透過 `KDE_TOOLS_IMAGE` 啟動一次性 container 執行 `jq`（`docker run -i --rm`），解析完即關閉容器。
 
 ## Best Practice
 - 使用專案名稱作為 K8S 部署目標 namespace
