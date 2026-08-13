@@ -105,6 +105,41 @@ rc=0; parse_code_server_args --nosuchflag 2>/dev/null >/dev/null || rc=$?
 assert_rc "退出碼為 1" 1 "${rc}"
 echo ""
 
+echo "測試 11：不合法的 port（非數字，回歸）"
+echo "--------------------------------------"
+rc=0; parse_code_server_args -p abc 2>/dev/null || rc=$?
+assert_rc "退出碼為 1" 1 "${rc}"
+echo ""
+
+echo "測試 12：不合法的名稱（含空白，回歸）"
+echo "------------------------------------"
+rc=0; parse_code_server_args -n "bad name" 2>/dev/null || rc=$?
+assert_rc "退出碼為 1" 1 "${rc}"
+echo ""
+
+echo "測試 13：-v 空值應報錯（回歸）"
+echo "------------------------------"
+rc=0; parse_code_server_args -v "" 2>/dev/null || rc=$?
+assert_rc "退出碼為 1" 1 "${rc}"
+echo ""
+
+echo "測試 14：-w 空值應報錯（回歸）"
+echo "------------------------------"
+rc=0; parse_code_server_args -w "" 2>/dev/null || rc=$?
+assert_rc "退出碼為 1" 1 "${rc}"
+echo ""
+
+echo "測試 15：呼叫後 IFS 應還原"
+echo "--------------------------"
+# 呼叫前先固定 IFS 為預設值（空白、tab、換行），避免受先前測試殘留狀態影響，
+# 確保這裡驗證的是 parse_code_server_args 本身有無還原 IFS
+IFS=$' \t\n'
+old_ifs_before="${IFS}"
+rc=0; parse_code_server_args --agent claude -a codex || rc=$?
+assert_rc "退出碼為 0" 0 "${rc}"
+assert_eq "IFS 呼叫前後不變" "${old_ifs_before}" "${IFS}"
+echo ""
+
 echo "===== 測試完成 ====="
 echo "總測試數：${TOTAL}  通過：${PASS}  失敗：${FAIL}"
 [[ ${FAIL} -eq 0 ]] && echo "🎉 全部通過" || { echo "❌ 有失敗"; exit 1; }
