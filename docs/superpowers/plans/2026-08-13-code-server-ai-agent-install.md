@@ -1051,6 +1051,7 @@ git commit -m "feat(code-server): start_code_server 傳遞 AI agent 環境變數
 ## Task 5: Dockerfile 與端到端驗證
 
 **Files:**
+- Modify: `.dockerignore`（放行兩個新目錄）
 - Modify: `dockerfiles/code-server/Dockerfile:26`（在 `USER coder` 之前插入 COPY 與 chmod）
 
 **Interfaces:**
@@ -1059,9 +1060,48 @@ git commit -m "feat(code-server): start_code_server 傳遞 AI agent 環境變數
 
 **注意：** build context 是 repo 根目錄（見 `build.sh` 的 `docker build -f Dockerfile ... ../..`），因此 COPY 來源要寫完整相對路徑。
 
+**必讀 —— 原始計畫遺漏的前提：** repo 根目錄的 `.dockerignore` 第 5 行是 `dockerfiles`，會把整個 `dockerfiles/` 從 build context 移除。若不先處理，兩行新的 COPY 會以「來源不存在」失敗（不是路徑寫錯，是檔案根本沒送進 builder）。Docker 的 `.dockerignore` 與 `.gitignore` 不同，**支援用 `!` 從已排除的目錄中重新納入子路徑**（後出現的規則勝出），這點已實測確認。
+
 ---
 
-- [ ] **Step 1: 修改 Dockerfile**
+- [ ] **Step 1: 放行 `.dockerignore`**
+
+`.dockerignore` 目前內容：
+
+```
+# 此檔僅在以 repo 根目錄為 build context 時生效(目前為 kde-code-server image)。
+# 這裡只「排除」明顯不需要進 image 的東西,新增要安裝的檔案/目錄不必在此登記。
+.git
+.gitignore
+dockerfiles
+examples
+test
+test.sh
+*.md
+```
+
+整份換成：
+
+```
+# 此檔僅在以 repo 根目錄為 build context 時生效(目前為 kde-code-server image)。
+# 這裡只「排除」明顯不需要進 image 的東西。
+#
+# 例外:dockerfiles/ 整個被排除,但 code-server image 需要把 entrypoint.d/ 與
+# agents/ COPY 進映像,所以用 ! 個別放行。Docker 的 .dockerignore 與 .gitignore
+# 不同,後出現的規則勝出,可以從已排除的目錄中重新納入子路徑。
+# 若日後新增類似「要進 image 的 dockerfiles/ 子目錄」,同樣要在這裡加一行 !。
+.git
+.gitignore
+dockerfiles
+!dockerfiles/code-server/entrypoint.d
+!dockerfiles/code-server/agents
+examples
+test
+test.sh
+*.md
+```
+
+- [ ] **Step 2: 修改 Dockerfile**
 
 在 `dockerfiles/code-server/Dockerfile` 中，把最後兩行：
 
@@ -1088,7 +1128,7 @@ RUN chmod 0755 /entrypoint.d/*.sh /usr/local/lib/kde-agents/*.sh
 USER coder
 ```
 
-- [ ] **Step 2: Build 映像**
+- [ ] **Step 3: Build 映像**
 
 Run:
 ```bash
@@ -1098,7 +1138,7 @@ docker build -f Dockerfile -t kde-code-server:agent-test ../..
 Expected: build 成功，最後印 `Successfully tagged kde-code-server:agent-test`（或 buildkit 的等價訊息）。
 若本機沒有 layer cache，前面的 apt-get 步驟可能要跑數分鐘，屬正常。
 
-- [ ] **Step 3: 驗證檔案有進到映像且可執行**
+- [ ] **Step 4: 驗證檔案有進到映像且可執行**
 
 Run:
 ```bash
@@ -1107,7 +1147,7 @@ docker run --rm -u "$(id -u):$(id -g)" --entrypoint bash kde-code-server:agent-t
 ```
 Expected: 列出 `10-ai-agents.sh`、`install-claude.sh`、`install-codex.sh` 三個檔且權限為 `-rwxr-xr-x`，最後印 `EXECUTABLE_OK`
 
-- [ ] **Step 4: 驗證未指定 agent 時完全靜默**
+- [ ] **Step 5: 驗證未指定 agent 時完全靜默**
 
 Run:
 ```bash
@@ -1116,7 +1156,7 @@ docker run --rm -u "$(id -u):$(id -g)" --entrypoint bash kde-code-server:agent-t
 ```
 Expected: 只印 `rc=0`，沒有其他輸出
 
-- [ ] **Step 5: 驗證不認識的 agent 只警告且不阻擋**
+- [ ] **Step 6: 驗證不認識的 agent 只警告且不阻擋**
 
 Run:
 ```bash
@@ -1126,7 +1166,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e KDE_CODE_SERVER_AI_AGENTS=nosuch \
 ```
 Expected: 印出 `⚠ 不認識的 AI agent：nosuch`、`可用：claude codex`（順序可能不同），最後 `rc=0`
 
-- [ ] **Step 6: 端到端安裝驗證（需連網）**
+- [ ] **Step 7: 端到端安裝驗證（需連網）**
 
 Run:
 ```bash
@@ -1138,7 +1178,7 @@ Expected: 印出兩個 `→ 安裝 ...` / `✓ ... 安裝完成`，`rc=0`，且 
 
 > 若某個 agent 安裝失敗（上游變動、公司網路擋外連），預期看到 `❌ ... 安裝失敗` 但 `rc=0` — 這正是設計要的行為，**不算本任務失敗**。此時請把實際錯誤訊息記錄下來回報，不要為了讓它過而修改 entrypoint 的錯誤處理邏輯。
 
-- [ ] **Step 7: 驗證 PATH 有寫進 shell profile**
+- [ ] **Step 8: 驗證 PATH 有寫進 shell profile**
 
 Run:
 ```bash
@@ -1148,12 +1188,12 @@ docker run --rm -u "$(id -u):$(id -g)" -e KDE_CODE_SERVER_AI_AGENTS=claude \
 ```
 Expected: `1`（比對開頭 guard；區塊開頭與結尾兩行都含 `kde-cli agents PATH`，只比對那段會數成 2）
 
-- [ ] **Step 8: 清理測試映像**
+- [ ] **Step 9: 清理測試映像**
 
 Run: `docker rmi kde-code-server:agent-test`
 Expected: 成功移除（若有容器仍在使用會失敗，此時先 `docker ps -a` 清掉）
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 cd /home/maxime/KDE-cli
