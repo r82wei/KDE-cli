@@ -1,8 +1,15 @@
 # 此檔僅在以 repo 根目錄為 build context 時生效(目前為 kde-code-server image)。
-# 這裡只「排除」明顯不需要進 image 的東西,新增要安裝的檔案/目錄不必在此登記。
+# 這裡只「排除」明顯不需要進 image 的東西。
+#
+# 例外:dockerfiles/ 整個被排除,但 code-server image 需要把 entrypoint.d/ 與
+# agents/ COPY 進映像,所以用 ! 個別放行。Docker 的 .dockerignore 與 .gitignore
+# 不同,後出現的規則勝出,可以從已排除的目錄中重新納入子路徑。
+# 若日後新增類似「要進 image 的 dockerfiles/ 子目錄」,同樣要在這裡加一行 !。
 .git
 .gitignore
 dockerfiles
+!dockerfiles/code-server/entrypoint.d
+!dockerfiles/code-server/agents
 examples
 test
 test.sh
