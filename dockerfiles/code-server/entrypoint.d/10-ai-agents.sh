@@ -6,8 +6,11 @@
 # 執行，時機在 fixuid 與 DOCKER_USER 改名之後、code-server 啟動之前。
 #
 # 兩個刻意的設計，改動前請先讀 docs/superpowers/specs/2026-08-13-*：
-#   1. 無條件 exit 0：base entrypoint 是 set -eu，任何 agent 安裝失敗都不可
-#      阻擋 code-server 啟動。
+#   1. 無條件 exit 0：純屬防禦性設計。base entrypoint 目前是透過
+#      `find ... -exec bash {} \;` 呼叫本 hook，而 find 不會依 exec 的指令結果
+#      回傳非零，所以此 hook 的結束碼本來就不會影響是否繼續啟動 code-server；
+#      但我們不想依賴這個現況，因此仍明確以 exit 0 收尾，避免將來呼叫方式改變時
+#      失敗的 agent 安裝連帶擋住 code-server 啟動。
 #   2. 不使用 set -e：否則單一 agent 安裝失敗會中止後續 agent 的處理。
 
 AGENT_DIR="${KDE_CODE_SERVER_AGENT_DIR:-/usr/local/lib/kde-agents}"
