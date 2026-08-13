@@ -23,4 +23,13 @@ RUN apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io d
 COPY . /tmp/kde-src/
 RUN cd /tmp/kde-src && bash local-install.sh && cd / && rm -rf /tmp/kde-src
 
+# AI agent 安裝機制：
+# - /entrypoint.d 是 code-server base image 內建的啟動 hook(coder/code-server#5177),
+#   base entrypoint 會在啟動 code-server 前執行其中所有可執行檔。用它就不必覆寫
+#   ENTRYPOINT(內建的 --bind-addr 0.0.0.0:8080 . 等參數不必手動複製)。
+# - 新增 agent 只要往 agents/ 丟一支 install-<name>.sh,不需改 entrypoint 邏輯。
+COPY dockerfiles/code-server/entrypoint.d/ /entrypoint.d/
+COPY dockerfiles/code-server/agents/ /usr/local/lib/kde-agents/
+RUN chmod 0755 /entrypoint.d/*.sh /usr/local/lib/kde-agents/*.sh
+
 USER coder
