@@ -1,0 +1,35 @@
+{
+  "eval_id": 1,
+  "eval_name": "debug-pod-crash",
+  "configuration": "with_skill",
+  "assertions": [
+    {
+      "text": "Uses `kde proj tail myapp` (or equivalent) to check logs",
+      "passed": true,
+      "evidence": "Step 3: `kde proj tail myapp` and `kde proj tail myapp <pod_name> 200`"
+    },
+    {
+      "text": "Uses `kde proj pod myapp` to list pods",
+      "passed": true,
+      "evidence": "Step 2: `kde proj pod myapp`"
+    },
+    {
+      "text": "Uses `kde proj pod-exec myapp` or `kde proj exec myapp` to enter the container/pod",
+      "passed": true,
+      "evidence": "Step 4: `kde proj pod-exec myapp`"
+    },
+    {
+      "text": "Mentions `kde k9s` as an option for visual debugging",
+      "passed": true,
+      "evidence": "Step 5 explicitly recommends `kde k9s` with K9s shortcut keys"
+    },
+    {
+      "text": "Does NOT suggest irrelevant commands or confuse kde commands with raw kubectl",
+      "passed": true,
+      "evidence": "All commands are valid kde commands; kubectl mentioned only in the troubleshooting table context"
+    }
+  ],
+  "pass_count": 5,
+  "total_count": 5,
+  "pass_rate": 1.0
+}

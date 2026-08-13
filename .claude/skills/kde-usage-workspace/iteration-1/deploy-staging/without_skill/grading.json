@@ -1,0 +1,40 @@
+{
+  "eval_id": 0,
+  "eval_name": "deploy-staging",
+  "configuration": "without_skill",
+  "assertions": [
+    {
+      "text": "Uses `kde start staging` or `kde create staging` to create the environment",
+      "passed": true,
+      "evidence": "Uses `kde create staging kind`"
+    },
+    {
+      "text": "Uses `kind` as the environment type (explicitly or by default)",
+      "passed": true,
+      "evidence": "Explicitly passes `kind` argument"
+    },
+    {
+      "text": "Uses `kde proj create api-service` to create the project",
+      "passed": false,
+      "evidence": "Skips `kde project create` and goes straight to `kde project fetch`. Notes that fetch does not create project.env, but does not suggest running create first."
+    },
+    {
+      "text": "Uses `kde proj fetch api-service` with the correct git URL and branch",
+      "passed": true,
+      "evidence": "`kde project fetch api-service https://github.com/myorg/api-service.git main`"
+    },
+    {
+      "text": "Uses `kde proj deploy api-service` or `kde proj pipeline api-service` to deploy",
+      "passed": true,
+      "evidence": "`kde project deploy api-service`"
+    },
+    {
+      "text": "Does NOT fabricate non-existent kde commands or flags",
+      "passed": true,
+      "evidence": "All commands match actual kde command syntax"
+    }
+  ],
+  "pass_count": 5,
+  "total_count": 6,
+  "pass_rate": 0.833
+}

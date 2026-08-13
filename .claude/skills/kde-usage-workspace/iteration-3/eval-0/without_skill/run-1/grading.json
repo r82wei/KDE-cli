@@ -1,0 +1,9 @@
+{
+  "summary": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4},
+  "expectations": [
+    {"text": "Does NOT suggest redeploy or running the pipeline", "passed": true, "evidence": "'No KDE operation is needed at all'"},
+    {"text": "Explains why (volume mount + nodemon auto-detects changes)", "passed": true, "evidence": "Explains local-path-provisioner + volume mount + nodemon file watch pattern"},
+    {"text": "Suggests `kde proj tail myapp` to verify nodemon restarted", "passed": true, "evidence": "`kde proj tail myapp` listed as verification command"},
+    {"text": "Correctly describes when redeploy IS needed (image/manifest/env changes)", "passed": true, "evidence": "Lists: Docker image change, K8s manifest/env var changes, no volume mount"}
+  ]
+}

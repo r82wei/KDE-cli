@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 6,
+    "failed": 0,
+    "total": 6
+  },
+  "expectations": [
+    {
+      "text": "Uses `kde start staging` or `kde create staging` to create the environment",
+      "passed": true,
+      "evidence": "Uses `kde start staging kind` in step 3"
+    },
+    {
+      "text": "Uses `kind` as the environment type (explicitly or by default)",
+      "passed": true,
+      "evidence": "Explicitly passes `kind` argument: `kde start staging kind`"
+    },
+    {
+      "text": "Uses `kde proj create api-service` to create the project",
+      "passed": true,
+      "evidence": "Step 5: `kde proj create api-service`"
+    },
+    {
+      "text": "Uses `kde proj fetch api-service` with the correct git URL and branch",
+      "passed": true,
+      "evidence": "Step 6: `kde proj fetch api-service https://github.com/myorg/api-service.git main`"
+    },
+    {
+      "text": "Uses `kde proj deploy api-service` or `kde proj pipeline api-service` to deploy",
+      "passed": true,
+      "evidence": "Step 7: `kde proj deploy api-service`"
+    },
+    {
+      "text": "Does NOT fabricate non-existent kde commands or flags",
+      "passed": true,
+      "evidence": "All commands match actual kde command syntax"
+    }
+  ]
+}

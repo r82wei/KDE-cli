@@ -1,0 +1,10 @@
+{
+  "summary": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5},
+  "expectations": [
+    {"text": "Uses `kde proj pod myapp` to list pods", "passed": true, "evidence": "步驟一: `kde proj pod myapp`"},
+    {"text": "Uses `kde proj tail myapp <pod_name>` for logs", "passed": true, "evidence": "`kde proj tail myapp <pod-name>` with line count variant"},
+    {"text": "Uses `kde proj pod-exec myapp` to exec into pod", "passed": true, "evidence": "步驟三: `kde proj pod-exec myapp <pod-name>`"},
+    {"text": "Mentions `kde k9s` for visual debugging", "passed": true, "evidence": "Mentions `kde k9s` as graphical UI option"},
+    {"text": "Correctly describes `kde proj pod` as listing names only (not status)", "passed": true, "evidence": "'輸出 `myapp` namespace 下所有 Pod 名稱' — accurately names only"}
+  ]
+}

@@ -1,0 +1,1 @@
+{"eval_id": 2, "eval_name": "selective-pipeline", "prompt": "我改了 build.sh，想只重跑 build 和 test 這兩個 stage，不要執行 deploy。我的 pipeline stages 是 build, test, deploy。當前 project 是 backend，環境是 dev-env。指令怎麼下？", "assertions": []}

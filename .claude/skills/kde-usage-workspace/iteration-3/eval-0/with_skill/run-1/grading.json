@@ -1,0 +1,9 @@
+{
+  "summary": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4},
+  "expectations": [
+    {"text": "Does NOT suggest redeploy or running the pipeline", "passed": true, "evidence": "Explicitly states: '不需要 redeploy，不需要重新 build image'"},
+    {"text": "Explains why (volume mount + nodemon auto-detects changes)", "passed": true, "evidence": "Explains hot reload mode: Kind + volume mount + nodemon, saving file is enough"},
+    {"text": "Suggests `kde proj tail myapp` to verify nodemon restarted", "passed": true, "evidence": "`kde proj tail myapp` recommended with expected nodemon output"},
+    {"text": "Correctly describes when redeploy IS needed (image/manifest/env changes)", "passed": true, "evidence": "Lists: Docker image change, K8s manifest change, env var change, no volume mount"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "summary": {"pass_rate": 0.6, "passed": 3, "failed": 2, "total": 5},
+  "expectations": [
+    {"text": "Uses `kde proj pod myapp` to list pods", "passed": true, "evidence": "第二步: `kde proj pod myapp`"},
+    {"text": "Uses `kde proj tail myapp` for logs", "passed": true, "evidence": "第三步: `kde proj tail myapp`"},
+    {"text": "Mentions `kde k9s` for visual debugging with Events", "passed": true, "evidence": "第五步: `kde k9s` — mentions `:events`"},
+    {"text": "Mentions `kde headlamp` as web UI option", "passed": false, "evidence": "No mention of `kde headlamp`"},
+    {"text": "Correctly describes `kde proj pod` as listing names only (not status)", "passed": false, "evidence": "'觀察 Pod 是否存在，以及狀態是否為 CrashLoopBackOff、ImagePullBackOff、Pending 等異常狀態' — incorrectly implies kde proj pod shows status"}
+  ]
+}

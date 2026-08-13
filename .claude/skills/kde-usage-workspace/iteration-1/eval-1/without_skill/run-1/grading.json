@@ -1,0 +1,35 @@
+{
+  "summary": {
+    "pass_rate": 0.8,
+    "passed": 4,
+    "failed": 1,
+    "total": 5
+  },
+  "expectations": [
+    {
+      "text": "Uses `kde proj tail myapp` (or equivalent) to check logs",
+      "passed": true,
+      "evidence": "Step 2: `kde proj tail myapp` with variants for pod name and line count"
+    },
+    {
+      "text": "Uses `kde proj pod myapp` to list pods",
+      "passed": true,
+      "evidence": "Step 1: `kde proj pod myapp`"
+    },
+    {
+      "text": "Uses `kde proj pod-exec myapp` or `kde proj exec myapp` to enter the container/pod",
+      "passed": true,
+      "evidence": "Step 3: `kde proj pod-exec myapp`. Also mentions `kde proj exec myapp dev` for dev container."
+    },
+    {
+      "text": "Mentions `kde k9s` as an option for visual debugging",
+      "passed": false,
+      "evidence": "`kde k9s` is not mentioned anywhere in the response"
+    },
+    {
+      "text": "Does NOT suggest irrelevant commands or confuse kde commands with raw kubectl",
+      "passed": true,
+      "evidence": "All commands are valid kde commands"
+    }
+  ]
+}

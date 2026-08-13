@@ -1,0 +1,22 @@
+{
+  "eval_id": 1,
+  "eval_name": "debug-pod-crash",
+  "prompt": "我的 myapp 專案 Pod 一直 CrashLoopBackOff，我想看 log 然後進去 pod 裡面看看發生什麼事。我現在在 kde workspace 目錄下，當前環境是 dev-env。請告訴我要用哪些 kde 指令，並直接執行。",
+  "assertions": [
+    {
+      "text": "Uses `kde proj tail myapp` (or equivalent) to check logs"
+    },
+    {
+      "text": "Uses `kde proj pod myapp` to list pods"
+    },
+    {
+      "text": "Uses `kde proj pod-exec myapp` or `kde proj exec myapp` to enter the container/pod"
+    },
+    {
+      "text": "Mentions `kde k9s` as an option for visual debugging"
+    },
+    {
+      "text": "Does NOT suggest irrelevant commands or confuse kde commands with raw kubectl"
+    }
+  ]
+}

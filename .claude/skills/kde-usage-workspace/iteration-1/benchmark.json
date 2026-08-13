@@ -1,0 +1,333 @@
+{
+  "metadata": {
+    "skill_name": "kde-usage",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-04-09T04:58:21Z",
+    "evals_run": [
+      0,
+      1,
+      2
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 40.0,
+        "tokens": 23624,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde start staging` or `kde create staging` to create the environment",
+          "passed": true,
+          "evidence": "Uses `kde start staging kind` in step 3"
+        },
+        {
+          "text": "Uses `kind` as the environment type (explicitly or by default)",
+          "passed": true,
+          "evidence": "Explicitly passes `kind` argument: `kde start staging kind`"
+        },
+        {
+          "text": "Uses `kde proj create api-service` to create the project",
+          "passed": true,
+          "evidence": "Step 5: `kde proj create api-service`"
+        },
+        {
+          "text": "Uses `kde proj fetch api-service` with the correct git URL and branch",
+          "passed": true,
+          "evidence": "Step 6: `kde proj fetch api-service https://github.com/myorg/api-service.git main`"
+        },
+        {
+          "text": "Uses `kde proj deploy api-service` or `kde proj pipeline api-service` to deploy",
+          "passed": true,
+          "evidence": "Step 7: `kde proj deploy api-service`"
+        },
+        {
+          "text": "Does NOT fabricate non-existent kde commands or flags",
+          "passed": true,
+          "evidence": "All commands match actual kde command syntax"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 42.9,
+        "tokens": 15675,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde proj tail myapp` (or equivalent) to check logs",
+          "passed": true,
+          "evidence": "Step 3: `kde proj tail myapp` and `kde proj tail myapp <pod_name> 200`"
+        },
+        {
+          "text": "Uses `kde proj pod myapp` to list pods",
+          "passed": true,
+          "evidence": "Step 2: `kde proj pod myapp`"
+        },
+        {
+          "text": "Uses `kde proj pod-exec myapp` or `kde proj exec myapp` to enter the container/pod",
+          "passed": true,
+          "evidence": "Step 4: `kde proj pod-exec myapp`"
+        },
+        {
+          "text": "Mentions `kde k9s` as an option for visual debugging",
+          "passed": true,
+          "evidence": "Step 5 explicitly recommends `kde k9s` with K9s shortcut keys"
+        },
+        {
+          "text": "Does NOT suggest irrelevant commands or confuse kde commands with raw kubectl",
+          "passed": true,
+          "evidence": "All commands are valid kde commands"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 20.6,
+        "tokens": 14409,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `--to test` flag to stop before deploy",
+          "passed": true,
+          "evidence": "Primary recommendation: `kde proj pipeline backend --to test`"
+        },
+        {
+          "text": "OR uses `--from build --to test` combination",
+          "passed": true,
+          "evidence": "`--to test` alone is sufficient and is the primary recommendation"
+        },
+        {
+          "text": "Correctly names the project (`backend`) in the command",
+          "passed": true,
+          "evidence": "`kde proj pipeline backend --to test`"
+        },
+        {
+          "text": "Does NOT suggest running deploy stage when user explicitly wants to skip it",
+          "passed": true,
+          "evidence": "No deploy stage mentioned"
+        },
+        {
+          "text": "Explains what the flag does (stopping at test stage)",
+          "passed": true,
+          "evidence": "Explains: `--to test` \u6703\u5f9e\u7b2c\u4e00\u500b stage \u958b\u59cb\u57f7\u884c\uff0c\u8dd1\u5b8c test \u5c31\u505c\u6b62\uff0cdeploy \u4e0d\u6703\u88ab\u57f7\u884c"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.833,
+        "passed": 5,
+        "failed": 1,
+        "total": 6,
+        "time_seconds": 47.8,
+        "tokens": 29013,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde start staging` or `kde create staging` to create the environment",
+          "passed": true,
+          "evidence": "Uses `kde create staging kind`"
+        },
+        {
+          "text": "Uses `kind` as the environment type (explicitly or by default)",
+          "passed": true,
+          "evidence": "Explicitly passes `kind` argument"
+        },
+        {
+          "text": "Uses `kde proj create api-service` to create the project",
+          "passed": false,
+          "evidence": "Skips `kde project create` and goes straight to `kde project fetch`. Notes fetch does not create project.env but does not suggest create first."
+        },
+        {
+          "text": "Uses `kde proj fetch api-service` with the correct git URL and branch",
+          "passed": true,
+          "evidence": "`kde project fetch api-service https://github.com/myorg/api-service.git main`"
+        },
+        {
+          "text": "Uses `kde proj deploy api-service` or `kde proj pipeline api-service` to deploy",
+          "passed": true,
+          "evidence": "`kde project deploy api-service`"
+        },
+        {
+          "text": "Does NOT fabricate non-existent kde commands or flags",
+          "passed": true,
+          "evidence": "All commands match actual kde command syntax"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 52.9,
+        "tokens": 19130,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde proj tail myapp` (or equivalent) to check logs",
+          "passed": true,
+          "evidence": "Step 2: `kde proj tail myapp` with variants for pod name and line count"
+        },
+        {
+          "text": "Uses `kde proj pod myapp` to list pods",
+          "passed": true,
+          "evidence": "Step 1: `kde proj pod myapp`"
+        },
+        {
+          "text": "Uses `kde proj pod-exec myapp` or `kde proj exec myapp` to enter the container/pod",
+          "passed": true,
+          "evidence": "Step 3: `kde proj pod-exec myapp`. Also mentions `kde proj exec myapp dev` for dev container."
+        },
+        {
+          "text": "Mentions `kde k9s` as an option for visual debugging",
+          "passed": false,
+          "evidence": "`kde k9s` is not mentioned anywhere in the response"
+        },
+        {
+          "text": "Does NOT suggest irrelevant commands or confuse kde commands with raw kubectl",
+          "passed": true,
+          "evidence": "All commands are valid kde commands"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 27.8,
+        "tokens": 21547,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `--to test` flag to stop before deploy",
+          "passed": true,
+          "evidence": "Mentioned as alternative: `kde proj pipeline backend --to test`"
+        },
+        {
+          "text": "OR uses `--from build --to test` combination",
+          "passed": true,
+          "evidence": "Primary recommendation: `kde proj pipeline backend --from build --to test`"
+        },
+        {
+          "text": "Correctly names the project (`backend`) in the command",
+          "passed": true,
+          "evidence": "`kde proj pipeline backend --from build --to test`"
+        },
+        {
+          "text": "Does NOT suggest running deploy stage when user explicitly wants to skip it",
+          "passed": true,
+          "evidence": "No deploy stage suggested"
+        },
+        {
+          "text": "Explains what the flag does (stopping at test stage)",
+          "passed": true,
+          "evidence": "Explains --from/--to range semantics with source code reference"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 34.5,
+        "stddev": 12.1248,
+        "min": 20.6,
+        "max": 42.9
+      },
+      "tokens": {
+        "mean": 17902.6667,
+        "stddev": 4995.0906,
+        "min": 14409,
+        "max": 23624
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.8777,
+        "stddev": 0.1072,
+        "min": 0.8,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 42.8333,
+        "stddev": 13.2666,
+        "min": 27.8,
+        "max": 52.9
+      },
+      "tokens": {
+        "mean": 23230.0,
+        "stddev": 5151.9694,
+        "min": 19130,
+        "max": 29013
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.12",
+      "time_seconds": "-8.3",
+      "tokens": "-5327"
+    }
+  },
+  "notes": []
+}

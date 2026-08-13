@@ -1,0 +1,29 @@
+{
+  "skill_name": "kde-usage",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "我在 /home/maxime/workspace 這個目錄下已經有 kde.env 了。幫我建立一個叫 staging 的 Kind 環境，然後建立一個叫 api-service 的專案並部署。請直接執行所有需要的 kde 指令。",
+      "expected_output": "Claude should run: kde start staging kind, kde proj create api-service (interactive - handles git clone), then kde proj deploy api-service. Should NOT include a separate kde proj fetch step.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "我的 myapp 專案 Pod 一直 CrashLoopBackOff，我想看 log 然後進去 pod 裡面看看發生什麼事。我現在在 kde workspace 目錄下，當前環境是 dev-env。請告訴我要用哪些 kde 指令，並直接執行。",
+      "expected_output": "Claude should run: kde proj pod myapp (list pods), kde proj tail myapp (check logs), kde proj pod-exec myapp (exec into pod). Should mention kde k9s. Should clarify that kde proj pod only lists pod names.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我改了 build.sh，想只重跑 build 和 test 這兩個 stage，不要執行 deploy。我的 pipeline stages 是 build, test, deploy。當前 project 是 backend，環境是 dev-env。指令怎麼下？",
+      "expected_output": "Claude should suggest: kde proj pipeline backend --to test or --from build --to test. Should know the --from/--to flags.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "我的 myapp 服務剛部署完但沒有起來，不知道出了什麼問題，幫我查一下。當前環境是 dev-env。",
+      "expected_output": "Claude should: list pods with kde proj pod myapp, check logs with kde proj tail myapp <pod_name>, suggest kde k9s and/or kde headlamp for visual inspection. Should know to look at events and logs.",
+      "files": []
+    }
+  ]
+}

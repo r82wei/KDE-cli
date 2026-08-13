@@ -1,0 +1,35 @@
+{
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 5,
+    "failed": 0,
+    "total": 5
+  },
+  "expectations": [
+    {
+      "text": "Uses `--to test` flag to stop before deploy",
+      "passed": true,
+      "evidence": "Primary recommendation: `kde proj pipeline backend --to test`"
+    },
+    {
+      "text": "OR uses `--from build --to test` combination",
+      "passed": true,
+      "evidence": "`--to test` alone is sufficient and is the primary recommendation"
+    },
+    {
+      "text": "Correctly names the project (`backend`) in the command",
+      "passed": true,
+      "evidence": "`kde proj pipeline backend --to test`"
+    },
+    {
+      "text": "Does NOT suggest running deploy stage when user explicitly wants to skip it",
+      "passed": true,
+      "evidence": "No deploy stage mentioned"
+    },
+    {
+      "text": "Explains what the flag does (stopping at test stage)",
+      "passed": true,
+      "evidence": "Explains: `--to test` 會從第一個 stage 開始執行，跑完 test 就停止，deploy 不會被執行"
+    }
+  ]
+}

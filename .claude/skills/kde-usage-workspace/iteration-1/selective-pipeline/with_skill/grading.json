@@ -1,0 +1,35 @@
+{
+  "eval_id": 2,
+  "eval_name": "selective-pipeline",
+  "configuration": "with_skill",
+  "assertions": [
+    {
+      "text": "Uses `--to test` flag to stop before deploy (e.g. `kde proj pipeline backend --to test`)",
+      "passed": true,
+      "evidence": "`kde proj pipeline backend --to test` is the primary recommendation"
+    },
+    {
+      "text": "OR uses `--from build --to test` combination",
+      "passed": true,
+      "evidence": "`kde use dev-env && kde proj pipeline backend --to test` — `--to test` alone satisfies the requirement"
+    },
+    {
+      "text": "Correctly names the project (`backend`) in the command",
+      "passed": true,
+      "evidence": "`kde proj pipeline backend --to test`"
+    },
+    {
+      "text": "Does NOT suggest running deploy stage when user explicitly wants to skip it",
+      "passed": true,
+      "evidence": "No deploy stage is mentioned; response focuses on stopping at test"
+    },
+    {
+      "text": "Explains what the flag does (stopping at test stage)",
+      "passed": true,
+      "evidence": "Explains: `--to test` 會從第一個 stage 開始執行，跑完 test 就停止，deploy 不會被執行"
+    }
+  ],
+  "pass_count": 5,
+  "total_count": 5,
+  "pass_rate": 1.0
+}

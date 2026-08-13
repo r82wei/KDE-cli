@@ -1,0 +1,10 @@
+{
+  "summary": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5},
+  "expectations": [
+    {"text": "Uses `kde start staging kind` or `kde create staging kind`", "passed": true, "evidence": "`kde start staging kind` in step 1"},
+    {"text": "Uses `kde proj create api-service` (interactive)", "passed": true, "evidence": "Step 2: `kde proj create api-service` — correctly described as interactive"},
+    {"text": "Does NOT include a separate `kde proj fetch` after create", "passed": true, "evidence": "Explicitly states: '不需要另外執行 `kde proj fetch`'"},
+    {"text": "Uses `kde proj deploy api-service` to deploy", "passed": true, "evidence": "Step 3: `kde proj deploy api-service`"},
+    {"text": "Does NOT fabricate non-existent kde commands", "passed": true, "evidence": "All commands are valid"}
+  ]
+}

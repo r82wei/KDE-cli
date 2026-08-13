@@ -1,0 +1,410 @@
+{
+  "metadata": {
+    "skill_name": "kde-usage",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-04-09T05:20:06Z",
+    "evals_run": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 45.9,
+        "tokens": 16169,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde start staging kind` or `kde create staging kind`",
+          "passed": true,
+          "evidence": "`kde start staging kind` in step 1"
+        },
+        {
+          "text": "Uses `kde proj create api-service` (interactive)",
+          "passed": true,
+          "evidence": "Step 2: `kde proj create api-service` \u2014 correctly described as interactive"
+        },
+        {
+          "text": "Does NOT include a separate `kde proj fetch` after create",
+          "passed": true,
+          "evidence": "Explicitly states: '\u4e0d\u9700\u8981\u53e6\u5916\u57f7\u884c `kde proj fetch`'"
+        },
+        {
+          "text": "Uses `kde proj deploy api-service` to deploy",
+          "passed": true,
+          "evidence": "Step 3: `kde proj deploy api-service`"
+        },
+        {
+          "text": "Does NOT fabricate non-existent kde commands",
+          "passed": true,
+          "evidence": "All commands are valid"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 52.9,
+        "tokens": 16535,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde proj pod myapp` to list pods",
+          "passed": true,
+          "evidence": "Step 2: `kde proj pod myapp`"
+        },
+        {
+          "text": "Uses `kde proj tail myapp <pod_name>` for logs",
+          "passed": true,
+          "evidence": "Step 3: both interactive and specific-pod variants shown"
+        },
+        {
+          "text": "Uses `kde proj pod-exec myapp` to exec into pod",
+          "passed": true,
+          "evidence": "Step 4: `kde proj pod-exec myapp`"
+        },
+        {
+          "text": "Mentions `kde k9s` for visual debugging",
+          "passed": true,
+          "evidence": "Step 5: `kde k9s` with shortcut keys d/l/s/:events"
+        },
+        {
+          "text": "Correctly describes `kde proj pod` as listing names only (not status)",
+          "passed": true,
+          "evidence": "Step 2 title: '\u5217\u51fa myapp \u7684 Pod \u540d\u7a31' \u2014 accurately describes as names only"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 17.4,
+        "tokens": 14590,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `--to test` or `--from build --to test`",
+          "passed": true,
+          "evidence": "`kde proj pipeline backend --from build --to test`"
+        },
+        {
+          "text": "Correctly names the project `backend`",
+          "passed": true,
+          "evidence": "Project name `backend` correctly used in command"
+        },
+        {
+          "text": "Does NOT suggest running deploy stage",
+          "passed": true,
+          "evidence": "No deploy stage mentioned"
+        },
+        {
+          "text": "Explains what the flags do",
+          "passed": true,
+          "evidence": "Explains: from build \u2192 stop at test \u2192 deploy skipped"
+        },
+        {
+          "text": "Does NOT fabricate pipeline flags",
+          "passed": true,
+          "evidence": "All flags (--from, --to) are valid"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 40.0,
+        "tokens": 16450,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde proj pod myapp` to list pods",
+          "passed": true,
+          "evidence": "\u6b65\u9a5f 2: `kde proj pod myapp`"
+        },
+        {
+          "text": "Uses `kde proj tail myapp <pod_name>` for logs",
+          "passed": true,
+          "evidence": "\u6b65\u9a5f 3: both interactive and `kde proj tail myapp <pod_name> 200`"
+        },
+        {
+          "text": "Mentions `kde k9s` for visual debugging with Events",
+          "passed": true,
+          "evidence": "\u6b65\u9a5f 4: `kde k9s` \u2014 mentions pressing `d` for Events which is key for diagnosing"
+        },
+        {
+          "text": "Mentions `kde headlamp` as web UI option",
+          "passed": false,
+          "evidence": "No mention of `kde headlamp` \u2014 skill has it in the debugging section but it was not included in the response"
+        },
+        {
+          "text": "Correctly describes `kde proj pod` as listing names only (not status)",
+          "passed": true,
+          "evidence": "'\u6ce8\u610f\uff1a\u6b64\u6307\u4ee4\u53ea\u986f\u793a\u540d\u7a31\uff0c\u4e0d\u986f\u793a\u72c0\u614b' \u2014 explicit and correct"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 51.3,
+        "tokens": 29628,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde start staging kind` or `kde create staging kind`",
+          "passed": true,
+          "evidence": "`kde create staging kind`"
+        },
+        {
+          "text": "Uses `kde proj create api-service` (interactive)",
+          "passed": true,
+          "evidence": "`kde proj create api-service` \u2014 correctly described as interactive"
+        },
+        {
+          "text": "Does NOT include a separate `kde proj fetch` after create",
+          "passed": true,
+          "evidence": "No fetch step present"
+        },
+        {
+          "text": "Uses `kde proj deploy api-service` to deploy",
+          "passed": true,
+          "evidence": "`kde proj deploy api-service`"
+        },
+        {
+          "text": "Does NOT fabricate non-existent kde commands",
+          "passed": true,
+          "evidence": "All commands valid \u2014 agent read source code to verify"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 40.2,
+        "tokens": 18698,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde proj pod myapp` to list pods",
+          "passed": true,
+          "evidence": "\u6b65\u9a5f\u4e00: `kde proj pod myapp`"
+        },
+        {
+          "text": "Uses `kde proj tail myapp <pod_name>` for logs",
+          "passed": true,
+          "evidence": "`kde proj tail myapp <pod-name>` with line count variant"
+        },
+        {
+          "text": "Uses `kde proj pod-exec myapp` to exec into pod",
+          "passed": true,
+          "evidence": "\u6b65\u9a5f\u4e09: `kde proj pod-exec myapp <pod-name>`"
+        },
+        {
+          "text": "Mentions `kde k9s` for visual debugging",
+          "passed": true,
+          "evidence": "Mentions `kde k9s` as graphical UI option"
+        },
+        {
+          "text": "Correctly describes `kde proj pod` as listing names only (not status)",
+          "passed": true,
+          "evidence": "'\u8f38\u51fa `myapp` namespace \u4e0b\u6240\u6709 Pod \u540d\u7a31' \u2014 accurately names only"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 41.8,
+        "tokens": 21394,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `--to test` or `--from build --to test`",
+          "passed": true,
+          "evidence": "Primary: `kde proj pipeline backend --from build --to test`"
+        },
+        {
+          "text": "Correctly names the project `backend`",
+          "passed": true,
+          "evidence": "`kde proj pipeline backend ...`"
+        },
+        {
+          "text": "Does NOT suggest running deploy stage",
+          "passed": true,
+          "evidence": "No deploy mentioned"
+        },
+        {
+          "text": "Explains what the flags do",
+          "passed": true,
+          "evidence": "Explains --from/--to range semantics clearly"
+        },
+        {
+          "text": "Does NOT fabricate pipeline flags",
+          "passed": true,
+          "evidence": "All flags valid"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "failed": 2,
+        "total": 5,
+        "time_seconds": 41.7,
+        "tokens": 16870,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses `kde proj pod myapp` to list pods",
+          "passed": true,
+          "evidence": "\u7b2c\u4e8c\u6b65: `kde proj pod myapp`"
+        },
+        {
+          "text": "Uses `kde proj tail myapp` for logs",
+          "passed": true,
+          "evidence": "\u7b2c\u4e09\u6b65: `kde proj tail myapp`"
+        },
+        {
+          "text": "Mentions `kde k9s` for visual debugging with Events",
+          "passed": true,
+          "evidence": "\u7b2c\u4e94\u6b65: `kde k9s` \u2014 mentions `:events`"
+        },
+        {
+          "text": "Mentions `kde headlamp` as web UI option",
+          "passed": false,
+          "evidence": "No mention of `kde headlamp`"
+        },
+        {
+          "text": "Correctly describes `kde proj pod` as listing names only (not status)",
+          "passed": false,
+          "evidence": "'\u89c0\u5bdf Pod \u662f\u5426\u5b58\u5728\uff0c\u4ee5\u53ca\u72c0\u614b\u662f\u5426\u70ba CrashLoopBackOff\u3001ImagePullBackOff\u3001Pending \u7b49\u7570\u5e38\u72c0\u614b' \u2014 incorrectly implies kde proj pod shows status"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.95,
+        "stddev": 0.1,
+        "min": 0.8,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 39.05,
+        "stddev": 15.3663,
+        "min": 17.4,
+        "max": 52.9
+      },
+      "tokens": {
+        "mean": 15936.0,
+        "stddev": 910.8608,
+        "min": 14590,
+        "max": 16535
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.9,
+        "stddev": 0.2,
+        "min": 0.6,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 43.75,
+        "stddev": 5.0863,
+        "min": 40.2,
+        "max": 51.3
+      },
+      "tokens": {
+        "mean": 21647.5,
+        "stddev": 5635.5035,
+        "min": 16870,
+        "max": 29628
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.05",
+      "time_seconds": "-4.7",
+      "tokens": "-5712"
+    }
+  },
+  "notes": []
+}
