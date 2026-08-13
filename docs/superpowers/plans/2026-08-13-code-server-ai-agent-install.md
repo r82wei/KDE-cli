@@ -767,11 +767,11 @@ fi
 read -p "請輸入 code-server 的 password: " PASSWORD
 
 start_code_server "${CODE_SERVER_PORT}" "${CODE_SERVER_DAEMON}" "${CODE_SERVER_NAME}" \
-                  "${CODE_SERVER_OPEN_PATH}" "${CODE_SERVER_AGENTS_CSV}" \
+                  "${CODE_SERVER_OPEN_PATH}" \
                   "${CODE_SERVER_MOUNTS[@]}"
 ```
 
-> `start_code_server` 的第 5 個參數（agents CSV）在 Task 4 才會被接收。本任務先寫好呼叫端，Task 3 結束時 `kde code-server` 會因參數位移而行為錯誤 —— 這是刻意的，Task 4 立刻補上。**Task 3 與 Task 4 之間不要發佈。**
+> **本任務刻意還不把 `CODE_SERVER_AGENTS_CSV` 傳給 `start_code_server`。** `start_code_server` 目前只收 4 個位置參數，要到 Task 4 才會新增第 5 個；現在就傳會造成參數位移，讓 `kde code-server` 在兩個任務之間處於壞掉的狀態。本任務只負責「解析出 agent 清單」，Task 4 負責「把它接到 docker run」。
 
 - [ ] **Step 5: 執行測試確認通過**
 
@@ -986,7 +986,25 @@ start_code_server() {
         fi
 ```
 
-- [ ] **Step 7: 更新既有掛載測試的呼叫端**
+- [ ] **Step 7: 接上 command.sh 的呼叫端**
+
+`start_code_server` 現在收 5 個位置參數了。在 `scripts/code-server/command.sh` 中，把：
+
+```bash
+start_code_server "${CODE_SERVER_PORT}" "${CODE_SERVER_DAEMON}" "${CODE_SERVER_NAME}" \
+                  "${CODE_SERVER_OPEN_PATH}" \
+                  "${CODE_SERVER_MOUNTS[@]}"
+```
+
+改為：
+
+```bash
+start_code_server "${CODE_SERVER_PORT}" "${CODE_SERVER_DAEMON}" "${CODE_SERVER_NAME}" \
+                  "${CODE_SERVER_OPEN_PATH}" "${CODE_SERVER_AGENTS_CSV}" \
+                  "${CODE_SERVER_MOUNTS[@]}"
+```
+
+- [ ] **Step 8: 更新既有掛載測試的呼叫端**
 
 `start_code_server` 多了第 5 個參數，`test/test-code-server-mounts.sh` 的 22 處呼叫都要在第 4 個參數之後插入一個空字串：
 
@@ -995,7 +1013,7 @@ cd /home/maxime/KDE-cli
 sed -i -E 's/(start_code_server [0-9]+ (true|false) [A-Za-z0-9_.-]+ "[^"]*")/\1 ""/g' test/test-code-server-mounts.sh
 ```
 
-- [ ] **Step 8: 驗證改寫結果**
+- [ ] **Step 9: 驗證改寫結果**
 
 Run:
 ```bash
@@ -1005,17 +1023,17 @@ echo "已補參數: $(grep -cE 'start_code_server [0-9]+ (true|false) [A-Za-z0-9
 ```
 Expected: 兩個數字都是 `22`。若不相等，用 `grep -n 'start_code_server ' test/test-code-server-mounts.sh` 找出漏掉的那幾行手動補上 `""`。
 
-- [ ] **Step 9: 執行全部相關測試**
+- [ ] **Step 10: 執行全部相關測試**
 
 Run: `bash test/test-code-server-mounts.sh && bash test/test-code-server-agent-args.sh`
 Expected: 兩份都印 `🎉 全部通過`。掛載測試 `失敗：0`；參數測試 `總測試數：29  通過：29  失敗：0`
 
-- [ ] **Step 10: 手動確認 CLI 說明可正常顯示**
+- [ ] **Step 11: 手動確認 CLI 說明可正常顯示**
 
 Run: `bash -n scripts/utils/code-server.sh && KDE_SCRIPTS_PATH=scripts bash -c 'source scripts/utils/code-server.sh && show_code_server_help'`
 Expected: 印出說明文字，其中含 `-a, --agent` 那兩行
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
 cd /home/maxime/KDE-cli
