@@ -1,0 +1,1 @@
+{"eval_id": 0, "eval_name": "hot-reload-no-redeploy", "prompt": "我的 myapp 專案跑在 Kind 環境，有把 code 用 volume mount 進去，pod 裡面用 nodemon 跑，我剛改了一個 function，要怎麼讓修改生效？", "assertions": []}

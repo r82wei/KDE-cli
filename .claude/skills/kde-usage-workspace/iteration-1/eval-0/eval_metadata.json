@@ -1,0 +1,25 @@
+{
+  "eval_id": 0,
+  "eval_name": "deploy-staging",
+  "prompt": "我在 /home/maxime/workspace 這個目錄下已經有 kde.env 了。幫我建立一個叫 staging 的 Kind 環境，然後把 https://github.com/myorg/api-service.git 的 main branch 部署上去，project 名稱叫 api-service。請直接執行所有需要的 kde 指令。",
+  "assertions": [
+    {
+      "text": "Uses `kde start staging` or `kde create staging` to create the environment"
+    },
+    {
+      "text": "Uses `kind` as the environment type (explicitly or by default)"
+    },
+    {
+      "text": "Uses `kde proj create api-service` to create the project"
+    },
+    {
+      "text": "Uses `kde proj fetch api-service` with the correct git URL and branch"
+    },
+    {
+      "text": "Uses `kde proj deploy api-service` or `kde proj pipeline api-service` to deploy"
+    },
+    {
+      "text": "Does NOT fabricate non-existent kde commands or flags"
+    }
+  ]
+}

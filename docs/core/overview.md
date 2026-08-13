@@ -18,6 +18,7 @@
 | | Port Forward | Service/Pod 端口轉發到本地 |
 | **對外連線** | Cloudflare Tunnel | 安全的外部連線（自訂域名） |
 | | Ngrok | 快速的臨時外部連線 |
+| **AI 助手** | Claude Code Skill | 安裝 KDE 操作技能，讓 Claude Code 了解 kde 指令 |
 
 ---
 
@@ -197,3 +198,4 @@ kde proj pipeline myapp
 - [CI/CD Pipeline](./cicd-pipeline.md) - CI/CD 流程詳細說明
 - [開發容器](./environment/dev-container.md) - 開發容器詳細說明
 - [Kubernetes 環境](./environment/kubernetes.md) - Kubernetes 環境詳細說明
+- [Claude Code Skill](./dev-tools/claude-skill.md) - 安裝 Claude Code 操作技能

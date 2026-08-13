@@ -1,0 +1,1 @@
+{"eval_id": 0, "eval_name": "deploy-staging", "prompt": "我在 /home/maxime/workspace 這個目錄下已經有 kde.env 了。幫我建立一個叫 staging 的 Kind 環境，然後建立一個叫 api-service 的專案並部署。請直接執行所有需要的 kde 指令。", "assertions": []}

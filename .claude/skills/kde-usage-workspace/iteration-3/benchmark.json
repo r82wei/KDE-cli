@@ -1,0 +1,139 @@
+{
+  "metadata": {
+    "skill_name": "kde-usage",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-04-09T05:27:42Z",
+    "evals_run": [
+      0
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 31.6,
+        "tokens": 15224,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Does NOT suggest redeploy or running the pipeline",
+          "passed": true,
+          "evidence": "Explicitly states: '\u4e0d\u9700\u8981 redeploy\uff0c\u4e0d\u9700\u8981\u91cd\u65b0 build image'"
+        },
+        {
+          "text": "Explains why (volume mount + nodemon auto-detects changes)",
+          "passed": true,
+          "evidence": "Explains hot reload mode: Kind + volume mount + nodemon, saving file is enough"
+        },
+        {
+          "text": "Suggests `kde proj tail myapp` to verify nodemon restarted",
+          "passed": true,
+          "evidence": "`kde proj tail myapp` recommended with expected nodemon output"
+        },
+        {
+          "text": "Correctly describes when redeploy IS needed (image/manifest/env changes)",
+          "passed": true,
+          "evidence": "Lists: Docker image change, K8s manifest change, env var change, no volume mount"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 46.7,
+        "tokens": 29060,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Does NOT suggest redeploy or running the pipeline",
+          "passed": true,
+          "evidence": "'No KDE operation is needed at all'"
+        },
+        {
+          "text": "Explains why (volume mount + nodemon auto-detects changes)",
+          "passed": true,
+          "evidence": "Explains local-path-provisioner + volume mount + nodemon file watch pattern"
+        },
+        {
+          "text": "Suggests `kde proj tail myapp` to verify nodemon restarted",
+          "passed": true,
+          "evidence": "`kde proj tail myapp` listed as verification command"
+        },
+        {
+          "text": "Correctly describes when redeploy IS needed (image/manifest/env changes)",
+          "passed": true,
+          "evidence": "Lists: Docker image change, K8s manifest/env var changes, no volume mount"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 31.6,
+        "stddev": 0.0,
+        "min": 31.6,
+        "max": 31.6
+      },
+      "tokens": {
+        "mean": 15224.0,
+        "stddev": 0.0,
+        "min": 15224,
+        "max": 15224
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 46.7,
+        "stddev": 0.0,
+        "min": 46.7,
+        "max": 46.7
+      },
+      "tokens": {
+        "mean": 29060.0,
+        "stddev": 0.0,
+        "min": 29060,
+        "max": 29060
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.00",
+      "time_seconds": "-15.1",
+      "tokens": "-13836"
+    }
+  },
+  "notes": []
+}

@@ -1,0 +1,10 @@
+{
+  "summary": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5},
+  "expectations": [
+    {"text": "Uses `kde proj pod myapp` to list pods", "passed": true, "evidence": "步驟 2: `kde proj pod myapp`"},
+    {"text": "Uses `kde proj tail myapp <pod_name>` for logs", "passed": true, "evidence": "步驟 3: both interactive and `kde proj tail myapp <pod_name> 200`"},
+    {"text": "Mentions `kde k9s` for visual debugging with Events", "passed": true, "evidence": "步驟 4: `kde k9s` — mentions pressing `d` for Events which is key for diagnosing"},
+    {"text": "Mentions `kde headlamp` as web UI option", "passed": false, "evidence": "No mention of `kde headlamp` — skill has it in the debugging section but it was not included in the response"},
+    {"text": "Correctly describes `kde proj pod` as listing names only (not status)", "passed": true, "evidence": "'注意：此指令只顯示名稱，不顯示狀態' — explicit and correct"}
+  ]
+}

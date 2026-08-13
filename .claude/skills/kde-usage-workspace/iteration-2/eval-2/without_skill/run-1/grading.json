@@ -1,0 +1,10 @@
+{
+  "summary": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5},
+  "expectations": [
+    {"text": "Uses `--to test` or `--from build --to test`", "passed": true, "evidence": "Primary: `kde proj pipeline backend --from build --to test`"},
+    {"text": "Correctly names the project `backend`", "passed": true, "evidence": "`kde proj pipeline backend ...`"},
+    {"text": "Does NOT suggest running deploy stage", "passed": true, "evidence": "No deploy mentioned"},
+    {"text": "Explains what the flags do", "passed": true, "evidence": "Explains --from/--to range semantics clearly"},
+    {"text": "Does NOT fabricate pipeline flags", "passed": true, "evidence": "All flags valid"}
+  ]
+}
