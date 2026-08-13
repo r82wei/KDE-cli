@@ -26,7 +26,7 @@ setup() {
     cat > "${TMP_ROOT}/agents/install-goodagent.sh" <<'EOS'
 #!/bin/bash
 set -eo pipefail
-echo "goodagent:${AGENT_REINSTALL:-}" >> "${HOME}/run-log"
+echo "goodagent:${AGENT_REINSTALL:-}:${AGENT_NAME:-}" >> "${HOME}/run-log"
 printf '#!/bin/bash\necho goodagent\n' > "${AGENT_BIN_DIR}/goodagent"
 chmod +x "${AGENT_BIN_DIR}/goodagent"
 EOS
@@ -76,9 +76,12 @@ out=$(run_entrypoint "nosuchagent"); rc=$?
 check "不認識的 agent 只警告、列出可用清單、exit 0" $?
 
 # 測試 4：安裝失敗只警告，仍 exit 0
+# 注意：不可只比對「失敗」二字 —— 假腳本 install-badagent.sh 自己也會往 stderr
+# 印出「模擬下載失敗」，而測試以 2>&1 一併擷取，就算刪掉 entrypoint 本身的 ❌
+# 訊息，這個斷言仍會通過。改比對只有 entrypoint 才會印出的 ❌ 標記。
 setup
 out=$(run_entrypoint "badagent"); rc=$?
-[[ ${rc} -eq 0 ]] && echo "${out}" | grep -q "失敗"
+[[ ${rc} -eq 0 ]] && echo "${out}" | grep -q "❌"
 check "安裝失敗只警告且 exit 0" $?
 
 # 測試 5：前面的 agent 失敗不影響後面的 agent
@@ -106,8 +109,16 @@ check "REINSTALL=true 時強制重裝" $?
 # 測試 8：AGENT_REINSTALL 契約變數有正確轉譯給安裝腳本
 setup
 run_entrypoint "goodagent" "true" >/dev/null
-grep -q '^goodagent:true$' "${TMP_ROOT}/home/run-log"
+grep -q '^goodagent:true:goodagent$' "${TMP_ROOT}/home/run-log"
 check "KDE_CODE_SERVER_AI_AGENTS_REINSTALL 轉譯為 AGENT_REINSTALL" $?
+
+# 測試 8b：AGENT_NAME 契約變數有正確傳給安裝腳本
+# entrypoint 依檔名慣例把要安裝的 agent 名稱以 AGENT_NAME 傳給 install-<name>.sh；
+# 若刪掉這個傳遞，其餘 10 個 entrypoint 測試都不會變紅，因此需要獨立斷言。
+setup
+run_entrypoint "goodagent" >/dev/null
+grep -q '^goodagent::goodagent$' "${TMP_ROOT}/home/run-log"
+check "AGENT_NAME 契約變數正確傳給安裝腳本" $?
 
 # 測試 9：逗號分隔的空白與空欄位要被忽略
 setup

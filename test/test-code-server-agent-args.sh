@@ -213,6 +213,12 @@ assert_contains "daemon 分支含 KDE_CODE_SERVER_AI_AGENTS=codex" "${out}" "KDE
 assert_contains "daemon 成功訊息列出 agent" "${out}" "AI Agents: codex"
 echo ""
 
+echo "測試 20b：daemon 模式且 agents CSV 為空時不印出 AI Agents 行"
+echo "-----------------------------------------------------------"
+out=$(start_code_server 8080 true cs-a5b "" "" "${KDE_PATH}/dir-a" 2>&1)
+assert_not_contains "daemon 分支不含 AI Agents: 行" "${out}" "AI Agents:"
+echo ""
+
 echo "測試 21：掛載仍正常（回歸）"
 echo "---------------------------"
 out=$(start_code_server 8080 false cs-a6 "" "" "${KDE_PATH}/dir-a" 2>&1)

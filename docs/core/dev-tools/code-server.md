@@ -53,6 +53,12 @@ kde code-server [options]
 | `--name` | `-n` | 指定容器名稱（同時啟動多個實例時用來區分） | code-server |
 | `--volume` | `-v` | 指定掛載到 container 的目錄 | 當前路徑（PWD） |
 | `--workdir` | `-w` | 指定 code-server 開啟的資料夾（必須位於 `--volume` 底下） | 與 `--volume` 相同 |
+| `--agent` | `-a` | 啟動時安裝指定的 AI agent（可重複指定多次，例如 `-a claude -a codex`）；已安裝者會跳過，設 `KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true` 可強制重裝 | - |
+
+> **注意**：`-a`/`--agent` 需要此功能上線後才建置的映像檔（內含 `/entrypoint.d/10-ai-agents.sh`）。若主機上快取的是較舊的映像檔，`-a` 會被靜默忽略（不會安裝任何東西，也不會出現錯誤訊息）。使用前請先更新映像檔：
+> ```bash
+> docker pull r82wei/kde-code-server:latest
+> ```
 
 ### 基本使用方式
 
@@ -350,6 +356,7 @@ Code Server 容器包含以下配置：
 --workdir ${OPEN_PATH}                # 工作目錄 / 開啟的資料夾（-w 指定，預設同 --volume）
 -p ${PORT}:8080                       # 端口對應（預設 8080）
 -e "PASSWORD=${PASSWORD}"             # 登入密碼
+-e "KDE_CODE_SERVER_AI_AGENTS=${AGENTS_CSV}"   # 要安裝的 AI agent 清單（-a 指定，逗號分隔，僅在有值時附加）
 
 # Volume 掛載
 -v "${KDE_PATH}/.code-server/${NAME}:/home/coder"   # VSCode 配置目錄（集中收納在 .code-server/<容器名稱> 底下）

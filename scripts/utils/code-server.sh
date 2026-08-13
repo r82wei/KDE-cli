@@ -260,6 +260,7 @@ start_code_server() {
         echo "開啟資料夾: ${OPEN_PATH}"
         if [[ -n "${AGENTS_CSV}" ]]; then
             echo "AI Agents: ${AGENTS_CSV}"
+            echo "  安裝進度: docker logs -f ${NAME}"
         fi
         echo "存取網址: http://localhost:${PORT}"
         echo "停止服務: docker stop ${NAME}"

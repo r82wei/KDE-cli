@@ -295,6 +295,8 @@ kde code-server --agent claude --agent codex
 # 安裝失敗只會警告，不會阻擋 code-server 啟動
 # 強制重裝：
 KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true kde code-server -a claude
+# 注意：-a 需要此功能上線後才建置的映像檔，較舊的快取映像檔會讓 -a 靜默失效；
+# 請先執行 docker pull r82wei/kde-code-server:latest
 
 # 組合使用
 kde code-server -p 9090 -d
