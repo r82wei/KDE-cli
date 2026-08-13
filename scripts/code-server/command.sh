@@ -17,5 +17,5 @@ fi
 read -p "請輸入 code-server 的 password: " PASSWORD
 
 start_code_server "${CODE_SERVER_PORT}" "${CODE_SERVER_DAEMON}" "${CODE_SERVER_NAME}" \
-                  "${CODE_SERVER_OPEN_PATH}" \
+                  "${CODE_SERVER_OPEN_PATH}" "${CODE_SERVER_AGENTS_CSV}" \
                   "${CODE_SERVER_MOUNTS[@]}"

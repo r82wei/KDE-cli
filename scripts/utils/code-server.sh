@@ -99,7 +99,8 @@ start_code_server() {
     local DAEMON=$2
     local NAME=${3:-code-server}
     local OPEN_PATH_ARG=$4
-    shift 4
+    local AGENTS_CSV=$5
+    shift 5
     local -a RAW_MOUNTS=("$@")
 
     # 無掛載目標時預設當前路徑
@@ -227,6 +228,15 @@ start_code_server() {
     local DOCKER_SOCK_GID
     DOCKER_SOCK_GID=$( (stat -c '%g' /var/run/docker.sock 2>/dev/null || stat -f '%g' /var/run/docker.sock 2>/dev/null) ) || true
 
+    # AI agent 相關環境變數：僅在有值時才附加，避免傳入空變數
+    local -a AGENT_ARGS=()
+    if [[ -n "${AGENTS_CSV}" ]]; then
+        AGENT_ARGS+=(-e "KDE_CODE_SERVER_AI_AGENTS=${AGENTS_CSV}")
+    fi
+    if [[ -n "${KDE_CODE_SERVER_AI_AGENTS_REINSTALL:-}" ]]; then
+        AGENT_ARGS+=(-e "KDE_CODE_SERVER_AI_AGENTS_REINSTALL=${KDE_CODE_SERVER_AI_AGENTS_REINSTALL}")
+    fi
+
     if [[ "${DAEMON}" == "true" ]]; then
         docker run -it -d \
         --name ${NAME} \
@@ -240,6 +250,7 @@ start_code_server() {
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -u "$(id -u):$(id -g)" \
         -e "DOCKER_USER=$USER" \
+        "${AGENT_ARGS[@]}" \
         ${CODE_SERVER_IMAGE} \
         ${OPEN_PATH}
 
@@ -247,6 +258,9 @@ start_code_server() {
         echo "掛載目標:"
         for m in "${MOUNT_SPECS[@]}"; do echo "  - ${m}"; done
         echo "開啟資料夾: ${OPEN_PATH}"
+        if [[ -n "${AGENTS_CSV}" ]]; then
+            echo "AI Agents: ${AGENTS_CSV}"
+        fi
         echo "存取網址: http://localhost:${PORT}"
         echo "停止服務: docker stop ${NAME}"
     else
@@ -262,6 +276,7 @@ start_code_server() {
         -v /var/run/docker.sock:/var/run/docker.sock:ro \
         -u "$(id -u):$(id -g)" \
         -e "DOCKER_USER=$USER" \
+        "${AGENT_ARGS[@]}" \
         ${CODE_SERVER_IMAGE} \
         ${OPEN_PATH}
     fi
