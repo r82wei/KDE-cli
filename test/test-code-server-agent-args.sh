@@ -140,6 +140,87 @@ assert_rc "退出碼為 0" 0 "${rc}"
 assert_eq "IFS 呼叫前後不變" "${old_ifs_before}" "${IFS}"
 echo ""
 
+echo "===== docker 參數組裝層 ====="
+echo ""
+
+# 組裝層需要 start_code_server 能跑到 docker run，因此準備假環境並 stub docker
+export KDE_PATH="/tmp/kde-test-cs-agents"
+export KDE_CLI_PATH="/tmp/kde-test-cs-agents/cli"
+export CODE_SERVER_IMAGE="code-server:test"
+export PASSWORD="testpass"
+
+rm -rf "${KDE_PATH}"
+mkdir -p "${KDE_PATH}/cli" "${KDE_PATH}/dir-a"
+
+docker() {
+    case "$1" in
+        ps)  return 0 ;;
+        run) echo "DOCKER_RUN: $*" ;;
+    esac
+}
+stat() { echo "0"; }
+
+assert_contains() { # $1=描述 $2=字串 $3=樣式
+    TOTAL=$((TOTAL+1))
+    if echo "$2" | grep -q -- "$3"; then
+        echo "  ✅ $1"; PASS=$((PASS+1))
+    else
+        echo "  ❌ $1：輸出中找不到 '$3'"; FAIL=$((FAIL+1))
+    fi
+}
+
+assert_not_contains() { # $1=描述 $2=字串 $3=樣式
+    TOTAL=$((TOTAL+1))
+    if echo "$2" | grep -q -- "$3"; then
+        echo "  ❌ $1：輸出中不應出現 '$3'"; FAIL=$((FAIL+1))
+    else
+        echo "  ✅ $1"; PASS=$((PASS+1))
+    fi
+}
+
+echo "測試 16：空的 agents CSV 不產生環境變數"
+echo "---------------------------------------"
+unset KDE_CODE_SERVER_AI_AGENTS_REINSTALL
+out=$(start_code_server 8080 false cs-a1 "" "" "${KDE_PATH}/dir-a" 2>&1)
+assert_not_contains "不含 KDE_CODE_SERVER_AI_AGENTS" "${out}" "KDE_CODE_SERVER_AI_AGENTS"
+echo ""
+
+echo "測試 17：非空 agents CSV 產生環境變數"
+echo "-------------------------------------"
+out=$(start_code_server 8080 false cs-a2 "" "claude,codex" "${KDE_PATH}/dir-a" 2>&1)
+assert_contains "含 KDE_CODE_SERVER_AI_AGENTS=claude,codex" "${out}" "KDE_CODE_SERVER_AI_AGENTS=claude,codex"
+echo ""
+
+echo "測試 18：REINSTALL 未設定時不透傳"
+echo "---------------------------------"
+unset KDE_CODE_SERVER_AI_AGENTS_REINSTALL
+out=$(start_code_server 8080 false cs-a3 "" "claude" "${KDE_PATH}/dir-a" 2>&1)
+assert_not_contains "不含 REINSTALL" "${out}" "KDE_CODE_SERVER_AI_AGENTS_REINSTALL"
+echo ""
+
+echo "測試 19：REINSTALL 設定時透傳"
+echo "-----------------------------"
+export KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true
+out=$(start_code_server 8080 false cs-a4 "" "claude" "${KDE_PATH}/dir-a" 2>&1)
+assert_contains "含 REINSTALL=true" "${out}" "KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true"
+unset KDE_CODE_SERVER_AI_AGENTS_REINSTALL
+echo ""
+
+echo "測試 20：daemon 模式也帶上環境變數"
+echo "----------------------------------"
+out=$(start_code_server 8080 true cs-a5 "" "codex" "${KDE_PATH}/dir-a" 2>&1)
+assert_contains "daemon 分支含 KDE_CODE_SERVER_AI_AGENTS=codex" "${out}" "KDE_CODE_SERVER_AI_AGENTS=codex"
+assert_contains "daemon 成功訊息列出 agent" "${out}" "AI Agents: codex"
+echo ""
+
+echo "測試 21：掛載仍正常（回歸）"
+echo "---------------------------"
+out=$(start_code_server 8080 false cs-a6 "" "" "${KDE_PATH}/dir-a" 2>&1)
+assert_contains "掛載參數正確" "${out}" "-v ${KDE_PATH}/dir-a:${KDE_PATH}/dir-a"
+echo ""
+
+rm -rf "${KDE_PATH}"
+
 echo "===== 測試完成 ====="
 echo "總測試數：${TOTAL}  通過：${PASS}  失敗：${FAIL}"
 [[ ${FAIL} -eq 0 ]] && echo "🎉 全部通過" || { echo "❌ 有失敗"; exit 1; }
