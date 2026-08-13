@@ -27,9 +27,9 @@
 
 ## 目標
 
-- `docker run` 時以環境變數 `KDE_AI_AGENTS` 指定要安裝的 agent（逗號分隔，可多個）。
+- `docker run` 時以環境變數 `KDE_CODE_SERVER_AI_AGENTS` 指定要安裝的 agent（逗號分隔，可多個）。
 - `kde code-server --agent <name>` 可重複指定，組裝成該環境變數傳入。
-- 已安裝者跳過，可用 `KDE_AI_AGENTS_REINSTALL=true` 強制重裝。
+- 已安裝者跳過，可用 `KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true` 強制重裝。
 - 單一 agent 安裝失敗只警告，不阻擋 code-server 啟動。
 - 新增第三、第四個 agent 時**不需修改 entrypoint 邏輯**，只需新增一支安裝腳本。
 
@@ -37,7 +37,7 @@
 
 - 不支援版本鎖定語法（`claude@1.2.3`）。
 - 不支援 argv 旗標形式（`image --agent x`）；只用環境變數。
-- 不做 `KDE_AI_AGENTS_STRICT`（失敗即退出）模式。
+- 不做 `KDE_CODE_SERVER_AI_AGENTS_STRICT`（失敗即退出）模式。
 - 不覆寫映像的 ENTRYPOINT。
 - 不處理 agent 的登入 / 認證（使用者自行在容器內完成；credential 隨 `/home/coder` 持久卷保存）。
 
@@ -80,14 +80,14 @@ RUN chmod 0755 /entrypoint.d/*.sh /usr/local/lib/kde-agents/*.sh
 執行時機：`fixuid` 與 `DOCKER_USER` 改名之後、code-server 啟動之前（安裝過程會阻塞啟動）。
 
 ```
-1. 讀 KDE_AI_AGENTS；未設定或為空 → 直接 exit 0（完全靜默）
+1. 讀 KDE_CODE_SERVER_AI_AGENTS；未設定或為空 → 直接 exit 0（完全靜默）
 2. export PATH="$HOME/.local/bin:$PATH"     # 僅供本程序偵測用
 3. 確保 $HOME/.local/bin 存在
 4. 冪等寫入 PATH 到 $HOME/.bashrc 與 $HOME/.profile（見「PATH 傳遞」）
-5. 以 IFS=, 切分 KDE_AI_AGENTS，逐一處理（去除前後空白、忽略空欄位）
+5. 以 IFS=, 切分 KDE_CODE_SERVER_AI_AGENTS，逐一處理（去除前後空白、忽略空欄位）
      a. SCRIPT=/usr/local/lib/kde-agents/install-<name>.sh
      b. SCRIPT 不存在 → 記為 unknown，印出可用清單，continue
-     c. KDE_AI_AGENTS_REINSTALL != true 且 command -v <name> 成功 → 記為 skipped，continue
+     c. KDE_CODE_SERVER_AI_AGENTS_REINSTALL != true 且 command -v <name> 成功 → 記為 skipped，continue
      d. 執行 bash "$SCRIPT"；成功記為 installed，失敗記為 failed（僅印訊息，不中斷）
 6. 印出彙總（installed / skipped / unknown / failed 各一行）
 7. exit 0（無條件）
@@ -103,6 +103,17 @@ RUN chmod 0755 /entrypoint.d/*.sh /usr/local/lib/kde-agents/*.sh
   - 未來新增的 agent 若上游 binary 名稱與檔名不同，由該支安裝腳本自行在 `$AGENT_BIN_DIR` 建 symlink 補齊。
 - 可用清單由 `ls /usr/local/lib/kde-agents/install-*.sh` 動態產生，entrypoint 不硬編任何 agent 名稱。
 
+### 變數命名政策
+
+分兩層，刻意不一致：
+
+| 層次 | 前綴 | 例 | 理由 |
+|---|---|---|---|
+| 外部旋鈕（使用者 / CLI 給定） | `KDE_CODE_SERVER_` | `KDE_CODE_SERVER_AI_AGENTS`、`KDE_CODE_SERVER_AI_AGENTS_REINSTALL`、`KDE_CODE_SERVER_AGENT_DIR` | KDE 的 env 是階層式 source（`kde.env` → `k8s.env` → `project.env`…），裸名會滲進所有情境。日後 sandbox 等其他工具各用各的前綴 |
+| 內部契約（entrypoint ↔ install 腳本） | 無前綴 | `AGENT_NAME`、`AGENT_BIN_DIR`、`AGENT_REINSTALL` | `agents/install-*.sh` 應為**跨工具共用資產**。契約若綁上 `KDE_CODE_SERVER_`，sandbox 就得複製一份相同的腳本 |
+
+entrypoint 負責把外部旋鈕轉譯成內部契約（`KDE_CODE_SERVER_AI_AGENTS_REINSTALL` → `AGENT_REINSTALL`）。
+
 ### 安裝腳本契約
 
 entrypoint 呼叫時提供：
@@ -111,7 +122,7 @@ entrypoint 呼叫時提供：
 |---|---|
 | `AGENT_NAME` | agent 名稱（= 檔名中的 `<name>`） |
 | `AGENT_BIN_DIR` | `$HOME/.local/bin`（已建立） |
-| `KDE_AI_AGENTS_REINSTALL` | `true` / 未設定 |
+| `AGENT_REINSTALL` | `true` / 未設定（由 `KDE_CODE_SERVER_AI_AGENTS_REINSTALL` 轉譯而來） |
 
 腳本責任：
 - **必須 `set -eo pipefail`。** 兩支腳本都是 `curl -fsSL <url> | bash` 形式——**沒有 `pipefail` 時，curl 失敗（404 / 斷網）會被 pipeline 末端的 `bash` 吞掉並回傳 0**，entrypoint 會把失敗誤判為成功。這是本設計唯一必須修改現有腳本內容之處。
@@ -153,8 +164,8 @@ entrypoint 呼叫時提供：
 
 `scripts/utils/code-server.sh` 的 `start_code_server()`：
 - 新增參數接收 agent 清單，以 `IFS=,` 合併為字串。
-- **僅在非空時**附加 `-e KDE_AI_AGENTS=...`，使用 `${AGENTS_ENV:+-e "KDE_AI_AGENTS=${AGENTS_ENV}"}` 避免傳入空變數。
-- 同步透傳 `KDE_AI_AGENTS_REINSTALL`（同樣僅在非空時附加），使用者以環境變數控制，不新增旗標。
+- **僅在非空時**附加 `-e KDE_CODE_SERVER_AI_AGENTS=...`，使用 `${AGENTS_ENV:+-e "KDE_CODE_SERVER_AI_AGENTS=${AGENTS_ENV}"}` 避免傳入空變數。
+- 同步透傳 `KDE_CODE_SERVER_AI_AGENTS_REINSTALL`（同樣僅在非空時附加），使用者以環境變數控制，不新增旗標。
 - daemon 與非 daemon 兩個 `docker run` 分支都要加。
 - daemon 分支的成功訊息追加一行「AI Agents: xxx」（有指定時才印）。
 
@@ -164,7 +175,7 @@ entrypoint 呼叫時提供：
 
 | 情境 | 行為 |
 |---|---|
-| `KDE_AI_AGENTS` 未設定 / 空 | 靜默結束，無任何輸出 |
+| `KDE_CODE_SERVER_AI_AGENTS` 未設定 / 空 | 靜默結束，無任何輸出 |
 | 名稱不認識 | ⚠ 警告 + 列出可用 agent，繼續處理下一個 |
 | 已安裝且未指定重裝 | ✓ 訊息，跳過 |
 | 安裝腳本非零退出（網路不通、下載失敗） | ❌ 警告，繼續處理下一個 |
@@ -182,20 +193,20 @@ entrypoint 呼叫時提供：
 測試項目：
 - 解析層：未給 `--agent` → `AGENTS` 為空；多次指定 → 陣列順序保留；不合法名稱 → 非零退出並印錯誤；`--agent` 缺值 → 報錯
 - 組裝層（source `code-server.sh`、stub `docker`，同 mounts 測試）：
-  - 空 agent 清單 → docker 指令中不含 `KDE_AI_AGENTS`
-  - `claude-code,codex` → 含 `-e KDE_AI_AGENTS=claude-code,codex`
-  - `KDE_AI_AGENTS_REINSTALL=true` → 透傳；未設定 → 不出現
+  - 空 agent 清單 → docker 指令中不含 `KDE_CODE_SERVER_AI_AGENTS`
+  - `claude,codex` → 含 `-e KDE_CODE_SERVER_AI_AGENTS=claude,codex`
+  - `KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true` → 透傳；未設定 → 不出現
 
 **`test/test-agent-entrypoint.sh`** — entrypoint 層
-- 以臨時目錄假造 `AGENT_DIR`（放假的 `install-foo.sh`）與 `HOME`
-- 空 `KDE_AI_AGENTS` → exit 0 且無輸出
+- 以臨時目錄假造 `KDE_CODE_SERVER_AGENT_DIR`（放假的 `install-foo.sh`）與 `HOME`
+- 空 `KDE_CODE_SERVER_AI_AGENTS` → exit 0 且無輸出
 - 未知名稱 → 警告訊息含可用清單，exit 0
 - 假腳本回傳 1 → 標記 failed，exit 0，且後續 agent 仍被處理
 - binary 已存在 → 標記 skipped、不執行安裝腳本
-- `KDE_AI_AGENTS_REINSTALL=true` → 即使已存在仍執行安裝腳本
+- `KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true` → 即使已存在仍執行安裝腳本
 - 重複執行兩次 → `.bashrc` 中的 PATH 區塊只出現一次（冪等）
 
-為了可測試，`10-ai-agents.sh` 需允許以環境變數覆寫 `AGENT_DIR`（預設 `/usr/local/lib/kde-agents`），與 `pod-exec` 的可測試參數解析同一手法。
+為了可測試，`10-ai-agents.sh` 需允許以環境變數覆寫 `KDE_CODE_SERVER_AGENT_DIR`（預設 `/usr/local/lib/kde-agents`），與 `pod-exec` 的可測試參數解析同一手法。
 
 ## 文件更新
 
