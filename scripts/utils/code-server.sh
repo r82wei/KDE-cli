@@ -1,5 +1,99 @@
 #!/bin/bash
 
+# 顯示 kde code-server 的使用說明
+show_code_server_help() {
+    echo "usage: kde code-server [option]"
+    echo ""
+    echo "example:"
+    echo "  -d, --daemon        在背景執行"
+    echo "  -p, --port          指定 code-server 的 port (預設為 8080)"
+    echo "  -n, --name          指定 code-server 的容器名稱 (預設為 code-server，可用來同時啟動多個實例)"
+    echo "  -v, --volume        指定掛載到 container 的目錄或檔案 (可重複指定多次，預設為當前路徑)"
+    echo "                      格式 src[:dst[:ro|rw]]，例如 ./aio 或 .claude:/home/coder/.claude:ro"
+    echo "  -w, --workdir       指定 code-server 開啟的資料夾 (container 路徑，預設為第一個目錄型掛載，須位於某個掛載底下)"
+    echo "  -a, --agent         啟動時安裝指定的 AI agent (可重複指定多次，例如 claude、codex)"
+    echo "                      已安裝者會跳過；設 KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true 可強制重裝"
+    echo "  -h, --help          顯示此幫助訊息"
+}
+
+# 解析 kde code-server 的參數，結果回填到 CODE_SERVER_* 全域變數
+# 回傳 0=成功、1=參數錯誤、2=已顯示說明應結束
+parse_code_server_args() {
+    CODE_SERVER_DAEMON=false
+    CODE_SERVER_PORT=8080
+    CODE_SERVER_NAME=code-server
+    CODE_SERVER_OPEN_PATH=""
+    CODE_SERVER_MOUNTS=()
+    CODE_SERVER_AGENTS=()
+    CODE_SERVER_AGENTS_CSV=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --daemon|-d)
+                CODE_SERVER_DAEMON=true
+                shift
+                ;;
+            --port|-p)
+                CODE_SERVER_PORT="$2"
+                if [[ -z "${CODE_SERVER_PORT}" || ! ${CODE_SERVER_PORT} =~ ^[0-9]+$ ]]; then
+                    echo "無效的 port：${CODE_SERVER_PORT}" >&2
+                    return 1
+                fi
+                shift 2
+                ;;
+            --name|-n)
+                CODE_SERVER_NAME="$2"
+                if [[ -z "${CODE_SERVER_NAME}" || ! ${CODE_SERVER_NAME} =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then
+                    echo "無效的名稱：${CODE_SERVER_NAME}" >&2
+                    return 1
+                fi
+                shift 2
+                ;;
+            --volume|-v)
+                if [[ -z "$2" ]]; then
+                    echo "無效的掛載路徑" >&2
+                    return 1
+                fi
+                CODE_SERVER_MOUNTS+=("$2")
+                shift 2
+                ;;
+            --workdir|-w)
+                CODE_SERVER_OPEN_PATH="$2"
+                if [[ -z "${CODE_SERVER_OPEN_PATH}" ]]; then
+                    echo "無效的開啟資料夾路徑" >&2
+                    return 1
+                fi
+                shift 2
+                ;;
+            --agent|-a)
+                if [[ -z "$2" || ! "$2" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then
+                    echo "無效的 agent 名稱：$2" >&2
+                    return 1
+                fi
+                CODE_SERVER_AGENTS+=("$2")
+                shift 2
+                ;;
+            --help|-h)
+                show_code_server_help
+                return 2
+                ;;
+            *)
+                echo "未知參數：$1" >&2
+                show_code_server_help >&2
+                return 1
+                ;;
+        esac
+    done
+
+    # 合併為 docker 環境變數用的逗號分隔字串
+    local old_ifs="${IFS}"
+    IFS=','
+    CODE_SERVER_AGENTS_CSV="${CODE_SERVER_AGENTS[*]}"
+    IFS="${old_ifs}"
+
+    return 0
+}
+
 start_code_server() {
     local PORT=$1
     local DAEMON=$2
