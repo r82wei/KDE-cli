@@ -51,11 +51,11 @@ dockerfiles/code-server/
 ├── entrypoint.d/
 │   └── 10-ai-agents.sh          → /entrypoint.d/10-ai-agents.sh
 └── agents/
-    ├── install-claude-code.sh   → /usr/local/lib/kde-agents/install-claude-code.sh
+    ├── install-claude.sh        → /usr/local/lib/kde-agents/install-claude.sh
     └── install-codex.sh         → /usr/local/lib/kde-agents/install-codex.sh
 ```
 
-現有的 `dockerfiles/code-server/entrypoint.sh`、`install-claude-code.sh`、`install-codex.sh` 三個空檔搬移至上述位置（`entrypoint.sh` → `entrypoint.d/10-ai-agents.sh`）。
+現有的 `dockerfiles/code-server/entrypoint.sh`（空檔）、`install-claude.sh`、`install-codex.sh` 搬移至上述位置（`entrypoint.sh` → `entrypoint.d/10-ai-agents.sh`）。兩支 install 腳本的**安裝方式維持現況**，只補上錯誤處理（見「安裝腳本契約」）。
 
 Dockerfile 於 `USER coder` 之前加入：
 
@@ -99,7 +99,8 @@ RUN chmod 0755 /entrypoint.d/*.sh /usr/local/lib/kde-agents/*.sh
 
 - 安裝腳本檔名：`install-<name>.sh`
 - **`<name>` 同時是安裝後的可執行檔名**，作為 `command -v` 偵測依據。
-  - `claude-code` → binary `claude-code`；若上游安裝器產生的是 `claude`，安裝腳本負責在 `$AGENT_BIN_DIR` 建立 `claude-code` symlink 指向它（兩個名稱都可用）。
+  - 現有兩支已對齊：`install-claude.sh` → `claude`、`install-codex.sh` → `codex`。
+  - 未來新增的 agent 若上游 binary 名稱與檔名不同，由該支安裝腳本自行在 `$AGENT_BIN_DIR` 建 symlink 補齊。
 - 可用清單由 `ls /usr/local/lib/kde-agents/install-*.sh` 動態產生，entrypoint 不硬編任何 agent 名稱。
 
 ### 安裝腳本契約
@@ -113,11 +114,19 @@ entrypoint 呼叫時提供：
 | `KDE_AI_AGENTS_REINSTALL` | `true` / 未設定 |
 
 腳本責任：
-- 使用 `set -eo pipefail`（符合專案慣例），成功 `exit 0`、失敗非零。
+- **必須 `set -eo pipefail`。** 兩支腳本都是 `curl -fsSL <url> | bash` 形式——**沒有 `pipefail` 時，curl 失敗（404 / 斷網）會被 pipeline 末端的 `bash` 吞掉並回傳 0**，entrypoint 會把失敗誤判為成功。這是本設計唯一必須修改現有腳本內容之處。
+- 成功 `exit 0`、失敗非零。
 - 只寫入 `$AGENT_BIN_DIR` 與 `$HOME` 底下；**不使用 sudo**、不寫 `/usr/local`（該處位於映像層，`docker rm` 後即失效，會使快取失效）。
-- 不得依賴 `npm`（映像無 node/npm），改用原生安裝器或 GitHub release tarball。
-- 不得依賴 `unzip`（映像無此工具）；`tar`/`gzip`/`curl`/`git` 可用。
-- 下載 URL 於實作時**實際驗證後**才寫入，不憑記憶填寫。
+- 不得依賴 `npm`（映像無 node/npm）；不得依賴 `unzip`（映像無此工具）。`tar`/`gzip`/`curl`/`git` 可用。
+
+現有兩支腳本已驗證符合上述限制：
+
+| 腳本 | 安裝方式 | 安裝位置 | 相依 |
+|---|---|---|---|
+| `install-claude.sh` | `curl -fsSL https://claude.ai/install.sh \| bash` | `$HOME/.local/bin/claude`；安裝器**明確拒絕 sudo 執行** | curl + tar，無 npm |
+| `install-codex.sh` | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` | `${CODEX_INSTALL_DIR:-$HOME/.local/bin}/codex` | curl + tar，無 npm |
+
+兩者預設安裝位置皆等同 `$AGENT_BIN_DIR`，故不需傳遞覆寫變數。
 
 ### 安裝位置與 PATH 傳遞
 
@@ -132,6 +141,8 @@ entrypoint 呼叫時提供：
   ```
 - 兩檔在持久卷中可能不存在（空目錄蓋掉映像的 `/home/coder`），腳本需能自建。
 - code-server 整合終端機啟動 bash 時會 source `.bashrc`，即可看到 agent。
+
+上游安裝器（至少 codex 確認如此）也會自行往 shell rc 寫 PATH。但 entrypoint **仍要自己寫一份**：本設計的核心是 entrypoint 不需知道任何 agent 的行為，PATH 保證不能外包給各安裝器。重複的 PATH 行無害（上面的 `case` 判斷本身就冪等）。
 
 ### CLI：`kde code-server --agent`
 
@@ -197,8 +208,8 @@ entrypoint 呼叫時提供：
 
 ## 實作順序
 
-1. 搬移空檔到 `entrypoint.d/` 與 `agents/`，寫 `10-ai-agents.sh` 與 `test/test-agent-entrypoint.sh`
-2. 驗證上游安裝方式後撰寫兩支 `install-*.sh`
+1. 搬移檔案到 `entrypoint.d/` 與 `agents/`，寫 `10-ai-agents.sh` 與 `test/test-agent-entrypoint.sh`
+2. 兩支 `install-*.sh` 補上 `set -eo pipefail`（安裝方式不動）
 3. Dockerfile 加 COPY / chmod
 4. CLI `--agent` + `test/test-code-server-agent-args.sh`
 5. 文件與 skill 同步
