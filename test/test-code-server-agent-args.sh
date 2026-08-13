@@ -225,6 +225,18 @@ out=$(start_code_server 8080 false cs-a6 "" "" "${KDE_PATH}/dir-a" 2>&1)
 assert_contains "掛載參數正確" "${out}" "-v ${KDE_PATH}/dir-a:${KDE_PATH}/dir-a"
 echo ""
 
+echo "測試 22：daemon 模式套用 --restart unless-stopped"
+echo "--------------------------------------------------"
+out=$(start_code_server 8080 true cs-a7 "" "" "${KDE_PATH}/dir-a" 2>&1)
+assert_contains "daemon 分支含 --restart unless-stopped" "${out}" "--restart unless-stopped"
+echo ""
+
+echo "測試 23：非 daemon 模式不含 --restart"
+echo "---------------------------------------"
+out=$(start_code_server 8080 false cs-a8 "" "" "${KDE_PATH}/dir-a" 2>&1)
+assert_not_contains "非 daemon 分支不含 --restart" "${out}" "--restart"
+echo ""
+
 rm -rf "${KDE_PATH}"
 
 echo "===== 測試完成 ====="

@@ -244,6 +244,11 @@ kde code-server --port <port>
 kde code-server -d
 kde code-server --daemon
 
+# -d 啟動的容器會套用 --restart unless-stopped：
+# 主機重開機後會自動啟動（前提是 docker 服務本身有設定開機啟動）
+# 手動 docker stop 過的容器不會被自動拉回；要完全停用自動重啟：
+docker update --restart=no <name>
+
 # 指定容器名稱（同時啟動多個實例時用來區分，預設 code-server）
 kde code-server -n <name>
 kde code-server --name <name>

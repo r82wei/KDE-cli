@@ -98,6 +98,7 @@ kde code-server -d -p 3000
 - 在背景執行，不佔用終端機
 - 適合長期使用
 - 需要手動停止容器
+- 會套用 `--restart unless-stopped`：主機重開機後（若 docker 服務本身有設定開機啟動）容器會自動啟動，不需要重新下指令
 
 #### 3. 停止 Code Server
 
@@ -111,6 +112,10 @@ docker ps | grep code-server
 # 查看日誌
 docker logs code-server
 ```
+
+**關於自動重啟**：
+- 手動 `docker stop` 過的容器，主機重開機後**不會**被自動拉回（這是 `unless-stopped` 與 `always` 的差異）
+- 若要完全停用自動重啟：`docker update --restart=no code-server`
 
 ## 使用範例
 

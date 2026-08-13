@@ -242,6 +242,7 @@ start_code_server() {
         --name ${NAME} \
         --workdir ${OPEN_PATH} \
         --group-add ${DOCKER_SOCK_GID} \
+        --restart unless-stopped \
         -p ${PORT}:8080 \
         -e "PASSWORD=${PASSWORD}" \
         -v "${CONFIG_DIR}:/home/coder" \
@@ -264,6 +265,7 @@ start_code_server() {
         fi
         echo "存取網址: http://localhost:${PORT}"
         echo "停止服務: docker stop ${NAME}"
+        echo "自動重啟: 已啟用 (unless-stopped)，主機重開機後會自動啟動；停用請執行 docker update --restart=no ${NAME}"
     else
         docker run -it --rm \
         --name ${NAME} \
