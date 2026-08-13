@@ -261,6 +261,14 @@ kde code-server -v ~/proj-a -v ~/proj-b -v ~/.gitconfig
 kde code-server -v ./aio -v .claude:/home/coder/.claude:ro
 # 此例開啟第一個目錄型掛載 ./aio 的 container 路徑
 
+# 啟動時安裝 AI agent（-a 可重複指定多次，目前支援 claude、codex）
+kde code-server -a claude
+kde code-server --agent claude --agent codex
+# 已安裝的 agent 會跳過；agent 裝在容器的 ~/.local/bin，隨 code-server 設定目錄持久保存
+# 安裝失敗只會警告，不會阻擋 code-server 啟動
+# 強制重裝：
+KDE_CODE_SERVER_AI_AGENTS_REINSTALL=true kde code-server -a claude
+
 # 組合使用
 kde code-server -p 9090 -d
 
