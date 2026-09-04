@@ -24,6 +24,9 @@ case "${OPENCLAW_ACTION}" in
     stop)
         stop_openclaw
         ;;
+    restart)
+        restart_openclaw
+        ;;
     tui)
         tui_openclaw
         ;;

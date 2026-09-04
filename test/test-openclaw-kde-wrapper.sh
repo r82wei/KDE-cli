@@ -35,7 +35,7 @@ out=$(KDE_LIB_DIR="${TMP_ROOT}/empty-lib" bash "${WRAPPER}" 2>&1); rc=$?
 [[ ${rc} -ne 0 ]]
 check "lib 目錄為空時回傳非零" $?
 
-grep -q "kde openclaw stop && kde openclaw run" <<< "${out}"
+grep -q "kde openclaw restart" <<< "${out}"
 check "錯誤訊息給出重建容器的修法" $?
 
 grep -q "刻意不內建" <<< "${out}"

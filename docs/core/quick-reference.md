@@ -357,6 +357,10 @@ kde openclaw dashboard --json   # 原始 JSON
 # 停止並移除容器（冪等，容器不存在時不視為錯誤）
 kde openclaw stop
 
+# 先 stop 再 run；未指定 port 時沿用現有容器目前發布的 port（不會悄悄退回預設）
+kde openclaw restart
+kde openclaw restart -p 20000     # 明確指定時以指定值為準（-p 18789 也勝過沿用）
+
 # 刪除 workspace 的 .openclaw-home（容器運行中則拒絕，需先 stop）
 kde openclaw reset
 kde openclaw reset -f

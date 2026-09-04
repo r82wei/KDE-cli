@@ -15,13 +15,14 @@
 - **DooD 整合**：容器內可直接下 `kde` / `docker` 指令操作宿主環境
 - **PUID/PGID 對齊**：預設沿用主機使用者的 uid/gid，避免掛載檔案的擁有權問題
 
-### 九個 action 總覽
+### 十個 action 總覽
 
 | action | 用途 |
 |---|---|
 | `run` | 背景常駐啟動 gateway |
 | `onboard` | 一次性互動容器，執行初始化精靈 |
 | `stop` | 停止並移除容器（冪等） |
+| `restart` | 先 `stop` 再 `run`（未指定 port 時沿用現有容器的 port） |
 | `tui` | 互動進入 OpenClaw TUI |
 | `exec` | 進入容器的 bash（不帶指令）或非互動執行指令 |
 | `log` | 查看 gateway 容器日誌 |
@@ -41,7 +42,7 @@ kde openclaw <action> [option]
 
 | 選項 | 簡寫 | 說明 | 哪些 action 吃 |
 |------|------|------|------|
-| `--port` | `-p` | gateway 對外發布的 port（預設 `18789`，亦可用環境變數 `OPENCLAW_PORT`） | `run` |
+| `--port` | `-p` | gateway 對外發布的 port（預設 `18789`，亦可用環境變數 `OPENCLAW_PORT`） | `run`、`restart` |
 | `--force` | `-f` | 略過確認提示 | `onboard`、`reset` |
 | `--follow` | `-f` | 跟隨日誌輸出 | `log` |
 | `--tail` | - | 日誌顯示的行數（預設 `100`） | `log` |
@@ -111,6 +112,33 @@ kde openclaw stop
 ```
 
 冪等：容器不存在時印出提示並 `exit 0`，不視為錯誤。存在時依序 `docker stop` + `docker rm`；任一步驟失敗會報錯並提示手動 `docker rm -f <name>`。
+
+### `restart` — 先 stop 再 run
+
+```bash
+kde openclaw restart
+kde openclaw restart -p 20000
+```
+
+等同依序執行 `stop` 與 `run`，但 port 的處理多一層：**未指定 port 時沿用現有容器目前發布的 port**，而不是退回內建預設。
+
+理由是用 `kde openclaw run -p 19000` 起的容器，若 `restart` 悄悄退回 `18789`，已配對的瀏覽器書籤與先前鑄出的 dashboard 連結會一起失效——而使用者的指令裡完全沒提到 port，不會預期它改變。port 是問 `docker port` 取得的（與 `dashboard` 同一個做法，因為容器實際發布的 port 才是真相），讀不到就維持原值，不會讓 `restart` 因此失敗。
+
+只有在**完全沒表態**時才沿用容器現況，所以明確打的 `-p 18789` 仍然勝出：
+
+| 情境 | 結果 |
+|---|---|
+| `restart`（容器跑在 19000） | 19000（沿用） |
+| `restart -p 20000` | 20000 |
+| `restart -p 18789`（容器跑在 19000） | 18789——明確指定勝過沿用 |
+| `OPENCLAW_PORT=20000 kde openclaw restart` | 20000（環境變數也算表態） |
+| `restart`（容器不存在） | 依 `run` 的既有規則，即內建預設 |
+
+注意最後一列的推論：若有人把 `OPENCLAW_PORT` 寫進 workspace 的 `.env`，那等於永久表態，`restart` 會一直用那個值而不再沿用容器現況。這符合上述優先序，不是故障。
+
+`stop` 失敗時會中止，不繼續 `run`——否則 `run` 會立刻報「容器已存在，請先停止」，使用者會同時看到兩條互相矛盾的錯誤，後者還會叫他去做剛剛失敗的那件事。
+
+容器本來就沒在跑時 `stop` 是冪等的，因此 `restart` 對未啟動的 workspace 等同 `run`，這是刻意的。
 
 ### `tui` — 互動進入 OpenClaw TUI
 
@@ -232,6 +260,7 @@ kde openclaw reset -f
 
 - 容器**內**恆為 `18789`（`openclaw gateway run --port 18789`，不受 `-p` 影響）
 - 主機側發布 port 的優先序：`-p`/`--port`（當次指定）> 環境變數 `OPENCLAW_PORT` > 內建預設 `18789`
+- `restart` 在前兩者都沒給時，會先沿用**現有容器目前發布的** port，只有容器不存在時才落到內建預設（見上面的 `restart` 章節）
 - **`OPENCLAW_PORT` 刻意不寫入 `kde.env`**：`kde.env` 是版控檔案，會隨 workspace git pull 到每個人的機器上；而 port 是每台開發機各自的環境條件（可能已被其他服務佔用），同步只會互相干擾。要固定使用非預設 port，請自行在 shell profile 或 `export OPENCLAW_PORT=...` 設定，不要寫進 `kde.env`
 - 相對地，`OPENCLAW_IMAGE`（映像版本）**會**寫入 `kde.env`——那是整個 workspace 該對齊的版本，理應同步
 
@@ -458,7 +487,7 @@ docker run -it --rm -e PUID=$(id -u) -e PGID=$(id -g) \
   ${OPENCLAW_IMAGE} openclaw configure --section model
 ```
 
-完成後 `kde openclaw stop && kde openclaw run` 讓 gateway 重讀設定。確認能聊之後，
+完成後 `kde openclaw restart` 讓 gateway 重讀設定。確認能聊之後，
 再刪掉 `<workspace>/.openclaw-home/.openclaw/agents/<舊名字>`——在那之前那裡是 token
 的唯一副本。要從頭來的話 `kde openclaw reset -f && kde openclaw onboard` 也可以，
 新版精靈不會再問 agent 名字。
@@ -544,7 +573,7 @@ kde openclaw exec "stat -c '%i %h' /usr/local/lib/kde"   # links 為 0 = 已刪�
 **解決方法**：重建容器即可，狀態全在 `${KDE_PATH}/.openclaw-home`，不會掉設定。
 
 ```bash
-kde openclaw stop && kde openclaw run
+kde openclaw restart
 ```
 
 ### 除錯指令

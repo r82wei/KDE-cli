@@ -82,7 +82,14 @@ docker() {
         port) echo "${STUB_PORT_MAP}"; return 0 ;;
         inspect) echo "${STUB_INSPECT} ${STUB_RESTARTS}"; return 0 ;;
         stop) [[ "${STUB_STOP_FAIL}" == "true" ]] && return 1; return 0 ;;
-        rm) [[ "${STUB_RM_FAIL}" == "true" ]] && return 1; return 0 ;;
+        rm)
+            if [[ "${STUB_RM_FAIL}" == "true" ]]; then return 1; fi
+            # 真實的 docker 在容器被移除後就查不到它了。restart 會在同一次呼叫裡
+            # 先 stop 再 run，若 stub 讓容器「移除後依然存在」，run 就會誤報
+            # 「容器已存在」而失敗——那是 stub 的假象，不是被測程式的行為。
+            STUB_EXISTING=""; STUB_RUNNING=""
+            return 0
+            ;;
         *) return 0 ;;
     esac
 }
@@ -104,12 +111,20 @@ logged()  { grep -q -- "$1" "${DOCKER_LOG_FILE}"; }   # docker 呼叫記錄中�
 out_has() { echo "${OUT}" | grep -q -- "$1"; }        # 上一次擷取的輸出中有某段字串
 onboarded_is() { [[ "$(is_openclaw_onboarded)" == "$1" ]]; }
 
+# docker.log 是逐行 append 的，用首次出現的行號比較兩個呼叫的先後
+called_before() {
+    local a b
+    a=$(grep -n -- "$1" "${DOCKER_LOG_FILE}" | head -1 | cut -d: -f1)
+    b=$(grep -n -- "$2" "${DOCKER_LOG_FILE}" | head -1 | cut -d: -f1)
+    [[ -n "${a}" && -n "${b}" && "${a}" -lt "${b}" ]]
+}
+
 reset_stub() {
     STUB_EXISTING=""; STUB_RUNNING=""; STUB_MODE=""; STUB_MODE_AFTER=""
     STUB_INSPECT="true"; STUB_RESTARTS="0"; STUB_AUTH_MODE="token"; : > "${DOCKER_LOG_FILE}"; OUT=""
     OPENCLAW_FORCE=false; OPENCLAW_COMMAND=""
     OPENCLAW_FOLLOW=false; OPENCLAW_TAIL=100
-    OPENCLAW_PORT=18789; STUB_TOKEN=""; OPENCLAW_JSON=false
+    OPENCLAW_PORT=18789; OPENCLAW_PORT_GIVEN=false; STUB_TOKEN=""; OPENCLAW_JSON=false
     STUB_PORT_MAP="0.0.0.0:19000"
     STUB_DASHBOARD_JSON='{"ok":true,"url":"http://127.0.0.1:18789/#token=tok123","httpUrl":"http://127.0.0.1:18789/","wsUrl":"ws://127.0.0.1:18789","port":18789,"browserUrl":"http://127.0.0.1:18789/#bootstrapToken=boot456&bootstrapProfile=owner"}'
     STUB_STOP_FAIL=""; STUB_RM_FAIL=""
@@ -340,6 +355,64 @@ assert_false "docker stop 失敗時 stop 回報失敗" stop_openclaw
 
 reset_stub; STUB_EXISTING="${NAME}"; STUB_RM_FAIL=true
 assert_false "docker rm 失敗時 stop 回報失敗" stop_openclaw
+echo ""
+
+echo "--- restart ---"
+# restart 的組成就是 stop + run，兩者各自的前置檢查與錯誤訊息都已在上面測過。
+# 這裡只測 restart 特有的三件事：port 從哪裡來、stop 與 run 的先後、
+# 以及 stop 失敗時必須中止。
+
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+STUB_PORT_MAP="0.0.0.0:19000"; OPENCLAW_PORT=18789; OPENCLAW_PORT_GIVEN=false
+restart_openclaw >/dev/null 2>&1
+assert_true  "未表態 port 時沿用現有容器的 port" logged "-p 19000:18789"
+assert_false "未表態 port 時不退回內建預設" logged "-p 18789:18789"
+
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+STUB_PORT_MAP="0.0.0.0:19000"; OPENCLAW_PORT=20000; OPENCLAW_PORT_GIVEN=true
+restart_openclaw >/dev/null 2>&1
+assert_true  "明確指定的 port 勝出" logged "-p 20000:18789"
+assert_false "明確指定時不必問 docker port" logged "port ${NAME}"
+
+# 關鍵案例：明確指定的值恰好等於內建預設。用「值是否等於 18789」去猜
+# 使用者有沒有表態的做法會在這裡猜錯，把明確的旗標當成沒給而沿用舊 port。
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+STUB_PORT_MAP="0.0.0.0:19000"; OPENCLAW_PORT=18789; OPENCLAW_PORT_GIVEN=true
+restart_openclaw >/dev/null 2>&1
+assert_true  "-p 18789 不被沿用的舊 port 蓋掉" logged "-p 18789:18789"
+assert_false "-p 18789 時不沿用 19000" logged "-p 19000:18789"
+
+# 容器本來就沒在跑：stop 冪等回 0，restart 等同 run
+reset_stub; STUB_EXISTING=""; STUB_RUNNING=""; STUB_MODE="local"
+assert_true "容器不存在時 restart 仍成功" restart_openclaw
+assert_true "容器不存在時仍會啟動 gateway" logged "gateway run"
+
+# docker port 讀不到時維持原值，不讓 restart 因此失敗
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+STUB_PORT_MAP=""; OPENCLAW_PORT=18789; OPENCLAW_PORT_GIVEN=false
+restart_openclaw >/dev/null 2>&1
+assert_true "docker port 無輸出時維持原 port" logged "-p 18789:18789"
+
+# stop 失敗必須中止，不繼續 run。
+# 注意下面前兩條斷言守的是對外行為，而該行為由兩層機制共同保證：restart 的
+# 提早 return，以及 run 自己的「容器已存在」前置檢查。也就是說即使拿掉
+# restart 的中止，這兩條仍會通過（已用天真版本負向對照確認）。真正能區分的
+# 是第三條——少了中止，使用者會同時看到「停止失敗」與「已存在，請先停止」
+# 兩條互相矛盾的錯誤，後者還會指示他去做剛剛失敗的那件事。
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+STUB_STOP_FAIL=true; OPENCLAW_PORT_GIVEN=true
+assert_false "stop 失敗時 restart 回報失敗" restart_openclaw
+
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+STUB_STOP_FAIL=true; OPENCLAW_PORT_GIVEN=true
+OUT=$(restart_openclaw 2>&1 || true)
+assert_false "stop 失敗時不啟動 gateway" logged "gateway run"
+assert_false "stop 失敗時不追加 run 的「已存在」錯誤" out_has "已存在"
+
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+OPENCLAW_PORT_GIVEN=true
+restart_openclaw >/dev/null 2>&1
+assert_true "先 stop 再啟動 gateway" called_before "stop ${NAME}" "gateway run"
 echo ""
 
 echo "--- reset ---"

@@ -28,9 +28,9 @@ assert_rc() { # $1=描述 $2=預期退出碼 $3=實際退出碼
     fi
 }
 
-echo "測試 1：九個 action 都能解析"
+echo "測試 1：十個 action 都能解析"
 echo "--------------------"
-for a in run onboard stop tui exec log token dashboard reset; do
+for a in run onboard stop restart tui exec log token dashboard reset; do
     rc=0; parse_openclaw_args "${a}" >/dev/null 2>&1 || rc=$?
     assert_rc "action ${a} 退出碼為 0" 0 "${rc}"
     assert_eq "action ${a} 正確回填" "${a}" "${OPENCLAW_ACTION}"
@@ -43,6 +43,7 @@ unset OPENCLAW_PORT
 rc=0; parse_openclaw_args run || rc=$?
 assert_rc "退出碼為 0" 0 "${rc}"
 assert_eq "PORT 預設為 18789" "18789" "${OPENCLAW_PORT}"
+assert_eq "PORT_GIVEN 預設為 false" "false" "${OPENCLAW_PORT_GIVEN}"
 assert_eq "FORCE 預設為 false" "false" "${OPENCLAW_FORCE}"
 assert_eq "COMMAND 預設為空" "" "${OPENCLAW_COMMAND}"
 assert_eq "FOLLOW 預設為 false" "false" "${OPENCLAW_FOLLOW}"
@@ -172,6 +173,41 @@ KDE_PATH="/tmp/my-workspace" assert_eq "一般名稱" "openclaw-my-workspace" "$
 assert_eq "含空白的目錄名被清洗" "openclaw-my-ws" "$(KDE_PATH='/tmp/my ws' get_openclaw_container_name)"
 assert_eq "含特殊字元的目錄名被清洗" "openclaw-a-b-c" "$(KDE_PATH='/tmp/a@b#c' get_openclaw_container_name)"
 assert_eq "底線與點保留" "openclaw-a_b.c" "$(KDE_PATH='/tmp/a_b.c' get_openclaw_container_name)"
+echo ""
+
+echo "測試 10：OPENCLAW_PORT_GIVEN 記錄「使用者是否明確表態 port」"
+echo "--------------------"
+# 這個旗標存在的唯一理由是 restart：它要在使用者沒表態時沿用現有容器的 port。
+# 套上內建預設之後，OPENCLAW_PORT=18789 有三個可能來源（-p 18789、環境變數
+# 18789、什麼都沒給），單看值分不出來，所以必須在套預設「之前」記下來。
+unset OPENCLAW_PORT
+rc=0; parse_openclaw_args restart || rc=$?
+assert_eq "什麼都沒給時為 false" "false" "${OPENCLAW_PORT_GIVEN}"
+
+unset OPENCLAW_PORT
+rc=0; parse_openclaw_args restart -p 19000 || rc=$?
+assert_eq "-p 時為 true" "true" "${OPENCLAW_PORT_GIVEN}"
+
+unset OPENCLAW_PORT
+rc=0; parse_openclaw_args restart --port 19000 || rc=$?
+assert_eq "--port 時為 true" "true" "${OPENCLAW_PORT_GIVEN}"
+
+export OPENCLAW_PORT=20000
+rc=0; parse_openclaw_args restart || rc=$?
+assert_eq "環境變數有值時為 true" "true" "${OPENCLAW_PORT_GIVEN}"
+unset OPENCLAW_PORT
+
+# 關鍵案例：明確指定的值恰好等於內建預設。用「值是否等於 18789」去猜來源
+# 的做法會在這裡猜錯，把明確的旗標當成沒給，restart 便會靜默沿用舊 port。
+unset OPENCLAW_PORT
+rc=0; parse_openclaw_args restart -p 18789 || rc=$?
+assert_eq "-p 18789（等於預設）仍為 true" "true" "${OPENCLAW_PORT_GIVEN}"
+assert_eq "-p 18789 的值正確回填" "18789" "${OPENCLAW_PORT}"
+
+export OPENCLAW_PORT=18789
+rc=0; parse_openclaw_args restart || rc=$?
+assert_eq "環境變數為 18789（等於預設）仍為 true" "true" "${OPENCLAW_PORT_GIVEN}"
+unset OPENCLAW_PORT
 echo ""
 
 echo "總測試數：${TOTAL}  通過：${PASS}  失敗：${FAIL}"

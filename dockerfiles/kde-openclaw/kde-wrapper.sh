@@ -28,7 +28,7 @@ if [[ ! -x "${KDE_LIB_DIR}/kde.sh" ]]; then
     echo "   本映像刻意不內建 kde，一律使用主機端掛入的版本，以免與 workspace 的版本歪掉。" >&2
     echo "   常見成因：容器啟動之後，主機端把該目錄整個換掉了（舊版 local-install.sh" >&2
     echo "   會 rm -rf 再重建，bind mount 於是守著已刪除的 inode，看起來就是空目錄）。" >&2
-    echo "   修法：重建容器 —— kde openclaw stop && kde openclaw run" >&2
+    echo "   修法：在主機端重建容器 —— kde openclaw restart" >&2
     exit 1
 fi
 

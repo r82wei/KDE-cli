@@ -27,6 +27,7 @@ show_openclaw_help() {
     echo "  run     [-p port]               背景常駐啟動 OpenClaw gateway"
     echo "  onboard [-f]                    執行初始化精靈 (一次性互動容器，不需 gateway 已啟動)"
     echo "  stop                            停止並移除 gateway 容器"
+    echo "  restart [-p port]               先 stop 再 run (未指定 port 時沿用現有容器的 port)"
     echo "  tui                             互動進入 openclaw TUI"
     echo "  exec    [<cmd>]                 進入容器的 bash；帶指令則非互動執行 (指令含空白請用引號包起來)"
     echo "  log     [-f] [--tail <n>]       查看 gateway 容器日誌 (預設最後 ${OPENCLAW_TAIL_DEFAULT} 行，不跟隨)"
@@ -48,6 +49,17 @@ show_openclaw_help() {
 # 回傳 0=成功、1=參數錯誤、2=已顯示說明應結束
 parse_openclaw_args() {
     OPENCLAW_ACTION=""
+    # 使用者是否明確表態過 port（-p 旗標或環境變數 OPENCLAW_PORT）。
+    # 必須在套用內建預設「之前」判斷：套完之後 OPENCLAW_PORT=18789 有三個可能
+    # 來源（-p 18789、環境變數 18789、什麼都沒給），單看值完全分不出來。
+    # restart 需要這個區別——沒表態時它要沿用現有容器的 port 而不是退回預設，
+    # 但明確打的 -p 18789 必須勝出。此旗標純粹是 parse 期的記憶體變數，
+    # 與 OPENCLAW_PORT 一樣不寫進 kde.env。
+    if [[ -n "${OPENCLAW_PORT}" ]]; then
+        OPENCLAW_PORT_GIVEN=true
+    else
+        OPENCLAW_PORT_GIVEN=false
+    fi
     # 環境變數有值就沿用，否則套用內建預設；-p 會在下面覆寫
     OPENCLAW_PORT="${OPENCLAW_PORT:-${OPENCLAW_PORT_DEFAULT}}"
     OPENCLAW_FORCE=false
@@ -66,7 +78,7 @@ parse_openclaw_args() {
             show_openclaw_help
             return 2
             ;;
-        run|onboard|stop|tui|exec|log|token|dashboard|reset)
+        run|onboard|stop|restart|tui|exec|log|token|dashboard|reset)
             OPENCLAW_ACTION="$1"
             shift
             ;;
@@ -85,6 +97,7 @@ parse_openclaw_args() {
                     echo "無效的 port：$2" >&2
                     return 1
                 fi
+                OPENCLAW_PORT_GIVEN=true
                 shift 2
                 ;;
             # -f 依 action 分流：對 onboard/reset 是「略過確認」，對 log 是「跟隨」。
@@ -619,6 +632,37 @@ stop_openclaw() {
     fi
     echo "✓ 已停止並移除容器 ${name}"
     return 0
+}
+
+# 重啟 gateway：先 stop 再 run。
+#
+# port 的決定順序是「-p 或環境變數 OPENCLAW_PORT」>「現有容器目前發布的 port」
+# >「內建預設」。中間那層是 restart 特有的：用 -p 19000 起的容器若在 restart
+# 時退回內建預設，就會悄悄換 port，把已配對的瀏覽器書籤與先前鑄出的 dashboard
+# 連結一起弄失效——而使用者的指令裡完全沒有提到 port，不會預期它改變。
+# 只在使用者完全沒表態時才動用容器現況，所以明確打的 -p 18789 仍然勝出，
+# 不會被沿用的舊 port 蓋掉（這正是需要 OPENCLAW_PORT_GIVEN 的原因）。
+#
+# 讀 port 的方式與 dashboard_openclaw 相同：問 docker 而不是猜，因為容器實際
+# 發布的 port 才是真相。讀不到就維持原值，不讓 restart 因此失敗。
+#
+# stop 失敗就中止，不繼續 run：run 對同名容器會直接報「已存在」，
+# 硬跑下去只是把一個明確的錯誤變成兩個。容器本來就沒在跑時 stop 回傳 0
+# （冪等），因此 restart 對未啟動的 workspace 等同 run，這是刻意的。
+restart_openclaw() {
+    local name
+    name=$(get_openclaw_container_name)
+
+    if [[ "${OPENCLAW_PORT_GIVEN}" != "true" && "$(is_openclaw_container_running)" == "true" ]]; then
+        local cur_port
+        cur_port=$(docker port "${name}" 18789/tcp 2>/dev/null | head -1 | sed 's/.*://') || true
+        if [[ -n "${cur_port}" ]]; then
+            OPENCLAW_PORT="${cur_port}"
+        fi
+    fi
+
+    stop_openclaw || return 1
+    run_openclaw_gateway
 }
 
 # 刪除 workspace 的 .openclaw（含 auth 密鑰）

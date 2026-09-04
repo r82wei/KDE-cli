@@ -142,6 +142,7 @@ kde openclaw exec "<cmd>"  #    or run one command through bash, non-interactive
 kde openclaw log -f       # 4. tail the gateway logs
 kde openclaw dashboard     # 5. first browser visit to the dashboard (see below)
 kde openclaw stop          # 6. stop + remove the container (idempotent)
+kde openclaw restart       # 7. stop + run in one step, keeping the current port
 ```
 
 **Gotchas Claude commonly hits**:
@@ -152,13 +153,19 @@ kde openclaw stop          # 6. stop + remove the container (idempotent)
   **exist**, so it still works after a crash (that is when you need it most).
 - `kde openclaw reset` (deletes `.openclaw-home`) refuses while the container is running — run
   `kde openclaw stop` first.
+- `kde openclaw restart` is `stop` + `run`, with one addition: when you do NOT pass `-p`, it
+  reuses the port the running container currently publishes rather than falling back to the
+  built-in default, so a container started with `-p 19000` stays on 19000 (otherwise a paired
+  browser's bookmark and any minted dashboard link would silently break). An explicit
+  `-p 18789` still wins over the reused port, and so does `OPENCLAW_PORT`. If `stop` fails,
+  `restart` aborts instead of running — you get one error, not a contradictory pair.
 - The container has **no baked-in `kde`** — `/usr/local/bin/kde` is a wrapper around the
   host's CLI, bind-mounted read-only at `/usr/local/lib/kde`. That mount has no opt-out on
   purpose: the workspace is mounted read-write, so a version skew would have two `kde`
   versions writing the same state files. If `kde` inside the container reports
   `command not found` (or the wrapper's "找不到 kde CLI" error), the mount point went empty
   because the host directory was replaced after the container started — bind mounts track
-  the inode. Fix by rebuilding the container: `kde openclaw stop && kde openclaw run`.
+  the inode. Fix by rebuilding the container: `kde openclaw restart`.
   Nothing is lost; state lives in `${KDE_PATH}/.openclaw-home`.
 - `exec` is plain bash and does NOT prepend `openclaw` — write the command exactly as it
   runs in the container: `kde openclaw exec "openclaw doctor"` (positional, or `--command`;
