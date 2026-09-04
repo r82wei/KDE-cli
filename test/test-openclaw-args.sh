@@ -28,9 +28,9 @@ assert_rc() { # $1=描述 $2=預期退出碼 $3=實際退出碼
     fi
 }
 
-echo "測試 1：十個 action 都能解析"
+echo "測試 1：十一個 action 都能解析"
 echo "--------------------"
-for a in run onboard stop restart tui exec log token dashboard reset; do
+for a in run onboard stop restart upgrade tui exec log token dashboard reset; do
     rc=0; parse_openclaw_args "${a}" >/dev/null 2>&1 || rc=$?
     assert_rc "action ${a} 退出碼為 0" 0 "${rc}"
     assert_eq "action ${a} 正確回填" "${a}" "${OPENCLAW_ACTION}"

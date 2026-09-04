@@ -143,6 +143,7 @@ kde openclaw log -f       # 4. tail the gateway logs
 kde openclaw dashboard     # 5. first browser visit to the dashboard (see below)
 kde openclaw stop          # 6. stop + remove the container (idempotent)
 kde openclaw restart       # 7. stop + run in one step, keeping the current port
+kde openclaw upgrade       # 8. pull a newer image; restarts only if it actually changed
 ```
 
 **Gotchas Claude commonly hits**:
@@ -153,6 +154,15 @@ kde openclaw restart       # 7. stop + run in one step, keeping the current port
   **exist**, so it still works after a crash (that is when you need it most).
 - `kde openclaw reset` (deletes `.openclaw-home`) refuses while the container is running — run
   `kde openclaw stop` first.
+- **A new release does NOT reach a workspace by itself.** `docker run`'s default pull policy
+  is `missing`: if the tag already exists locally, Docker uses it and never asks the registry.
+  So after `latest` is re-released, `run`/`restart` keep silently running the old image with
+  no hint that anything is stale. `kde openclaw upgrade` is the way to move: it pulls, and
+  restarts **only if the image ID actually changed** (no new version → no needless gateway
+  interruption). If a pull fails it aborts before touching the container. Diagnose a suspected
+  skew with `docker run --rm $OPENCLAW_IMAGE openclaw --version` against the image, and note
+  that a locally built image can be the culprit — `build.sh` deliberately does not tag
+  `latest` for exactly this reason.
 - `kde openclaw restart` is `stop` + `run`, with one addition: when you do NOT pass `-p`, it
   reuses the port the running container currently publishes rather than falling back to the
   built-in default, so a container started with `-p 19000` stays on 19000 (otherwise a paired

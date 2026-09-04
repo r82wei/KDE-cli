@@ -28,6 +28,7 @@ show_openclaw_help() {
     echo "  onboard [-f]                    執行初始化精靈 (一次性互動容器，不需 gateway 已啟動)"
     echo "  stop                            停止並移除 gateway 容器"
     echo "  restart [-p port]               先 stop 再 run (未指定 port 時沿用現有容器的 port)"
+    echo "  upgrade [-p port]               拉取映像的最新版本，映像真的變了才重啟容器"
     echo "  tui                             互動進入 openclaw TUI"
     echo "  exec    [<cmd>]                 進入容器的 bash；帶指令則非互動執行 (指令含空白請用引號包起來)"
     echo "  log     [-f] [--tail <n>]       查看 gateway 容器日誌 (預設最後 ${OPENCLAW_TAIL_DEFAULT} 行，不跟隨)"
@@ -78,7 +79,7 @@ parse_openclaw_args() {
             show_openclaw_help
             return 2
             ;;
-        run|onboard|stop|restart|tui|exec|log|token|dashboard|reset)
+        run|onboard|stop|restart|upgrade|tui|exec|log|token|dashboard|reset)
             OPENCLAW_ACTION="$1"
             shift
             ;;
@@ -663,6 +664,78 @@ restart_openclaw() {
 
     stop_openclaw || return 1
     run_openclaw_gateway
+}
+
+# 讀取本地 OPENCLAW_IMAGE 的 image ID；映像不存在時回傳空字串。
+# upgrade 靠比對這個值判斷 pull 前後映像有沒有真的換掉，而不是去解析
+# docker pull 的輸出文字——那是給人看的訊息，格式會隨 Docker 版本變。
+get_openclaw_image_id() {
+    docker image inspect -f '{{.Id}}' "${OPENCLAW_IMAGE}" 2>/dev/null || true
+}
+
+# 讀取映像的 OpenClaw 版本，純粹用於印給人看。
+# 值來自官方 base image 的 org.opencontainers.image.version label；判斷「有沒有
+# 換版本」一律靠 image ID，不依賴這個 label 存在，取不到就顯示 unknown。
+get_openclaw_image_version() {
+    local v=""
+    v=$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.version"}}' "${OPENCLAW_IMAGE}" 2>/dev/null) || true
+    v=$(echo "${v}" | tr -d '[:space:]')
+    if [[ -z "${v}" || "${v}" == "<novalue>" ]]; then
+        echo "unknown"
+    else
+        echo "${v}"
+    fi
+}
+
+# 拉取 OPENCLAW_IMAGE 的最新版本，映像真的變了才重啟容器。
+#
+# 為什麼需要一個獨立的 action：docker run 的預設 pull policy 是 missing——本地
+# 只要已有該 tag 就直接用，永遠不會回頭問 registry。所以 registry 上的 latest
+# 換了新版之後，run 與 restart 仍會沉默地跑舊映像，而且完全沒有徵兆。
+#
+# 刻意「不」把 --pull always 加進 run：restart 的語意是重啟而非升級，每次都打
+# registry 會讓離線環境直接失敗，也讓每次重啟多一次網路往返。換版本是明確的
+# 意圖，值得一個明確的指令。
+#
+# 沒有新版就不重啟：重啟會中斷 gateway、踢掉進行中的 session，在沒有換到新
+# 映像的情況下不值得付這個代價。
+#
+# 容器未運行時只更新映像、不順便啟動：upgrade 的職責是「把映像更新到最新，
+# 並讓正在跑的容器換過去」，沒有東西要重啟時就該把啟動留給 run。
+upgrade_openclaw() {
+    local before after ver_before ver_after
+    before=$(get_openclaw_image_id)
+    ver_before=$(get_openclaw_image_version)
+
+    echo "↓ 拉取 ${OPENCLAW_IMAGE} ..."
+    # pull 失敗必須在動到容器之前中止：離線時把跑著的 gateway 停掉卻換不到新
+    # 映像，會把「沒升級」惡化成「服務不見了」。
+    if ! docker pull "${OPENCLAW_IMAGE}"; then
+        echo "❌ 拉取映像失敗，容器未受影響" >&2
+        return 1
+    fi
+
+    after=$(get_openclaw_image_id)
+    ver_after=$(get_openclaw_image_version)
+
+    if [[ -n "${before}" && "${before}" == "${after}" ]]; then
+        echo "✓ 已是最新版本 (${ver_after})，容器未重啟"
+        return 0
+    fi
+
+    # 本地原本沒有這個映像時，印「unknown → 2026.9.1」只是雜訊而非資訊
+    if [[ -z "${before}" ]]; then
+        echo "映像已取得：${ver_after}"
+    else
+        echo "映像已更新：${ver_before} → ${ver_after}"
+    fi
+
+    if [[ "$(is_openclaw_container_running)" != "true" ]]; then
+        echo "容器未在運行，啟動請執行：kde openclaw run"
+        return 0
+    fi
+
+    restart_openclaw
 }
 
 # 刪除 workspace 的 .openclaw（含 auth 密鑰）

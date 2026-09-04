@@ -16,15 +16,15 @@ PLATFORMS=linux/amd64,linux/arm64
 
 echo "Release r82wei/kde-openclaw:${KDE_CLI_VERSION}-${OPENCLAW_VERSION} (${PLATFORMS}) ..."
 
+# 一次 build、兩個 tag、一次 push。先前是跑兩次獨立的 buildx build（第二次還漏了
+# --no-cache）,於是 <hash>-<version> 與 latest 成為兩個 manifest digest 不同的
+# 映像,內容「應該」相同卻沒有任何保證。合併之後兩個 tag 必然指向同一個映像,
+# 也省掉一半的建置時間。
+#
 # build context 必須是 repo 根目錄:Dockerfile 會 COPY . /tmp/kde-src/ 再跑 local-install.sh
 docker buildx build --no-cache --platform ${PLATFORMS} --push \
     -f Dockerfile \
     --build-arg OPENCLAW_VERSION=${OPENCLAW_VERSION} \
     -t r82wei/kde-openclaw:${KDE_CLI_VERSION}-${OPENCLAW_VERSION} \
-    ../..
-
-docker buildx build --platform ${PLATFORMS} --push \
-    -f Dockerfile \
-    --build-arg OPENCLAW_VERSION=${OPENCLAW_VERSION} \
     -t r82wei/kde-openclaw:latest \
     ../..

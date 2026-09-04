@@ -15,7 +15,7 @@
 - **DooD 整合**：容器內可直接下 `kde` / `docker` 指令操作宿主環境
 - **PUID/PGID 對齊**：預設沿用主機使用者的 uid/gid，避免掛載檔案的擁有權問題
 
-### 十個 action 總覽
+### 十一個 action 總覽
 
 | action | 用途 |
 |---|---|
@@ -23,6 +23,7 @@
 | `onboard` | 一次性互動容器，執行初始化精靈 |
 | `stop` | 停止並移除容器（冪等） |
 | `restart` | 先 `stop` 再 `run`（未指定 port 時沿用現有容器的 port） |
+| `upgrade` | 拉取映像的最新版本，映像真的變了才重啟容器 |
 | `tui` | 互動進入 OpenClaw TUI |
 | `exec` | 進入容器的 bash（不帶指令）或非互動執行指令 |
 | `log` | 查看 gateway 容器日誌 |
@@ -42,7 +43,7 @@ kde openclaw <action> [option]
 
 | 選項 | 簡寫 | 說明 | 哪些 action 吃 |
 |------|------|------|------|
-| `--port` | `-p` | gateway 對外發布的 port（預設 `18789`，亦可用環境變數 `OPENCLAW_PORT`） | `run`、`restart` |
+| `--port` | `-p` | gateway 對外發布的 port（預設 `18789`，亦可用環境變數 `OPENCLAW_PORT`） | `run`、`restart`、`upgrade` |
 | `--force` | `-f` | 略過確認提示 | `onboard`、`reset` |
 | `--follow` | `-f` | 跟隨日誌輸出 | `log` |
 | `--tail` | - | 日誌顯示的行數（預設 `100`） | `log` |
@@ -139,6 +140,32 @@ kde openclaw restart -p 20000
 `stop` 失敗時會中止，不繼續 `run`——否則 `run` 會立刻報「容器已存在，請先停止」，使用者會同時看到兩條互相矛盾的錯誤，後者還會叫他去做剛剛失敗的那件事。
 
 容器本來就沒在跑時 `stop` 是冪等的，因此 `restart` 對未啟動的 workspace 等同 `run`，這是刻意的。
+
+### `upgrade` — 拉取最新映像，有變才重啟
+
+```bash
+kde openclaw upgrade
+```
+
+**為什麼需要這個 action**：`docker run` 的預設 pull policy 是 `missing`——本地只要已有該 tag 就直接用，**永遠不會回頭問 registry**。所以 registry 上的 `latest` 換了新版之後，`run` 與 `restart` 仍會沉默地跑舊映像，而且完全沒有徵兆。要換版本就必須明確 `docker pull`。
+
+`--pull always` 刻意沒有加進 `run`：`restart` 的語意是重啟而非升級，每次都打 registry 會讓離線環境直接失敗，也讓每次重啟多一次網路往返。換版本是明確的意圖，值得一個明確的指令。
+
+行為矩陣：
+
+| 容器狀態 | 映像有變 | 行為 |
+|---|---|---|
+| 運行中 | 是 | 印出版本變化，接著 `restart`（沿用現有 port） |
+| 運行中 | 否 | 印「已是最新版本」，**不重啟** |
+| 未運行 | 是 | 更新映像，提示用 `run` 啟動 |
+| 未運行 | 否 | 印「已是最新版本」，提示用 `run` 啟動 |
+
+- **沒有新版就不重啟**：重啟會中斷 gateway、踢掉進行中的 session，在沒有換到新映像的情況下不值得付這個代價。
+- **容器未運行時只更新映像、不順便啟動**：`upgrade` 的職責是「把映像更新到最新，並讓正在跑的容器換過去」，沒有東西要重啟時就把啟動留給 `run`。
+- **`pull` 失敗會在動到容器之前中止**：離線時把跑著的 gateway 停掉卻換不到新映像，會把「沒升級」惡化成「服務不見了」。
+- 判斷「映像有沒有變」是比對 `docker image inspect` 的 image ID，不去解析 `docker pull` 的輸出文字——那是給人看的訊息，格式會隨 Docker 版本變。版本號取自映像的 `org.opencontainers.image.version` label，純粹用於顯示，取不到會顯示 `unknown`。
+
+> **`build.sh` 刻意不打 `latest` tag**：`latest` 的語意是「registry 上最新發布的版本」，而本機 `build.sh` 的產物只是一次性的測試映像。讓它冒用 `latest` 會污染之後這台機器上所有 `run`/`restart` 的映像來源——本機跑一次 build 就會永久停在該映像上，症狀正是「明明 release 了新版，容器卻一直是舊的」。要用剛建好的映像請明確指定 `OPENCLAW_IMAGE=r82wei/kde-openclaw:<hash>-<version> kde openclaw run`（`build.sh` 結束時會把這行印出來）。
 
 ### `tui` — 互動進入 OpenClaw TUI
 

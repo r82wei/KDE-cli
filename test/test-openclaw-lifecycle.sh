@@ -34,6 +34,12 @@ STUB_TOKEN=""         # 一次性容器讀 openclaw.json 時印出的 gateway to
 # 因為實際的容器會先吐 [state-migrations] 之類的警告，取值必須挑出 JSON 那行。
 STUB_DASHBOARD_JSON='{"ok":true,"url":"http://127.0.0.1:18789/#token=tok123","httpUrl":"http://127.0.0.1:18789/","wsUrl":"ws://127.0.0.1:18789","port":18789,"browserUrl":"http://127.0.0.1:18789/#bootstrapToken=boot456&bootstrapProfile=owner"}'
 STUB_PORT_MAP="0.0.0.0:19000"  # docker port <name> 18789/tcp 的輸出
+STUB_IMAGE_ID="sha256:old"        # docker image inspect 讀到的 image ID
+STUB_IMAGE_VERSION="2026.8.2"     # 映像的 org.opencontainers.image.version label
+# 下面兩個模擬 docker pull 之後映像換掉；留空代表 pull 到的與本地相同
+STUB_IMAGE_ID_AFTER=""
+STUB_IMAGE_VERSION_AFTER=""
+STUB_PULL_FAIL=""     # 當 "true" 時，docker pull 回傳 1
 STUB_STOP_FAIL=""     # 當 "true" 時，docker stop 回傳 1
 STUB_RM_FAIL=""       # 當 "true" 時，docker rm 回傳 1
 
@@ -80,6 +86,27 @@ docker() {
             return 0
             ;;
         port) echo "${STUB_PORT_MAP}"; return 0 ;;
+        image)
+            # docker image inspect -f '{{.Id}}' / '{{index .Config.Labels ...}}'
+            if [[ "$*" == *"Config.Labels"* ]]; then
+                echo "${STUB_IMAGE_VERSION}"
+            else
+                echo "${STUB_IMAGE_ID}"
+            fi
+            return 0
+            ;;
+        pull)
+            if [[ "${STUB_PULL_FAIL}" == "true" ]]; then return 1; fi
+            # 模擬 registry 上有新版：pull 之後本地映像換掉。
+            # 這個賦值必須在父 shell 生效才有意義——docker pull 是直接執行的
+            # （不是命令替換），所以可行；get_openclaw_image_id 那種
+            # $(docker image inspect) 走子 shell，只讀不寫。
+            if [[ -n "${STUB_IMAGE_ID_AFTER}" ]]; then
+                STUB_IMAGE_ID="${STUB_IMAGE_ID_AFTER}"
+                STUB_IMAGE_VERSION="${STUB_IMAGE_VERSION_AFTER}"
+            fi
+            return 0
+            ;;
         inspect) echo "${STUB_INSPECT} ${STUB_RESTARTS}"; return 0 ;;
         stop) [[ "${STUB_STOP_FAIL}" == "true" ]] && return 1; return 0 ;;
         rm)
@@ -128,6 +155,8 @@ reset_stub() {
     STUB_PORT_MAP="0.0.0.0:19000"
     STUB_DASHBOARD_JSON='{"ok":true,"url":"http://127.0.0.1:18789/#token=tok123","httpUrl":"http://127.0.0.1:18789/","wsUrl":"ws://127.0.0.1:18789","port":18789,"browserUrl":"http://127.0.0.1:18789/#bootstrapToken=boot456&bootstrapProfile=owner"}'
     STUB_STOP_FAIL=""; STUB_RM_FAIL=""
+    STUB_IMAGE_ID="sha256:old"; STUB_IMAGE_VERSION="2026.8.2"
+    STUB_IMAGE_ID_AFTER=""; STUB_IMAGE_VERSION_AFTER=""; STUB_PULL_FAIL=""
 }
 
 NAME="openclaw-kde-test-openclaw-lc"
@@ -413,6 +442,52 @@ reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
 OPENCLAW_PORT_GIVEN=true
 restart_openclaw >/dev/null 2>&1
 assert_true "先 stop 再啟動 gateway" called_before "stop ${NAME}" "gateway run"
+echo ""
+
+echo "--- upgrade ---"
+# upgrade 的職責是「把映像更新到最新，並讓正在跑的容器換過去」。
+# 判斷有沒有換版本一律比對 image ID，不去解析 docker pull 的輸出文字——
+# 那是給人看的訊息，格式會隨 Docker 版本變。
+
+# 已是最新（pull 前後 image ID 相同）：不重啟。重啟會中斷 gateway、
+# 踢掉進行中的 session，沒換到新映像就不值得付這個代價。
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+OUT=$(upgrade_openclaw 2>&1 || true)
+assert_true  "已是最新時仍會 pull" logged "pull ${OPENCLAW_IMAGE}"
+assert_true  "已是最新時明確告知" out_has "已是最新版本"
+assert_false "已是最新時不重啟容器" logged "gateway run"
+assert_false "已是最新時不停止容器" logged "stop ${NAME}"
+
+# 有新版：印出版本變化並重啟
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+STUB_IMAGE_ID_AFTER="sha256:new"; STUB_IMAGE_VERSION_AFTER="2026.9.1"
+OUT=$(upgrade_openclaw 2>&1 || true)
+assert_true "有新版時印出版本變化" out_has "2026.8.2 → 2026.9.1"
+assert_true "有新版時重啟容器" logged "gateway run"
+
+# pull 失敗必須中止，且不能動到正在運行的容器——離線時尤其不該把跑著的
+# gateway 停掉換不到新映像，那會從「沒升級」惡化成「服務不見了」。
+reset_stub; STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_MODE="local"
+STUB_PULL_FAIL=true
+assert_false "pull 失敗時 upgrade 回報失敗" upgrade_openclaw
+assert_false "pull 失敗時不停止容器" logged "stop ${NAME}"
+assert_false "pull 失敗時不啟動 gateway" logged "gateway run"
+
+# 容器未運行：只更新映像，不順便啟動（那是 run 的工作）
+reset_stub; STUB_EXISTING=""; STUB_RUNNING=""; STUB_MODE="local"
+STUB_IMAGE_ID_AFTER="sha256:new"; STUB_IMAGE_VERSION_AFTER="2026.9.1"
+OUT=$(upgrade_openclaw 2>&1 || true)
+assert_true  "容器未運行時仍更新映像" logged "pull ${OPENCLAW_IMAGE}"
+assert_false "容器未運行時不啟動 gateway" logged "gateway run"
+assert_true  "容器未運行時提示如何啟動" out_has "kde openclaw run"
+
+# 本地原本沒有這個映像：不該印出「unknown → 2026.9.1」這種假的版本變化
+reset_stub; STUB_EXISTING=""; STUB_RUNNING=""; STUB_MODE="local"
+STUB_IMAGE_ID=""; STUB_IMAGE_VERSION=""
+STUB_IMAGE_ID_AFTER="sha256:new"; STUB_IMAGE_VERSION_AFTER="2026.9.1"
+OUT=$(upgrade_openclaw 2>&1 || true)
+assert_true  "首次取得映像時印出取得而非變化" out_has "已取得"
+assert_false "首次取得映像時不印箭號" out_has "→"
 echo ""
 
 echo "--- reset ---"

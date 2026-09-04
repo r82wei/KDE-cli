@@ -46,6 +46,7 @@ Current tests, grouped by what they cover:
 | Non-interactive execution | `test-exec-no-tty.sh`, `test-pod-exec-args.sh`, `test-proj-exec-volumes.sh`, `test-exec-integration.sh` |
 | code-server | `test-code-server-mounts.sh`, `test-code-server-agent-args.sh`, `test-agent-entrypoint.sh`, `test-install-scripts.sh` |
 | openclaw | `test-openclaw-args.sh`, `test-openclaw-container-args.sh`, `test-openclaw-lifecycle.sh`, `test-openclaw-entrypoint.sh`, `test-openclaw-kde-wrapper.sh` |
+| openclaw 映像 | `test-openclaw-image-tags.sh` |
 | k9s | `test-k9s-user-env.sh` |
 | Environment | `test-kind-config-env.sh` |
 | Install | `test-local-install.sh` |

@@ -362,6 +362,10 @@ kde openclaw stop
 kde openclaw restart
 kde openclaw restart -p 20000     # 明確指定時以指定值為準（-p 18789 也勝過沿用）
 
+# 拉取映像的最新版本；映像真的變了才重啟（沒新版不會白白中斷 gateway）
+# 需要這個是因為 docker run 預設不問 registry：本地有 latest 就直接用舊的
+kde openclaw upgrade
+
 # 刪除 workspace 的 .openclaw-home（容器運行中則拒絕，需先 stop）
 kde openclaw reset
 kde openclaw reset -f

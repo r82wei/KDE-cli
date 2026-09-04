@@ -27,6 +27,9 @@ case "${OPENCLAW_ACTION}" in
     restart)
         restart_openclaw
         ;;
+    upgrade)
+        upgrade_openclaw
+        ;;
     tui)
         tui_openclaw
         ;;
