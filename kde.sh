@@ -61,7 +61,7 @@ show_help() {
     echo "  cloudflare-tunnel <target> [options]                透過 Cloudflare Tunnel 建立連線 (可以使用 kde cloudflare-tunnel -h 查看詳細說明)"
     echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
     echo "  code-server [-d] [-p port] [-n name] [-v dir] [-w dir] [-a agent]   啟動 code-server，-d 背景執行，-p 指定 port，-n 指定容器名稱(可同時啟動多個)，-v 指定掛載目錄或檔案，格式 src[:dst[:ro|rw]](可重複指定多次，預設當前路徑)，-w 指定開啟的資料夾，-a 啟動時安裝 AI agent(可重複指定多次)"
-    echo "  openclaw <run|onboard|stop|restart|upgrade|downgrade|tui|exec|log|token|dashboard|reset> 以容器啟動 OpenClaw agent，可在容器內使用 kde CLI (可以使用 kde openclaw -h 查看詳細說明)"
+    echo "  openclaw <run|onboard|stop|restart|backup|upgrade|downgrade|tui|exec|log|token|dashboard|reset> 以容器啟動 OpenClaw agent，可在容器內使用 kde CLI (可以使用 kde openclaw -h 查看詳細說明)"
     echo "  claude-skill <install|update|status>                安裝 KDE Claude Code 技能到 ~/.claude/skills/"
     echo "  alias <name> [path]                                 建立 alias 指令，透過 tmux 快速啟動 session 到指定路徑的目錄 (需要安裝 tmux)"
     echo "  version                                             顯示 KDE 版本"

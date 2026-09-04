@@ -40,6 +40,7 @@ show_openclaw_help() {
     echo "  onboard [-f]                    執行初始化精靈 (一次性互動容器，不需 gateway 已啟動)"
     echo "  stop                            停止並移除 gateway 容器"
     echo "  restart [-p port]               先 stop 再 run (未指定 port 時沿用現有容器的 port)"
+    echo "  backup  [-f]                    手動備份 .openclaw-home (會短暫停止容器)"
     echo "  upgrade [-p port]               拉取映像的最新版本，映像真的變了才重啟容器"
     echo "  downgrade [<n>] [--list] [-f]   從備份還原資料與映像版本 (不改 kde.env)"
     echo "  tui                             互動進入 openclaw TUI"
@@ -94,7 +95,7 @@ parse_openclaw_args() {
             show_openclaw_help
             return 2
             ;;
-        run|onboard|stop|restart|upgrade|downgrade|tui|exec|log|token|dashboard|reset)
+        run|onboard|stop|restart|backup|upgrade|downgrade|tui|exec|log|token|dashboard|reset)
             OPENCLAW_ACTION="$1"
             shift
             ;;
@@ -823,6 +824,48 @@ create_openclaw_backup() { # [$1=image $2=image_id $3=version]
 
     echo "✓ 已備份 $(basename "${file}") ($(du -h "${file}" | cut -f1))"
     prune_openclaw_backups
+}
+
+# 手動備份。
+#
+# 與 upgrade 內建的那次備份走同一個函式，差別在於它自己負責停止與啟動：手動備份
+# 幾乎都在容器運行中執行，正面撞上熱備份 sqlite 的一致性問題（.codex 的 WAL 有
+# 未 checkpoint 的交易，而打包實測要 9 秒，期間有寫入就可能備出還原不回來的
+# 快照）。停掉再備份是唯一可信的做法，代價是中斷服務——所以先問過再動手。
+#
+# 容器本來就沒在跑時不問也不啟動：沒有東西要中斷，而把停著的容器叫起來是
+# run 的職責，不該由備份順手代辦。
+backup_openclaw() {
+    local was_running=false
+    if [[ "$(is_openclaw_container_running)" == "true" ]]; then
+        was_running=true
+    fi
+
+    if [[ "${was_running}" == "true" && "${OPENCLAW_FORCE}" != "true" ]]; then
+        echo "⚠️  備份期間會短暫停止 gateway（打包實測約 9 秒）"
+        echo "   停止之後才沒有行程在寫 sqlite，快照才是一致的"
+        # 用 echo -n 而不是 read -p：read 的 prompt 只在 stdin 是終端時才輸出，
+        # 在腳本或 CI 裡誤用（又沒帶 -f）就會變成靜默等待輸入，看起來像卡住。
+        echo -n "確定要繼續嗎？(y/N) "
+        read answer
+        if [[ "${answer}" != "y" ]]; then
+            echo "已取消"
+            return 0
+        fi
+    fi
+
+    if [[ "${was_running}" == "true" ]]; then
+        # 先讀 port 再停：容器沒了就問不到它發布在哪個 port
+        resolve_openclaw_port_from_container
+        # 停不掉就別繼續：備份會拿到熱快照，而且後面還會試著啟動一個沒停掉的容器
+        stop_openclaw || return 1
+    fi
+
+    create_openclaw_backup || return 1
+
+    if [[ "${was_running}" == "true" ]]; then
+        run_openclaw_gateway
+    fi
 }
 
 # 依時間由舊到新列出備份檔。編號 1 是最舊的那份，順序與 downgrade 的列表一致。

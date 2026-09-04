@@ -31,6 +31,9 @@ case "${OPENCLAW_ACTION}" in
     restart)
         restart_openclaw
         ;;
+    backup)
+        backup_openclaw
+        ;;
     upgrade)
         upgrade_openclaw
         ;;

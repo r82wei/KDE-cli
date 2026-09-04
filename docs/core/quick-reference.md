@@ -363,6 +363,10 @@ kde openclaw restart -p 20000     # 明確指定時以指定值為準（-p 18789
 
 # 拉取映像的最新版本；映像真的變了才重啟（沒新版不會白白中斷 gateway）
 # 需要這個是因為 docker run 預設不問 registry：本地有 latest 就直接用舊的
+# 手動備份 .openclaw-home（容器運行中會先問過，-f 略過）
+# 會停止容器再備份再啟動回來：停掉之後才沒有行程在寫 sqlite，快照才一致
+kde openclaw backup
+
 kde openclaw upgrade
 
 # 從備份還原資料與映像版本（備份由 upgrade 自動建立，保留最新 3 份）

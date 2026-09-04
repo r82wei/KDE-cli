@@ -85,6 +85,13 @@ assert_false() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then check "$d" 1
 assert_eq()    { TOTAL=$((TOTAL+1)); if [[ "$3" == "$2" ]]; then echo "✅ $1：'$3'"; PASS=$((PASS+1)); else echo "❌ $1：預期 '$2'，實際 '$3'"; FAIL=$((FAIL+1)); fi; }
 logged()  { grep -q -- "$1" "${DOCKER_LOG_FILE}"; }
 out_has() { echo "${OUT}" | grep -q -- "$1"; }
+# docker.log 是逐行 append 的，用首次出現的行號比較兩個呼叫的先後
+called_before() {
+    local a b
+    a=$(grep -n -- "$1" "${DOCKER_LOG_FILE}" | sed -n 1p | cut -d: -f1)
+    b=$(grep -n -- "$2" "${DOCKER_LOG_FILE}" | sed -n 1p | cut -d: -f1)
+    [[ -n "${a}" && -n "${b}" && "${a}" -lt "${b}" ]]
+}
 
 # 造一份有內容的容器 home
 seed_home() { # $1=標記字串
@@ -323,6 +330,68 @@ assert_false "非數字編號報錯" downgrade_openclaw
 reset_all; seed_home "current"
 STUB_RUNNING="${NAME}"; OPENCLAW_LIST=false; OPENCLAW_BACKUP_CHOICE=1; OPENCLAW_FORCE=true
 assert_false "沒有備份可還原時報錯" downgrade_openclaw
+echo ""
+
+echo "--- backup（手動備份）---"
+# 手動備份幾乎都在容器運行中執行，正面撞上熱備份 sqlite 的一致性問題，
+# 所以它自己走一遍 stop → 備份 → 啟動回來。會中斷服務，因此先問過再動手。
+
+# 提示要出現，且預設是不繼續（y/N）——直接按 Enter 不該把 gateway 停掉
+reset_all; seed_home "live"
+STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"
+OUT=$(backup_openclaw <<< "" 2>&1 || true)
+assert_true  "容器運行中會先提示" out_has "y/N"
+assert_true  "提示說明為何要停止" out_has "sqlite"
+assert_false "按 Enter（空輸入）不停止容器" logged "stop ${NAME}"
+assert_eq    "按 Enter 不產生備份" "0" "$(ls -A "${BACKUP_DIR}" 2>/dev/null | wc -l)"
+
+reset_all; seed_home "live"
+STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"
+backup_openclaw <<< "n" >/dev/null 2>&1 || true
+assert_false "輸入 n 不停止容器" logged "stop ${NAME}"
+assert_eq    "輸入 n 不產生備份" "0" "$(ls -A "${BACKUP_DIR}" 2>/dev/null | wc -l)"
+
+# 輸入 y：停止、備份、再啟動回來
+reset_all; seed_home "live"
+STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"
+backup_openclaw <<< "y" >/dev/null 2>&1
+assert_true "輸入 y 會停止容器" logged "stop ${NAME}"
+assert_eq   "輸入 y 會產生備份" "1" "$(ls -A "${BACKUP_DIR}" 2>/dev/null | wc -l)"
+assert_true "備份後把容器啟動回來" logged "gateway run"
+assert_true "先停止再備份再啟動" called_before "stop ${NAME}" "gateway run"
+
+# -f 沿用既有慣例（onboard/reset 亦然）：略過確認
+reset_all; seed_home "live"
+STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; OPENCLAW_FORCE=true
+OUT=$(backup_openclaw 2>&1)
+assert_false "-f 不再提示" out_has "y/N"
+assert_eq    "-f 直接備份" "1" "$(ls -A "${BACKUP_DIR}" 2>/dev/null | wc -l)"
+assert_true  "-f 仍會啟動回來" logged "gateway run"
+
+# 容器本來就沒在跑：沒有東西要中斷，不必問也不該順便啟動它
+reset_all; seed_home "stopped"
+STUB_EXISTING=""; STUB_RUNNING=""
+OUT=$(backup_openclaw 2>&1)
+assert_false "容器未運行時不提示" out_has "y/N"
+assert_eq    "容器未運行時直接備份" "1" "$(ls -A "${BACKUP_DIR}" 2>/dev/null | wc -l)"
+assert_false "容器未運行時不順便啟動" logged "gateway run"
+
+# 停止失敗就別繼續：備份會拿到熱快照，而且之後還會試著啟動一個沒停掉的容器
+reset_all; seed_home "live"
+STUB_EXISTING="${NAME}"; STUB_RUNNING="${NAME}"; STUB_STOP_FAIL=true; OPENCLAW_FORCE=true
+assert_false "停止失敗時 backup 回報失敗" backup_openclaw
+assert_eq    "停止失敗時不產生備份" "0" "$(ls -A "${BACKUP_DIR}" 2>/dev/null | wc -l)"
+assert_false "停止失敗時不啟動 gateway" logged "gateway run"
+
+# 手動備份同樣受保留份數約束，否則它會成為繞過上限的漏洞
+reset_all; seed_home "live"; mkdir -p "${BACKUP_DIR}"
+for i in 1 2 3; do
+    fn="${BACKUP_DIR}/openclaw-backup-2026090${i}-000000-img.tar.gz"
+    echo x > "${fn}"; touch -d "2026-09-0${i} 00:00:00" "${fn}"
+done
+STUB_EXISTING=""; STUB_RUNNING=""
+backup_openclaw >/dev/null 2>&1
+assert_eq "手動備份後仍只留 3 份" "3" "$(ls -A "${BACKUP_DIR}" | wc -l)"
 echo ""
 
 # ---------------------------------------------------------------------------

@@ -143,8 +143,9 @@ kde openclaw log -f       # 4. tail the gateway logs
 kde openclaw dashboard     # 5. first browser visit to the dashboard (see below)
 kde openclaw stop          # 6. stop + remove the container (idempotent)
 kde openclaw restart       # 7. stop + run in one step, keeping the current port
+kde openclaw backup        # 8. snapshot .openclaw-home on demand (stops the container)
 kde openclaw upgrade       # 8. pull a newer image; restarts only if it actually changed
-kde openclaw downgrade     # 9. restore data + image from a backup upgrade made
+kde openclaw downgrade     # 10. restore data + image from a backup
 ```
 
 **Gotchas Claude commonly hits**:
@@ -155,6 +156,9 @@ kde openclaw downgrade     # 9. restore data + image from a backup upgrade made
   **exist**, so it still works after a crash (that is when you need it most).
 - `kde openclaw reset` (deletes `.openclaw-home`) refuses while the container is running — run
   `kde openclaw stop` first.
+- `kde openclaw backup` takes the same snapshot on demand. It stops the container first (a hot
+  copy of the SQLite files can be inconsistent — the packing takes ~9s), asks before doing so,
+  and starts it back up afterwards; `-f` skips the prompt. Answering anything but `y` cancels.
 - `upgrade` snapshots `.openclaw-home` before swapping versions (tarball in
   `<workspace>/.openclaw-backups/`, newest 3 kept), taken **after** the container stops so the
   SQLite files are quiescent. `kde openclaw downgrade` restores one — data *and* image version.
