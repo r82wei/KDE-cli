@@ -47,6 +47,7 @@ Current tests, grouped by what they cover:
 | code-server | `test-code-server-mounts.sh`, `test-code-server-agent-args.sh`, `test-agent-entrypoint.sh`, `test-install-scripts.sh` |
 | openclaw | `test-openclaw-args.sh`, `test-openclaw-container-args.sh`, `test-openclaw-lifecycle.sh`, `test-openclaw-entrypoint.sh` |
 | Environment | `test-kind-config-env.sh` |
+| Install | `test-local-install.sh` |
 
 `test.sh` and `test/cloudflare.sh` are manual scratch harnesses, not test runners.
 
