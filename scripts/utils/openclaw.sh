@@ -261,6 +261,18 @@ build_openclaw_docker_args() {
         --workdir "${KDE_PATH}"
         -e "PUID=${puid}"
         -e "PGID=${pgid}"
+        # --workdir 只決定容器的「起始」cwd，管不到之後 cd 走的行程。OpenClaw agent
+        # 執行工具時的 cwd 是它自己的 workspace（~/.openclaw/workspace，即
+        # agents.defaults.workspace），在那裡跑 kde 只會得到「kde.env 不存在，請先
+        # 執行 kde init」—— 而 kde init 是 touch kde.env + cp -r templates/init/.，
+        # 照做等於把整套 workspace 模板灌進 agent 自己的家目錄。
+        #
+        # 帶入 KDE_PATH 讓 kde 在任何 cwd 下都指向掛進來的那個 workspace
+        # （kde.sh 優先採用帶入值，只在缺席時才由 $PWD 往上找 kde.env）。
+        # 這刻意不改 agents.defaults.workspace：那個目錄同時是 agent 的「家」——
+        # AGENTS.md、SOUL.md、USER.md、memory/ 與它自己的 .git 都在裡面，指到
+        # KDE workspace 會把這些全部倒進使用者版控的目錄。
+        -e "KDE_PATH=${KDE_PATH}"
         # workspace 以相同絕對路徑掛入，容器內外路徑一致
         -v "${KDE_PATH}:${KDE_PATH}"
         # 掛「整個容器 home」而非只掛 ~/.openclaw。

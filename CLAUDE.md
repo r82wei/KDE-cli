@@ -50,6 +50,7 @@ Current tests, grouped by what they cover:
 | openclaw 映像 | `test-openclaw-image-tags.sh` |
 | k9s | `test-k9s-user-env.sh` |
 | Environment | `test-kind-config-env.sh` |
+| Workspace 定位 | `test-kde-path-resolution.sh` |
 | Install | `test-local-install.sh` |
 
 `test.sh` and `test/cloudflare.sh` are manual scratch harnesses, not test runners.

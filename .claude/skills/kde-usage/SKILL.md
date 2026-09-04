@@ -29,6 +29,26 @@ kde proj ls        # what projects exist?
 If `kde.env` does not exist anywhere up the directory tree, the user needs to run
 `kde init` first. Ask before proceeding.
 
+### If `$KDE_PATH` is set, you are inside a `kde openclaw` container
+
+`$KDE_PATH` points at the workspace mounted from the host (same absolute path inside and
+outside the container). `kde` reads it directly, so **`kde` works from any cwd — you never
+need to `cd` first**.
+
+Your own cwd is the OpenClaw agent workspace (`~/.openclaw/workspace`) — your home base for
+`AGENTS.md` / `SOUL.md` / `USER.md` / `memory/`. It is **not** the KDE workspace, and nothing
+about the K8s environment lives there. Project source code is under the mounted workspace:
+
+```
+$KDE_PATH/environments/<env>/namespaces/<project>/<repo>/
+```
+
+So read and edit project files through `$KDE_PATH`, not through paths relative to your cwd.
+
+Never run `kde init` here to "fix" a missing `kde.env`: it writes a whole workspace template
+(`kde.env`, templates, docs) into whatever `KDE_PATH` resolves to — in the container that
+would be your own home directory.
+
 ## Step 2: Pick the Right Workflow
 
 ### Typical end-to-end workflow (first time setup)
@@ -130,6 +150,10 @@ Use `kde k9s` or `kde headlamp` to see status, events, and resource details visu
 available inside it (DooD), so the agent can operate the K8s environment from within its
 own container. The container's entire home is mounted at `${KDE_PATH}/.openclaw-home`, so all
 state — `~/.openclaw`, plus provider credential dirs like `~/.codex` and `~/.claude` — lives there.
+
+The container also gets `-e KDE_PATH` and this skill mounted read-only into
+`~/.agents/skills/kde-usage`, so the agent inside it starts out knowing `kde` and can run it
+from any cwd. See "If `$KDE_PATH` is set" under Step 1.
 
 **Action order matters** — `onboard` must run before `run`, and `run` must succeed before
 `tui`/`exec`:

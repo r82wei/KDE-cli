@@ -68,6 +68,11 @@ assert_has "kde-cli 以唯讀掛載覆蓋映像內建版本" "-v ${KDE_CLI_PATH}
 assert_has "docker.sock 以唯讀掛載" "-v /var/run/docker.sock:/var/run/docker.sock:ro"
 assert_has "帶入 docker.sock 的 gid" "--group-add 999"
 assert_has "workdir 為 workspace 根目錄" "--workdir ${KDE_PATH}"
+# --workdir 只決定「容器的起始 cwd」，管不到之後 cd 走的行程。OpenClaw agent 的
+# 家目錄是 ~/.openclaw/workspace，它在那裡跑 kde 會拿到「kde.env 不存在，請先執行
+# kde init」—— 而照做會把 workspace 模板灌進 agent 自己的家目錄。帶入 KDE_PATH
+# 讓 kde 在任何 cwd 下都指向掛進來的那個 workspace（見 kde.sh 的定位邏輯）。
+assert_has "帶入 KDE_PATH，讓 kde 不依賴 cwd" "-e KDE_PATH=${KDE_PATH}"
 # codex 家目錄：OpenClaw 的 resolveCodexHome() 預設是 ~/.codex，落在掛載範圍外，
 # 於 --rm 容器退出時會連同 OAuth 憑證一起消失。用官方支援的 CODEX_HOME 覆寫指回
 # 掛載內，讓 codex 側的狀態跟其他狀態一樣留在 workspace，且仍在 reset 的清除範圍內。

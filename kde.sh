@@ -12,14 +12,28 @@ export KDE_DOCS_PATH=${KDE_CLI_PATH}/docs
 export KDE_TEMPLATES_PATH=${KDE_CLI_PATH}/templates
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=${KDE_CLI_PATH}/scripts
-# 設定 KDE workspace 根目錄路徑 (使用 while 查看目前路徑是否有 kde.env，如果 kde.env 不存在，就往上找，直到找到 kde.env 或 KDE_PATH == "/" 為止)
-export KDE_PATH=$PWD
-while [[ ! -f ${KDE_PATH}/kde.env && ${KDE_PATH} != "/" ]]; do
-    KDE_PATH=$(dirname ${KDE_PATH})
-done
-if [[ ! -f ${KDE_PATH}/kde.env ]]; then
-    export KDE_PATH=$PWD
+# 設定 KDE workspace 根目錄路徑。
+#
+# 優先採用呼叫端帶入的 KDE_PATH；只在它缺席（或為空字串）時，才由 $PWD 往上找
+# kde.env（找到、或走到 / 為止；都沒有就退回 $PWD，讓後面的 kde.env 檢查報錯）。
+#
+# 為什麼要留這個出口：$PWD 推導的前提是「執行 kde 的人就站在 workspace 裡」。
+# 這對人類成立，對容器內的 agent 不成立 —— kde openclaw 的 OpenClaw agent 家目錄
+# 是 ~/.openclaw/workspace，它在那裡跑 kde 只會得到「kde.env 不存在，請先執行
+# kde init」，而照著做會把整套 workspace 模板灌進 agent 自己的家目錄（kde init 是
+# touch kde.env + cp -r templates/init/. ${KDE_PATH}/）。也就是說原本的行為不只是
+# 「用不了」，是會主動誤導。帶入 KDE_PATH 讓 kde 在任何 cwd 下都指向同一個
+# workspace，見 scripts/utils/openclaw.sh 的 -e KDE_PATH。
+if [[ -z "${KDE_PATH}" ]]; then
+    KDE_PATH=$PWD
+    while [[ ! -f ${KDE_PATH}/kde.env && ${KDE_PATH} != "/" ]]; do
+        KDE_PATH=$(dirname ${KDE_PATH})
+    done
+    if [[ ! -f ${KDE_PATH}/kde.env ]]; then
+        KDE_PATH=$PWD
+    fi
 fi
+export KDE_PATH
 # 設定環境目錄路徑(enviroments)
 export ENVIROMENTS_PATH=${KDE_PATH}/environments
 # 設定 KDE 文件目標路徑

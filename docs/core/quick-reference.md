@@ -384,6 +384,7 @@ kde openclaw reset -f
 > `OPENCLAW_PORT` 刻意不寫入 `kde.env`（kde.env 隨 workspace 版控同步，port 是每台機器各自的環境條件，同步只會互相干擾）；`OPENCLAW_IMAGE` 則會寫入 `kde.env`。
 > `run` 偵測到尚未初始化會報錯並提示先執行 `onboard`，不會自動代跑。
 > 容器內的 agent 一啟動就有 `kde-usage` skill（CLI 自帶的那份以唯讀掛到 `~/.agents/skills`，不需要 `kde claude-skill install`，也不會隨 CLI 升級而過期）。以 `kde openclaw exec "openclaw skills list" | grep kde-usage` 確認。
+> 容器也會帶入 `KDE_PATH`，所以容器內的 `kde` 在**任何 cwd** 下都指向掛進來的 workspace——OpenClaw agent 的 cwd 是它自己的家目錄 `~/.openclaw/workspace`，不帶這個變數的話它跑 `kde` 只會得到「kde.env 不存在，請先執行 kde init」。
 > 詳細說明見 [OpenClaw 文檔](./dev-tools/openclaw.md)。
 
 ### 容器環境操作
@@ -659,13 +660,20 @@ kde projects exec
 ### 主要環境變數
 
 ```bash
-KDE_PATH              # KDE 工作區根目錄
+KDE_PATH              # KDE 工作區根目錄（可由呼叫端帶入，見下方說明）
 KDE_CLI_PATH          # KDE CLI 安裝目錄
 KDE_SCRIPTS_PATH      # KDE 腳本目錄
 ENVIROMENTS_PATH      # 環境目錄路徑
 CUR_ENV               # 當前環境名稱
 KUBECONFIG            # Kubernetes 配置檔案路徑
 ```
+
+> **`KDE_PATH` 是唯一可以「帶入」的**：其餘都由 `kde` 自行推導。帶入時 `kde` 直接採用該值，
+> 不再由 `$PWD` 往上找 `kde.env`；未帶入（或為空字串）才走原本的往上找。
+>
+> 這個出口是為了容器內的 agent：`$PWD` 推導的前提是「執行 kde 的人就站在 workspace 裡」，
+> 對人類成立，對 OpenClaw agent 不成立（它的 cwd 是 `~/.openclaw/workspace`）。
+> `kde openclaw` 因此會把 `KDE_PATH` 帶進容器，讓 `kde` 在任何 cwd 下都指向同一個 workspace。
 
 ### 環境配置變數
 

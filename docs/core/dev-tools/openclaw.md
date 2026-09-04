@@ -534,6 +534,9 @@ now」測試通過（憑證此刻就在該容器內），但精靈結束、`--rm
                                                       # 目前只有 kde-usage），見下方「CLI 自帶 skill 的自動載入」
 ```
 
+另外帶入三個環境變數：`PUID` / `PGID`（見下方「PUID / PGID」）與 `KDE_PATH`
+（讓容器內的 `kde` 不依賴 cwd，見下方「agent 的 cwd 與 `KDE_PATH`」）。
+
 容器 home 整個對應到 `${KDE_PATH}/.openclaw-home`，所以 agent 在 home 底下的任何狀態都隨 workspace 一起搬移 / 清除。
 
 > 早期設計曾另外掛載 `~/.config/openclaw`，並在實作階段以假金鑰經 `openclaw config set` 與 `openclaw onboard --non-interactive` 實測後移除。事後查官方文件才發現那個路徑確實有用途（legacy OAuth 憑證的加密金鑰），只是那兩條測試路徑都走不到它——這正是改為整個 home 掛載的動機之一：不必逐個猜哪些路徑有用。
@@ -618,6 +621,38 @@ kde openclaw exec "openclaw skills list" | grep kde-usage
 **root**（發生在 entrypoint 降權之前），而它落在 `.openclaw-home` 裡面，而
 `kde openclaw reset` 是以主機使用者 `rm -rf` 整個 `.openclaw-home`——遇到 root 所有的
 中間目錄會「拒絕不符權限的操作」而刪不掉。由主機端建立則屬使用者本人，`reset` 刪得掉。
+
+### agent 的 cwd 與 `KDE_PATH`
+
+容器的 `--workdir` 是 workspace 根目錄，但那只決定**容器的起始 cwd**，管不到之後 `cd`
+走的行程。OpenClaw agent 執行工具（bash / exec）時的 cwd 是**它自己的 workspace**——
+`agents.defaults.workspace`，預設 `~/.openclaw/workspace`，也就是它放 `AGENTS.md` /
+`SOUL.md` / `USER.md` / `memory/` 的家。那裡沒有 `kde.env`。
+
+不處理的話，agent 跑 `kde` 拿到的不是「找不到 workspace」，而是一句會害它做錯事的指示：
+
+```
+kde.env 不存在，請先執行 kde init 初始化環境
+```
+
+而 `kde init` 是 `touch kde.env` + `cp -r templates/init/. ${KDE_PATH}/` + 複製整份 docs。
+agent 照做就會把整套 workspace 模板灌進它自己的家目錄——那裡還有它自己的 git repo。
+所以問題不只是「agent 用不了 kde」，是**它一試就會製造出一個假 workspace**。
+
+修法是把 `KDE_PATH` 帶進容器（`-e KDE_PATH=${KDE_PATH}`）。`kde.sh` 優先採用帶入值，
+只在它缺席或為空字串時才由 `$PWD` 往上找 `kde.env`，所以容器內的 `kde` 在**任何 cwd**
+下都指向掛進來的那個 workspace，agent 不需要記得先 `cd`。
+
+**為什麼不改 `agents.defaults.workspace`**：把它指到 KDE workspace 確實能讓 cwd 一次對齊，
+但那個目錄同時是 agent 的家——`AGENTS.md`（開頭就是 "This folder is home. Treat it that
+way."）、`SOUL.md`、`IDENTITY.md`、`USER.md`、`memory/YYYY-MM-DD.md`、`BOOTSTRAP.md`，
+外加它自己的 `.git`。指過去等於把這些全部倒進使用者版控的 workspace（`kde init` 的
+`.gitignore` 範本沒有排除它們），而且 `<KDE_PATH>/skills` 與 `<KDE_PATH>/.agents/skills`
+會變成 skill root。代價遠大於「少打一次 cd」。
+
+`KDE_PATH` 只解決「跑 `kde` 指令」。agent 要讀寫專案原始碼（hot reload 開發的主要動作）
+還是得知道實際路徑，那部分寫在 `kde-usage` skill 裡：`$KDE_PATH` 有值即代表身處容器，
+專案原始碼在 `$KDE_PATH/environments/<env>/namespaces/<project>/<repo>/`。
 
 ## 風險說明
 
