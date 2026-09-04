@@ -12,9 +12,45 @@ export KDE_DOCS_PATH=${KDE_CLI_PATH}/docs
 export KDE_TEMPLATES_PATH=${KDE_CLI_PATH}/templates
 # 設定 KDE scripts 路徑
 export KDE_SCRIPTS_PATH=${KDE_CLI_PATH}/scripts
+# 解析全域旗標。目前只有 -C/--workspace，且一律要寫在子命令之前
+# （kde -C <path> <command> ...）。
+#
+# 為什麼不用 -w：kde code-server 的 -w/--workdir 已經是「code-server 要開哪個
+# 資料夾」，而全域旗標與子命令旗標可以同時出現在同一行
+# （kde -C ~/ws code-server -w /ws/proj），共用同一個字母會真的看不懂。
+# 這與 openclaw 的 -f 敢在 onboard(force)/log(follow) 共用不同 —— 那兩者不可能
+# 同時適用於一個 action。-C 沿用 git/make 的「指定工作目錄」慣例。
+#
+# 記錄 workspace 是「明確指定」還是「由 $PWD 推導」：兩者定位失敗時該說的話不同。
+# 推導不到時該建議 kde init；明確指定卻不對時，該指出那個路徑本身有問題 ——
+# 對容器內的 agent 尤其重要，它拿到的 KDE_PATH 是帶入的。
+KDE_WORKSPACE_GIVEN=false
+if [[ -n "${KDE_PATH}" ]]; then
+    KDE_WORKSPACE_GIVEN=true
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -C|--workspace)
+            if [[ -z "$2" ]]; then
+                echo "❌ $1 需要一個 workspace 路徑" >&2
+                exit 1
+            fi
+            # 絕對化：KDE_PATH 會被烤進容器的 -v 與 --workdir 參數
+            # （見 scripts/utils/openclaw.sh、scripts/utils/code-server.sh），
+            # 相對路徑傳給 Docker 會直接失敗。
+            KDE_PATH=$(readlink -f "$2")
+            KDE_WORKSPACE_GIVEN=true
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 # 設定 KDE workspace 根目錄路徑。
 #
-# 優先採用呼叫端帶入的 KDE_PATH；只在它缺席（或為空字串）時，才由 $PWD 往上找
+# 優先採用呼叫端帶入的 KDE_PATH（-C 旗標或環境變數）；只在它缺席（或為空字串）時，才由 $PWD 往上找
 # kde.env（找到、或走到 / 為止；都沒有就退回 $PWD，讓後面的 kde.env 檢查報錯）。
 #
 # 為什麼要留這個出口：$PWD 推導的前提是「執行 kde 的人就站在 workspace 裡」。
@@ -34,6 +70,14 @@ if [[ -z "${KDE_PATH}" ]]; then
     fi
 fi
 export KDE_PATH
+
+# 明確指定的路徑要先確認存在。不能只靠後面的 kde.env 檢查：目錄不存在與
+# 目錄存在但不是 workspace 是兩種錯誤，混成一句話會讓打錯路徑的人去找 kde.env。
+if [[ "${KDE_WORKSPACE_GIVEN}" == "true" && ! -d "${KDE_PATH}" ]]; then
+    echo "❌ 指定的 workspace 目錄不存在：${KDE_PATH}" >&2
+    exit 1
+fi
+
 # 設定環境目錄路徑(enviroments)
 export ENVIROMENTS_PATH=${KDE_PATH}/environments
 # 設定 KDE 文件目標路徑
@@ -48,7 +92,11 @@ export KDE_ENV_FILE=${KDE_PATH}/kde.env
 
 # 定義顯示說明的函數
 show_help() {
-    echo "usage: kde <command>"
+    echo "usage: kde [-C <workspace>] <command>"
+    echo ""
+    echo "global option (必須寫在 command 之前):"
+    echo "  -C, --workspace <path>                              指定 workspace 根目錄，不由當前路徑往上找 kde.env"
+    echo "                                                      (亦可用環境變數 KDE_PATH；-C 優先)"
     echo ""
     echo "command:"
     echo "  init                                                初始化 kde 環境"
@@ -131,7 +179,15 @@ source ${KDE_SCRIPTS_PATH}/utils/k9s.sh
 # 新增或載入 kde.env 環境變數設定檔
 # 使用 set -a 載入，讓 envsubst 渲染 config 模板時看得到 kde.env 的變數
 if [[ ! -f ${KDE_ENV_FILE} ]]; then
-    echo "kde.env 不存在，請先執行 kde init 初始化環境"
+    # 明確指定（-C 或帶入 KDE_PATH）與 $PWD 推導失敗要分開講。
+    # 前者叫人跑裸的 kde init 是錯的建議：那會把模板灌進當下的 KDE_PATH，
+    # 而容器內的 agent 照做就是灌進它自己的家目錄。
+    if [[ "${KDE_WORKSPACE_GIVEN}" == "true" ]]; then
+        echo "❌ 指定的 workspace 沒有 kde.env：${KDE_PATH}" >&2
+        echo "   若要在該路徑初始化：kde -C ${KDE_PATH} init" >&2
+    else
+        echo "kde.env 不存在，請先執行 kde init 初始化環境"
+    fi
     exit 1
 else
     set -a

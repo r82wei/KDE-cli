@@ -643,6 +643,9 @@ agent 照做就會把整套 workspace 模板灌進它自己的家目錄——那
 只在它缺席或為空字串時才由 `$PWD` 往上找 `kde.env`，所以容器內的 `kde` 在**任何 cwd**
 下都指向掛進來的那個 workspace，agent 不需要記得先 `cd`。
 
+（同一個機制對人也開放：`kde -C <workspace> <command>` 是它的旗標形式，`-C` 優先於帶入的
+`KDE_PATH`。見 [快速參考的環境變數一節](../quick-reference.md#環境變數)。）
+
 **為什麼不改 `agents.defaults.workspace`**：把它指到 KDE workspace 確實能讓 cwd 一次對齊，
 但那個目錄同時是 agent 的家——`AGENTS.md`（開頭就是 "This folder is home. Treat it that
 way."）、`SOUL.md`、`IDENTITY.md`、`USER.md`、`memory/YYYY-MM-DD.md`、`BOOTSTRAP.md`，

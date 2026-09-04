@@ -38,6 +38,8 @@ check() { # $1=描述 $2=條件結果(0/1)
     if [[ "$2" -eq 0 ]]; then echo "✅ $1"; PASS=$((PASS+1));
     else echo "❌ $1"; FAIL=$((FAIL+1)); fi
 }
+assert_true()  { local d="$1"; shift; if "$@" >/dev/null 2>&1; then check "${d}" 0; else check "${d}" 1; fi; }
+assert_false() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then check "${d}" 1; else check "${d}" 0; fi; }
 
 # 在指定 cwd 與環境下跑 kde.sh，把輸出收進 OUT。
 # 本檔開了 set -e，故用 || true 承接非零回傳（定位失敗時 kde.sh 會 exit 1）。
@@ -49,9 +51,15 @@ run_kde() { # $1=cwd  $2=KDE_PATH（空字串代表不設）
         OUT=$(cd "$1" && env -u KDE_PATH bash "${KDE_SH}" __probe__ 2>&1 || true)
     fi
 }
+# 定位失敗有兩種訊息，刻意分開：$PWD 推導不到時建議 kde init（NOT_FOUND），
+# 明確指定（-C 或帶入 KDE_PATH）卻不是 workspace 時指出那個路徑（GIVEN_BAD）。
 NOT_FOUND="kde.env 不存在"
-assert_located()  { if echo "${OUT}" | grep -q -- "${NOT_FOUND}"; then check "$1" 1; else check "$1" 0; fi; }
-assert_not_found() { if echo "${OUT}" | grep -q -- "${NOT_FOUND}"; then check "$1" 0; else check "$1" 1; fi; }
+GIVEN_BAD="沒有 kde.env"
+out_has() { echo "${OUT}" | grep -q -- "$1"; }
+assert_located()   { if out_has "${NOT_FOUND}" || out_has "${GIVEN_BAD}"; then check "$1" 1; else check "$1" 0; fi; }
+assert_not_found() { if out_has "${NOT_FOUND}"; then check "$1" 0; else check "$1" 1; fi; }
+assert_out()       { if out_has "$2"; then check "$1" 0; else check "$1" 1; fi; }
+assert_no_out()    { if out_has "$2"; then check "$1" 1; else check "$1" 0; fi; }
 
 echo "--- 未帶入 KDE_PATH：維持原本的 \$PWD 往上找 ---"
 run_kde "${WS}" ""
@@ -76,11 +84,61 @@ assert_located "cwd 是任意無關目錄（如 agent 家目錄）時仍定位�
 # 觀察法：cwd 在真 workspace 裡，但 KDE_PATH 指向一個沒有 kde.env 的目錄，
 # 若帶入值生效就會報錯 —— 這比讀變數更能證明優先序。
 run_kde "${WS}/sub" "${NOT_WS}"
-assert_not_found "帶入值勝過 \$PWD 推導（指向非 workspace 時如實報錯）"
+assert_out "帶入值勝過 \$PWD 推導（指向非 workspace 時如實報錯）" "${GIVEN_BAD}"
 
 # 空字串等同未帶入：避免 KDE_PATH= 這種空值把定位整個廢掉
 OUT=$(cd "${WS}/sub" && KDE_PATH="" bash "${KDE_SH}" __probe__ 2>&1 || true)
 assert_located "KDE_PATH 為空字串時視為未帶入，退回 \$PWD 推導"
+echo ""
+
+echo "--- -C / --workspace 全域旗標 ---"
+# 旗標一律在子命令之前。跑法與 run_kde 相同，只是參數不同，故另寫一個。
+run_kde_flag() { # $1=cwd  其餘=傳給 kde.sh 的參數
+    local cwd="$1"; shift
+    OUT=$(cd "${cwd}" && env -u KDE_PATH bash "${KDE_SH}" "$@" 2>&1 || true)
+}
+run_kde_flag "${OUTSIDE}" -C "${WS}" __probe__
+assert_located "-C <ws> 從 workspace 外也能定位"
+
+run_kde_flag "${OUTSIDE}" --workspace "${WS}" __probe__
+assert_located "--workspace 是等效的長旗標"
+
+# 明確指定要勝過環境變數：兩者同時存在時以旗標為準
+OUT=$(cd "${OUTSIDE}" && KDE_PATH="${NOT_WS}" bash "${KDE_SH}" -C "${WS}" __probe__ 2>&1 || true)
+assert_located "-C 勝過帶入的 KDE_PATH"
+
+# 相對路徑要被絕對化：KDE_PATH 會被烤進 docker 的 -v/--workdir，相對路徑會讓
+# Docker 直接失敗。用「錯誤訊息裡印的是絕對路徑」來觀察 readlink -f 有沒有跑。
+run_kde_flag "${TMP_ROOT}" -C ./workspace __probe__
+assert_located "-C 接受相對路徑"
+run_kde_flag "${TMP_ROOT}" -C ./nope __probe__
+assert_out "-C 的路徑會被絕對化（錯誤訊息印絕對路徑）" "${TMP_ROOT}/nope"
+
+# -C 不往上找：明確指定就照字面採用。否則 kde -C <ws>/sub init 會往上找到 <ws>，
+# 把模板灌進父目錄——init 是往 ${KDE_PATH} 灌東西，走錯目錄代價很高。
+run_kde_flag "${OUTSIDE}" -C "${WS}/sub" __probe__
+assert_out "-C 不往上找，指到非 workspace 就如實報錯" "沒有 kde.env"
+assert_no_out "明確指定時不再叫人跑裸的 kde init" "請先執行 kde init"
+
+run_kde_flag "${OUTSIDE}" -C "${TMP_ROOT}/nonexistent" __probe__
+assert_out "-C 指到不存在的目錄時明確報錯" "目錄不存在"
+
+run_kde_flag "${OUTSIDE}" -C
+assert_out "-C 沒帶路徑時報錯" "需要"
+
+# 帶入 KDE_PATH（容器的情況）同樣算明確指定，錯誤訊息要一致地指出路徑本身
+OUT=$(cd "${OUTSIDE}" && KDE_PATH="${WS}/sub" bash "${KDE_SH}" __probe__ 2>&1 || true)
+assert_out "帶入 KDE_PATH 但那裡沒有 kde.env 時，訊息指出路徑" "沒有 kde.env"
+assert_no_out "帶入 KDE_PATH 時也不叫人跑裸的 kde init" "請先執行 kde init"
+echo ""
+
+echo "--- -C 搭配 init：可在任意路徑初始化 ---"
+FRESH="${TMP_ROOT}/fresh"
+mkdir -p "${FRESH}"
+run_kde_flag "${OUTSIDE}" -C "${FRESH}" init
+assert_true "kde -C <dir> init 建出 kde.env" test -f "${FRESH}/kde.env"
+assert_true "kde -C <dir> init 帶進 templates/init 的內容" test -f "${FRESH}/.gitignore"
+assert_false "init 不會誤灌到 cwd" test -f "${OUTSIDE}/kde.env"
 echo ""
 
 echo "總測試數：${TOTAL}  通過：${PASS}  失敗：${FAIL}"

@@ -29,6 +29,11 @@ kde proj ls        # what projects exist?
 If `kde.env` does not exist anywhere up the directory tree, the user needs to run
 `kde init` first. Ask before proceeding.
 
+To operate a workspace from outside it, pass the global flag **before** the command:
+`kde -C <workspace> <command>` (long form `--workspace`; env var `KDE_PATH` is equivalent,
+and `-C` wins over it). It takes the path literally — no walking up — so
+`kde -C <dir> init` initializes exactly `<dir>`.
+
 ### If `$KDE_PATH` is set, you are inside a `kde openclaw` container
 
 `$KDE_PATH` points at the workspace mounted from the host (same absolute path inside and

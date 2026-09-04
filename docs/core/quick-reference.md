@@ -675,6 +675,32 @@ KUBECONFIG            # Kubernetes 配置檔案路徑
 > 對人類成立，對 OpenClaw agent 不成立（它的 cwd 是 `~/.openclaw/workspace`）。
 > `kde openclaw` 因此會把 `KDE_PATH` 帶進容器，讓 `kde` 在任何 cwd 下都指向同一個 workspace。
 
+給人用的等效寫法是全域旗標 `-C` / `--workspace`：
+
+```bash
+kde -C ~/KDE-workspace status        # 從任何目錄操作指定的 workspace
+kde --workspace ~/KDE-workspace ls   # 等效的長旗標
+kde -C ./workspace current           # 相對路徑會被絕對化
+kde -C ~/new-workspace init          # 在任意路徑初始化一個新 workspace
+```
+
+| 規則 | 說明 |
+|---|---|
+| 位置 | 必須寫在 command **之前**（`kde -C <path> <command>`） |
+| 優先序 | `-C` > 帶入的 `KDE_PATH` > `$PWD` 往上找 |
+| 不往上找 | 明確指定就照字面採用。否則 `kde -C <ws>/sub init` 會往上找到 `<ws>`，把模板灌進父目錄 |
+| 絕對化 | 內部會 `readlink -f`。`KDE_PATH` 會被烤進容器的 `-v` 與 `--workdir`，相對路徑會讓 Docker 直接失敗 |
+| 為什麼不是 `-w` | `kde code-server -w/--workdir` 已經是「code-server 開哪個資料夾」，而兩者可以同時出現在一行（`kde -C ~/ws code-server -w /ws/proj`）。`-C` 沿用 git / make 的慣例 |
+
+指定的路徑不對時，錯誤訊息會跟「推導不到」分開講——因為對明確指定的路徑建議 `kde init`
+是錯的建議（那會把模板灌進你剛剛指錯的地方）：
+
+```
+❌ 指定的 workspace 目錄不存在：/tmp/nope
+❌ 指定的 workspace 沒有 kde.env：/tmp
+   若要在該路徑初始化：kde -C /tmp init
+```
+
 ### 環境配置變數
 
 ```bash
