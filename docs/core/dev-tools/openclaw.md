@@ -15,7 +15,7 @@
 - **DooD 整合**：容器內可直接下 `kde` / `docker` 指令操作宿主環境
 - **PUID/PGID 對齊**：預設沿用主機使用者的 uid/gid，避免掛載檔案的擁有權問題
 
-### 八個 action 總覽
+### 九個 action 總覽
 
 | action | 用途 |
 |---|---|
@@ -26,6 +26,7 @@
 | `exec` | 進入容器的 bash（不帶指令）或非互動執行指令 |
 | `log` | 查看 gateway 容器日誌 |
 | `token` | 印出 gateway 的 auth token |
+| `dashboard` | 鑄一次性的 owner 配對連結（瀏覽器首次連上 dashboard 用） |
 | `reset` | 刪除 workspace 的 `.openclaw-home` |
 
 ## 使用說明
@@ -45,6 +46,7 @@ kde openclaw <action> [option]
 | `--follow` | `-f` | 跟隨日誌輸出 | `log` |
 | `--tail` | - | 日誌顯示的行數（預設 `100`） | `log` |
 | `--command` | - | `exec` 時執行指定指令（不配置 TTY），等同直接寫成位置參數 | `exec` |
+| `--json` | - | 輸出原始 JSON 而非人類可讀的指引 | `dashboard` |
 | `--help` | `-h` | 顯示說明 | 全部 |
 
 > **`-f` 依 action 分流**：對 `onboard`/`reset` 是「略過確認」，對 `log` 是「跟隨」。這兩件事不可能同時適用於同一個 action（`log` 沒有確認提示可略過，`onboard`/`reset` 也沒有日誌可跟隨），所以共用 `-f` 不會產生歧義；要明確表達時仍有 `--force` 與 `--follow` 兩個長旗標。
@@ -69,7 +71,8 @@ kde openclaw run -p 19000
 **成功輸出範例**：
 ```
 ✓ openclaw gateway 已在背景啟動 (openclaw-myworkspace)
-存取網址: http://localhost:18789
+存取網址: http://localhost:18789 (已配對過的瀏覽器)
+首次連線: kde openclaw dashboard (鑄一次性的 owner 配對連結)
 查看日誌: kde openclaw log -f
 取得 token: kde openclaw token
 停止服務: kde openclaw stop
@@ -178,6 +181,39 @@ kde openclaw token | xclip -sel clip    # stdout 只有 token，可被管線接�
    若尚未初始化，請先執行：kde openclaw onboard
 ```
 
+### `dashboard` — 鑄一次性的 owner 配對連結
+
+```bash
+kde openclaw dashboard          # 印出連結與注意事項
+kde openclaw dashboard --json   # 原始 JSON（單行，可餵給 jq / python）
+```
+
+**前置條件**：容器必須正在運行。
+
+**為什麼需要這個 action**：gateway 的 token auth 過關之後，**新瀏覽器第一次連線還要一次性的裝置配對核准**，失敗長相是 `disconnected (1008): pairing required`。詳見下方「Dashboard 的首次連線需要裝置配對」。
+
+**行為**：`docker exec -u node <container> openclaw dashboard --no-open --json`，取出 JSON 後把 URL 裡的 `127.0.0.1` 換成 `localhost`、容器內的 `18789` 換成 `docker port` 查到的**主機實際發布 port**（拿不到時退回 `OPENCLAW_PORT`），再印出 `browserUrl`。
+
+不改寫的話，`kde openclaw run -p 19000` 的人會拿到一個指向 `127.0.0.1:18789` 的連結——那是容器自己的視角，貼到主機瀏覽器連不上。
+
+**輸出範例**：
+```
+✓ 已鑄出一次性的 owner 配對連結，請在主機的瀏覽器打開：
+
+  http://localhost:18789/#bootstrapToken=<...>&bootstrapProfile=owner
+
+注意：連結約 10 分鐘後失效，且只能用一次——它只會把「第一個打開它的瀏覽器
+      profile」配成 administrator。換瀏覽器、清掉 site data 或用無痕視窗，
+      都要重新執行本指令。
+已配對過的瀏覽器直接開 http://localhost:18789 即可，token 用 kde openclaw token 取得。
+```
+
+**失敗訊息**：
+```
+❌ 取不到 dashboard 連結，openclaw dashboard 沒有回傳 JSON
+   請確認 gateway 是否健康：kde openclaw log --tail 50
+```
+
 ### `reset` — 刪除 workspace 的 `.openclaw-home`
 
 ```bash
@@ -226,10 +262,41 @@ OpenClaw 偵測到容器環境時，預設會把 gateway 綁在 `0.0.0.0` 以配
 變成「根本起不來」。這種情況 `run` 不會印存取網址，而是明說 dashboard 僅容器內可達，
 並提示先啟用 auth。
 
-存取需要 auth token：
+### 首次連線需要裝置配對
+
+gateway 的 token auth 只是第一關。OpenClaw 對 Control UI 還有一層**裝置配對**：
+新瀏覽器（精確地說是新的瀏覽器 profile）第一次連線需要一次性核准，沒核准前會看到
+`disconnected (1008): pairing required`。
+
+OpenClaw 對「直接 loopback 連線」有自動核准配對的例外，但**這個容器架構吃不到**：
+gateway 跑在容器內，主機瀏覽器經 `-p` 轉進來，從 gateway 的角度對端位址是 Docker
+bridge（例如 `172.17.0.1`）而不是 `127.0.0.1`。官方文件對這種情形的規則是仍需明確核准
+（「Direct Tailnet binds and LAN browser connects still require explicit approval」）。
+
+官方指定的 owner 路徑是在 gateway 主機上跑 `openclaw dashboard`，`kde` 把它包成一個
+action：
 
 ```bash
-kde openclaw token
+kde openclaw dashboard
+```
+
+它會鑄一條短命（實測約 10 分鐘）、單次使用的連結，並讓 redeem 它的那一個瀏覽器拿到
+持久的 administrator 憑證。已配對過的瀏覽器之後直接開 `http://localhost:<port>`
+即可，需要在設定面板貼 token 時用 `kde openclaw token` 取得。
+
+**為什麼這件事不能在 `onboard` 一次做完**：
+
+1. bootstrap token 短命（約 10 分鐘），onboard 完到真的開瀏覽器之間隔多久無法預期
+2. 連結單次使用，且只綁定「redeem 它的那一個瀏覽器 profile」，別的 profile 無法繼承或重放
+3. 每個瀏覽器 profile 有自己的 device ID——換瀏覽器、清 site data、無痕視窗都要重新配對，
+   所以這本質上不是「初始化一次」而是「每次要用新瀏覽器時做一次」
+4. `onboard` 走的是一次性容器，那時常駐 gateway 還沒啟動，在那裡鑄的連結指向一個即將消失的 gateway
+
+也可以走 CLI 核准流程（適合已經在瀏覽器按下連線、想手動核准的情況）：
+
+```bash
+kde openclaw exec "openclaw devices list"
+kde openclaw exec "openclaw devices approve <requestId>"
 ```
 
 ## 狀態的持久化位置
@@ -335,12 +402,12 @@ now」測試通過（憑證此刻就在該容器內），但精靈結束、`--rm
 ## 典型流程
 
 ```bash
-kde openclaw onboard    # 1. 一次性初始化精靈
-kde openclaw run        # 2. 背景啟動 gateway
-kde openclaw token      # 3. 取 dashboard 的 token
-kde openclaw tui        # 4. 互動操作 OpenClaw agent（或 exec 進 bash 跑 kde 指令）
-kde openclaw log -f     # 5. 有問題時看日誌
-kde openclaw stop        # 6. 用完停止並移除容器
+kde openclaw onboard      # 1. 一次性初始化精靈
+kde openclaw run          # 2. 背景啟動 gateway
+kde openclaw dashboard    # 3. 首次用瀏覽器連 dashboard（鑄一次性的配對連結）
+kde openclaw tui          # 4. 互動操作 OpenClaw agent（或 exec 進 bash 跑 kde 指令）
+kde openclaw log -f       # 5. 有問題時看日誌
+kde openclaw stop          # 6. 用完停止並移除容器
 ```
 
 ## 故障排除

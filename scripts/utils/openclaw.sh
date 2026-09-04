@@ -31,6 +31,7 @@ show_openclaw_help() {
     echo "  exec    [<cmd>]                 進入容器的 bash；帶指令則非互動執行 (指令含空白請用引號包起來)"
     echo "  log     [-f] [--tail <n>]       查看 gateway 容器日誌 (預設最後 ${OPENCLAW_TAIL_DEFAULT} 行，不跟隨)"
     echo "  token                           印出 gateway 的 auth token (僅 token 本身，可被管線接走)"
+    echo "  dashboard [--json]              鑄一次性的 owner 配對連結，用於瀏覽器首次連上 dashboard"
     echo "  reset   [-f]                    刪除 workspace 的 .openclaw (容器運行中則拒絕)"
     echo ""
     echo "option:"
@@ -39,6 +40,7 @@ show_openclaw_help() {
     echo "  -f, --follow    跟隨日誌輸出 (log)"
     echo "      --tail <n>  log 顯示的行數 (預設 ${OPENCLAW_TAIL_DEFAULT})"
     echo "      --command   exec 時執行指定指令 (不配置 TTY，等同直接寫成位置參數)"
+    echo "      --json      dashboard 時輸出原始 JSON 而非人類可讀的指引"
     echo "  -h, --help      顯示此幫助訊息"
 }
 
@@ -52,6 +54,7 @@ parse_openclaw_args() {
     OPENCLAW_COMMAND=""
     OPENCLAW_FOLLOW=false
     OPENCLAW_TAIL="${OPENCLAW_TAIL_DEFAULT}"
+    OPENCLAW_JSON=false
 
     if [[ $# -eq 0 ]]; then
         show_openclaw_help
@@ -63,7 +66,7 @@ parse_openclaw_args() {
             show_openclaw_help
             return 2
             ;;
-        run|onboard|stop|tui|exec|log|token|reset)
+        run|onboard|stop|tui|exec|log|token|dashboard|reset)
             OPENCLAW_ACTION="$1"
             shift
             ;;
@@ -111,6 +114,10 @@ parse_openclaw_args() {
                     return 1
                 fi
                 shift 2
+                ;;
+            --json)
+                OPENCLAW_JSON=true
+                shift
                 ;;
             --command)
                 if [[ -z "$2" ]]; then
@@ -396,7 +403,10 @@ run_openclaw_gateway() {
 
     echo "✓ openclaw gateway 已在背景啟動 (${name})"
     if [[ ${#BIND_ARGS[@]} -gt 0 ]]; then
-        echo "存取網址: http://localhost:${OPENCLAW_PORT}"
+        echo "存取網址: http://localhost:${OPENCLAW_PORT} (已配對過的瀏覽器)"
+        # 光給網址是不夠的：新瀏覽器第一次連線還要一次性的裝置配對核准，
+        # 直接開會撞上「pairing required」。故一併指向鑄配對連結的 action。
+        echo "首次連線: kde openclaw dashboard (鑄一次性的 owner 配對連結)"
     else
         echo "⚠️  gateway 的 auth 為 none，OpenClaw 只允許綁 loopback，"
         echo "   因此 dashboard 僅容器內可達，http://localhost:${OPENCLAW_PORT} 連不到。"
@@ -522,6 +532,68 @@ get_openclaw_token() {
     fi
 
     echo "${token}"
+}
+
+# 鑄一張一次性的 owner 配對連結，給瀏覽器首次連上 dashboard 用。
+#
+# 為什麼需要這個 action：gateway 的 token auth 過關之後，**新瀏覽器第一次連線還要
+# 一次性的裝置配對核准**（失敗長相是 `disconnected (1008): pairing required`）。
+# OpenClaw 對「直接 loopback 連線」有自動核准的例外，但這個容器架構吃不到：
+# gateway 在容器內，主機瀏覽器經 -p 轉進來，從 gateway 的角度對端是 Docker bridge
+# 而不是 127.0.0.1。官方對這種情形的規則是仍需明確核准。
+#
+# 官方指定的 owner 路徑就是在 gateway 主機上跑 openclaw dashboard：它會鑄一條
+# 短命（實測約 10 分鐘）、單次使用的連結，並讓「redeem 它的那一個瀏覽器」拿到
+# 持久的 administrator 憑證。因為短命且綁單一瀏覽器 profile，這件事無法在
+# onboard 階段預先做掉，只能在要用的時候現鑄——所以它是獨立 action。
+dashboard_openclaw() {
+    local name
+    name=$(get_openclaw_container_name)
+
+    require_openclaw_container_running || return 1
+
+    # 容器實際輸出前面會有 [state-migrations] 之類的警告行，必須挑出 JSON 那行，
+    # 不能整段當結果用。
+    local raw json
+    raw=$(docker exec -u node "${name}" openclaw dashboard --no-open --json 2>/dev/null) || true
+    json=$(printf '%s\n' "${raw}" | grep -m1 '^{' ) || true
+
+    if [[ -z "${json}" ]]; then
+        echo "❌ 取不到 dashboard 連結，openclaw dashboard 沒有回傳 JSON" >&2
+        echo "   請確認 gateway 是否健康：kde openclaw log --tail 50" >&2
+        return 1
+    fi
+
+    # openclaw dashboard 印的是容器自己的視角（恆為 127.0.0.1:18789），而主機側的
+    # port 由 -p 決定。以 docker port 取容器實際發布的 port 來改寫，才不會讓
+    # -p 19000 的人貼到一個連不上的網址。docker port 拿不到時退回 OPENCLAW_PORT。
+    local host_port
+    host_port=$(docker port "${name}" 18789/tcp 2>/dev/null | head -1 | sed 's/.*://') || true
+    host_port="${host_port:-${OPENCLAW_PORT}}"
+    json="${json//127.0.0.1/localhost}"
+    json="${json//:18789/:${host_port}}"
+
+    if [[ "${OPENCLAW_JSON}" == "true" ]]; then
+        echo "${json}"
+        return 0
+    fi
+
+    local url
+    url=$(printf '%s' "${json}" | grep -o '"browserUrl":"[^"]*"' | sed 's/^"browserUrl":"//; s/"$//') || true
+    if [[ -z "${url}" ]]; then
+        echo "❌ dashboard 的 JSON 裡沒有 browserUrl 欄位" >&2
+        echo "   原始輸出：kde openclaw dashboard --json" >&2
+        return 1
+    fi
+
+    echo "✓ 已鑄出一次性的 owner 配對連結，請在主機的瀏覽器打開："
+    echo ""
+    echo "  ${url}"
+    echo ""
+    echo "注意：連結約 10 分鐘後失效，且只能用一次——它只會把「第一個打開它的瀏覽器"
+    echo "      profile」配成 administrator。換瀏覽器、清掉 site data 或用無痕視窗，"
+    echo "      都要重新執行本指令。"
+    echo "已配對過的瀏覽器直接開 http://localhost:${host_port} 即可，token 用 kde openclaw token 取得。"
 }
 
 # 停止並移除容器。容器本身是可拋棄的，狀態全在 workspace 的 .openclaw 裡。

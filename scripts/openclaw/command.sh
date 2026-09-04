@@ -36,6 +36,9 @@ case "${OPENCLAW_ACTION}" in
     token)
         get_openclaw_token
         ;;
+    dashboard)
+        dashboard_openclaw
+        ;;
     reset)
         reset_openclaw
         ;;

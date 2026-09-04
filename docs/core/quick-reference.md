@@ -349,6 +349,11 @@ kde openclaw log --tail 500     # 改行數
 kde openclaw token
 kde openclaw token | xclip -sel clip
 
+# 首次用瀏覽器連 dashboard：需要一次性的裝置配對，此指令鑄 owner 配對連結
+# （約 10 分鐘失效、只能用一次、只綁定第一個打開它的瀏覽器 profile）
+kde openclaw dashboard
+kde openclaw dashboard --json   # 原始 JSON
+
 # 停止並移除容器（冪等，容器不存在時不視為錯誤）
 kde openclaw stop
 

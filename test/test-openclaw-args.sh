@@ -28,9 +28,9 @@ assert_rc() { # $1=描述 $2=預期退出碼 $3=實際退出碼
     fi
 }
 
-echo "測試 1：八個 action 都能解析"
+echo "測試 1：九個 action 都能解析"
 echo "--------------------"
-for a in run onboard stop tui exec log token reset; do
+for a in run onboard stop tui exec log token dashboard reset; do
     rc=0; parse_openclaw_args "${a}" >/dev/null 2>&1 || rc=$?
     assert_rc "action ${a} 退出碼為 0" 0 "${rc}"
     assert_eq "action ${a} 正確回填" "${a}" "${OPENCLAW_ACTION}"
@@ -47,6 +47,7 @@ assert_eq "FORCE 預設為 false" "false" "${OPENCLAW_FORCE}"
 assert_eq "COMMAND 預設為空" "" "${OPENCLAW_COMMAND}"
 assert_eq "FOLLOW 預設為 false" "false" "${OPENCLAW_FOLLOW}"
 assert_eq "TAIL 預設為 100" "100" "${OPENCLAW_TAIL}"
+assert_eq "JSON 預設為 false" "false" "${OPENCLAW_JSON}"
 echo ""
 
 echo "測試 3：-p 覆寫 port"
@@ -115,6 +116,13 @@ assert_rc "非數字 tail 退出碼為 1" 1 "${rc}"
 
 rc=0; parse_openclaw_args log --tail >/dev/null 2>&1 || rc=$?
 assert_rc "缺少 tail 值退出碼為 1" 1 "${rc}"
+echo ""
+
+echo "測試 7a：--json"
+echo "--------------------"
+rc=0; parse_openclaw_args dashboard --json || rc=$?
+assert_rc "退出碼為 0" 0 "${rc}"
+assert_eq "--json 設定 JSON" "true" "${OPENCLAW_JSON}"
 echo ""
 
 echo "測試 7b：exec 的指令（--command 與位置參數）"

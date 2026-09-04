@@ -30,6 +30,10 @@ STUB_MODE_AFTER=""    # onboard 跑完之後 config get 改為回傳這個值（
 STUB_INSPECT="true"   # docker inspect -f '{{.State.Running}} {{.RestartCount}}' 的 Running 欄位
 STUB_RESTARTS="0"     # 同上，RestartCount 欄位；非 0 代表曾經 crash-loop 重啟過
 STUB_TOKEN=""         # 一次性容器讀 openclaw.json 時印出的 gateway token
+# docker exec 跑 openclaw dashboard --no-open --json 的輸出。前面刻意墊一行雜訊，
+# 因為實際的容器會先吐 [state-migrations] 之類的警告，取值必須挑出 JSON 那行。
+STUB_DASHBOARD_JSON='{"ok":true,"url":"http://127.0.0.1:18789/#token=tok123","httpUrl":"http://127.0.0.1:18789/","wsUrl":"ws://127.0.0.1:18789","port":18789,"browserUrl":"http://127.0.0.1:18789/#bootstrapToken=boot456&bootstrapProfile=owner"}'
+STUB_PORT_MAP="0.0.0.0:19000"  # docker port <name> 18789/tcp 的輸出
 STUB_STOP_FAIL=""     # 當 "true" 時，docker stop 回傳 1
 STUB_RM_FAIL=""       # 當 "true" 時，docker rm 回傳 1
 
@@ -69,6 +73,13 @@ docker() {
             fi
             return 0
             ;;
+        exec)
+            if [[ "$*" == *"dashboard --no-open --json"* ]]; then
+                [[ -n "${STUB_DASHBOARD_JSON}" ]] && printf '[state-migrations] noise line\n%s\n' "${STUB_DASHBOARD_JSON}"
+            fi
+            return 0
+            ;;
+        port) echo "${STUB_PORT_MAP}"; return 0 ;;
         inspect) echo "${STUB_INSPECT} ${STUB_RESTARTS}"; return 0 ;;
         stop) [[ "${STUB_STOP_FAIL}" == "true" ]] && return 1; return 0 ;;
         rm) [[ "${STUB_RM_FAIL}" == "true" ]] && return 1; return 0 ;;
@@ -98,7 +109,9 @@ reset_stub() {
     STUB_INSPECT="true"; STUB_RESTARTS="0"; STUB_AUTH_MODE="token"; : > "${DOCKER_LOG_FILE}"; OUT=""
     OPENCLAW_FORCE=false; OPENCLAW_COMMAND=""
     OPENCLAW_FOLLOW=false; OPENCLAW_TAIL=100
-    OPENCLAW_PORT=18789; STUB_TOKEN=""
+    OPENCLAW_PORT=18789; STUB_TOKEN=""; OPENCLAW_JSON=false
+    STUB_PORT_MAP="0.0.0.0:19000"
+    STUB_DASHBOARD_JSON='{"ok":true,"url":"http://127.0.0.1:18789/#token=tok123","httpUrl":"http://127.0.0.1:18789/","wsUrl":"ws://127.0.0.1:18789","port":18789,"browserUrl":"http://127.0.0.1:18789/#bootstrapToken=boot456&bootstrapProfile=owner"}'
     STUB_STOP_FAIL=""; STUB_RM_FAIL=""
 }
 
@@ -273,6 +286,44 @@ assert_false "讀不到 token 時回報失敗" get_openclaw_token
 reset_stub; STUB_TOKEN=""; STUB_AUTH_MODE="none"
 OUT=$(get_openclaw_token 2>&1 || true)
 assert_true "auth.mode=none 時說明本來就沒有 token" out_has "none"
+echo ""
+
+echo "--- dashboard ---"
+reset_stub; STUB_RUNNING=""
+assert_false "容器未運行時 dashboard 報錯" dashboard_openclaw
+
+reset_stub; STUB_RUNNING=""
+OUT=$(dashboard_openclaw 2>&1 || true)
+assert_true "dashboard 的錯誤訊息指向 run" out_has "kde openclaw run"
+
+reset_stub; STUB_RUNNING="${NAME}"
+dashboard_openclaw >/dev/null 2>&1
+assert_true "以 docker exec 執行官方 dashboard 指令，且以 node 身分" logged "exec -u node ${NAME} openclaw dashboard --no-open --json"
+assert_true "查詢容器實際發布的 port" logged "port ${NAME} 18789/tcp"
+
+# openclaw dashboard 印的是容器自己的視角（恆為 127.0.0.1:18789），主機側的 port
+# 由 -p 決定。以 docker port 取實際發布的 port 改寫，否則 -p 19000 的人直接貼會連錯。
+reset_stub; STUB_RUNNING="${NAME}"
+OUT=$(dashboard_openclaw 2>&1 || true)
+assert_true  "預設印出 owner 配對連結" out_has "#bootstrapToken=boot456&bootstrapProfile=owner"
+assert_true  "URL 的 port 改寫成主機實際發布的 port" out_has "localhost:19000"
+assert_false "URL 不留下容器內的 port" out_has ":18789"
+assert_false "URL 不留下容器視角的 127.0.0.1" out_has "127.0.0.1"
+assert_true  "提醒連結是一次性且會過期" out_has "一次"
+
+reset_stub; STUB_RUNNING="${NAME}"; OPENCLAW_JSON=true
+OUT=$(dashboard_openclaw 2>&1 || true)
+assert_true  "--json 印出 JSON 本體" out_has '"ok":true'
+assert_true  "--json 的 port 同樣改寫" out_has "localhost:19000"
+assert_false "--json 不夾帶容器吐的雜訊行" out_has "state-migrations"
+
+reset_stub; STUB_RUNNING="${NAME}"; STUB_DASHBOARD_JSON=""
+assert_false "取不到 JSON 時回報失敗" dashboard_openclaw
+
+# docker port 拿不到時退回 OPENCLAW_PORT，不要印出容器內的 18789
+reset_stub; STUB_RUNNING="${NAME}"; STUB_PORT_MAP=""; OPENCLAW_PORT=20000
+OUT=$(dashboard_openclaw 2>&1 || true)
+assert_true "docker port 無輸出時退回 OPENCLAW_PORT" out_has "localhost:20000"
 echo ""
 
 echo "--- stop ---"

@@ -140,7 +140,7 @@ kde openclaw run          # 2. background-start the gateway (fails if not onboar
 kde openclaw tui          # 3. interactive OpenClaw TUI (fails if not running)
 kde openclaw exec "<cmd>"  #    or run one command through bash, non-interactively
 kde openclaw log -f       # 4. tail the gateway logs
-kde openclaw token         # 5. print the dashboard auth token
+kde openclaw dashboard     # 5. first browser visit to the dashboard (see below)
 kde openclaw stop          # 6. stop + remove the container (idempotent)
 ```
 
@@ -161,6 +161,13 @@ kde openclaw stop          # 6. stop + remove the container (idempotent)
   cleanly; works even when the gateway is stopped). Do NOT use
   `openclaw gateway auth-token` — on 2026.8.2 it refuses to print outside an interactive
   terminal, and `openclaw config get gateway.auth.token` returns `__OPENCLAW_REDACTED__`.
+- The token alone is NOT enough for a browser's first visit: OpenClaw also requires a
+  one-time **device pairing** approval per browser profile, or the browser just shows
+  `disconnected (1008): pairing required`. The loopback auto-approval exception does not
+  apply here — the gateway is in a container, so the host browser arrives from the Docker
+  bridge, not `127.0.0.1`. Run `kde openclaw dashboard` to mint the owner pairing link
+  (~10 min, single use, binds only the browser profile that opens it). It cannot be
+  pre-done during `onboard`; do not suggest that.
 - `onboard` pins `--agent-name main` on purpose, so the wizard never asks for a first-agent
   name. Do not remove it: naming the first agent anything else makes the wizard store the
   provider OAuth credential under an agent it then drops from the config roster, and the
