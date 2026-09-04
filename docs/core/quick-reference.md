@@ -365,6 +365,12 @@ kde openclaw restart -p 20000     # 明確指定時以指定值為準（-p 18789
 # 需要這個是因為 docker run 預設不問 registry：本地有 latest 就直接用舊的
 kde openclaw upgrade
 
+# 從備份還原資料與映像版本（備份由 upgrade 自動建立，保留最新 3 份）
+# 不改 kde.env：映像釘選寫在本機的 .openclaw-image，upgrade 會解除
+kde openclaw downgrade            # 列出備份並互動選擇
+kde openclaw downgrade --list     # 只看有哪些備份
+kde openclaw downgrade 2 -f       # 直接還原第 2 份，略過確認
+
 # 刪除 workspace 的 .openclaw-home（容器運行中則拒絕，需先 stop）
 kde openclaw reset
 kde openclaw reset -f

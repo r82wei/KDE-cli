@@ -15,7 +15,7 @@
 - **DooD 整合**：容器內可直接下 `kde` / `docker` 指令操作宿主環境
 - **PUID/PGID 對齊**：預設沿用主機使用者的 uid/gid，避免掛載檔案的擁有權問題
 
-### 十一個 action 總覽
+### 十二個 action 總覽
 
 | action | 用途 |
 |---|---|
@@ -24,6 +24,7 @@
 | `stop` | 停止並移除容器（冪等） |
 | `restart` | 先 `stop` 再 `run`（未指定 port 時沿用現有容器的 port） |
 | `upgrade` | 拉取映像的最新版本，映像真的變了才重啟容器 |
+| `downgrade` | 從備份還原資料與映像版本（不改 `kde.env`） |
 | `tui` | 互動進入 OpenClaw TUI |
 | `exec` | 進入容器的 bash（不帶指令）或非互動執行指令 |
 | `log` | 查看 gateway 容器日誌 |
@@ -44,11 +45,12 @@ kde openclaw <action> [option]
 | 選項 | 簡寫 | 說明 | 哪些 action 吃 |
 |------|------|------|------|
 | `--port` | `-p` | gateway 對外發布的 port（預設 `18789`，亦可用環境變數 `OPENCLAW_PORT`） | `run`、`restart`、`upgrade` |
-| `--force` | `-f` | 略過確認提示 | `onboard`、`reset` |
+| `--force` | `-f` | 略過確認提示 | `onboard`、`reset`、`downgrade` |
 | `--follow` | `-f` | 跟隨日誌輸出 | `log` |
 | `--tail` | - | 日誌顯示的行數（預設 `100`） | `log` |
 | `--command` | - | `exec` 時執行指定指令（不配置 TTY），等同直接寫成位置參數 | `exec` |
 | `--json` | - | 輸出原始 JSON 而非人類可讀的指引 | `dashboard` |
+| `--list` | - | 只列出可用備份，不做任何還原 | `downgrade` |
 | `--help` | `-h` | 顯示說明 | 全部 |
 
 > **`-f` 依 action 分流**：對 `onboard`/`reset` 是「略過確認」，對 `log` 是「跟隨」。這兩件事不可能同時適用於同一個 action（`log` 沒有確認提示可略過，`onboard`/`reset` 也沒有日誌可跟隨），所以共用 `-f` 不會產生歧義；要明確表達時仍有 `--force` 與 `--follow` 兩個長旗標。
@@ -162,10 +164,88 @@ kde openclaw upgrade
 
 - **沒有新版就不重啟**：重啟會中斷 gateway、踢掉進行中的 session，在沒有換到新映像的情況下不值得付這個代價。
 - **容器未運行時只更新映像、不順便啟動**：`upgrade` 的職責是「把映像更新到最新，並讓正在跑的容器換過去」，沒有東西要重啟時就把啟動留給 `run`。
+- **換版本前會自動備份 `.openclaw-home`**，時機在 `stop` 之後、新版啟動之前；要退回去用 [`downgrade`](#downgrade--從備份還原資料與映像版本)。
 - **`pull` 失敗會在動到容器之前中止**：離線時把跑著的 gateway 停掉卻換不到新映像，會把「沒升級」惡化成「服務不見了」。
 - 判斷「映像有沒有變」是比對 `docker image inspect` 的 image ID，不去解析 `docker pull` 的輸出文字——那是給人看的訊息，格式會隨 Docker 版本變。版本號取自映像的 `org.opencontainers.image.version` label，純粹用於顯示，取不到會顯示 `unknown`。
 
 > **`build.sh` 刻意不打 `latest` tag**：`latest` 的語意是「registry 上最新發布的版本」，而本機 `build.sh` 的產物只是一次性的測試映像。讓它冒用 `latest` 會污染之後這台機器上所有 `run`/`restart` 的映像來源——本機跑一次 build 就會永久停在該映像上，症狀正是「明明 release 了新版，容器卻一直是舊的」。要用剛建好的映像請明確指定 `OPENCLAW_IMAGE=r82wei/kde-openclaw:<hash>-<version> kde openclaw run`（`build.sh` 結束時會把這行印出來）。
+
+### `downgrade` — 從備份還原資料與映像版本
+
+```bash
+kde openclaw downgrade            # 列出備份並互動選擇
+kde openclaw downgrade --list     # 只看有哪些備份，不動任何東西
+kde openclaw downgrade 2          # 直接還原第 2 份
+kde openclaw downgrade 2 -f       # 略過確認
+```
+
+還原**資料與映像版本兩者**，讓 workspace 回到那份備份當時的狀態。
+
+#### 備份從哪裡來
+
+`upgrade` 換版本時自動建立，落在 `<workspace>/.openclaw-backups/`：
+
+```
+openclaw-backup-20260904-161500-r82wei_kde-openclaw_5e990b9-2026.8.2.tar.gz
+```
+
+- **時機是 `stop` 之後、新版啟動之前**。那個瞬間「舊版已停、新版未起」，沒有行程在寫 SQLite——容器還在跑時打包 sqlite 加 WAL 會拿到不一致的快照，而問題要到還原那天才會浮現。附帶好處是 `pull` 失敗或本來就是最新版時不會白備份。
+- 預設**保留最新 3 份**，超過就由舊而新刪除。整個 `.openclaw-home` 實測 374MB、壓縮後 147MB（耗時約 9 秒），所以刻意有上限。份數可用 `OPENCLAW_BACKUP_KEEP` 調整。
+- 檔名裡的 tag 經過清洗（`/` 與 `:` 都變成 `_`），**無法反推原始值**。精確資訊放在包內最前面的 `openclaw-backup-manifest`：
+
+```
+OPENCLAW_BACKUP_IMAGE=docker.io/r82wei/kde-openclaw:5e990b9-2026.8.2
+OPENCLAW_BACKUP_IMAGE_ID=sha256:4456b43d97a4...
+OPENCLAW_BACKUP_VERSION=2026.8.2
+OPENCLAW_BACKUP_AT=2026-09-04T16:15:00+08:00
+```
+
+  `downgrade` 從這裡取要還原成哪個映像，不從檔名猜。manifest 排在 tar 最前面，所以列出備份只需抽出前幾 KB，不必解開整包。
+
+#### 映像釘選：為什麼不改 `kde.env`
+
+`downgrade` 把映像寫進 `<workspace>/.openclaw-image`，而**不動 `kde.env`**——後者是版控檔案，會隨 workspace 同步到每個人的機器上，而「我這台暫時停在舊版」純粹是本機狀態。把它 commit 出去會讓其他人也被釘住，甚至拉不到那個 tag。
+
+| action | 對釘選的行為 |
+|---|---|
+| `run`、`restart` | 遵守釘選，並在輸出中明確印出使用了哪個映像 |
+| `downgrade` | **寫入**釘選（值取自備份的 manifest） |
+| `upgrade` | **清除**釘選，回到 `kde.env` 指定的映像 |
+
+兩者對稱：`downgrade` 釘住、`upgrade` 放開。否則 `downgrade` 之後執行 `upgrade` 會變成「升級一個被釘住的舊 tag」，沒有意義。
+
+`run`/`restart` 一定會把釘選印出來，因為實際跑的版本與 `kde.env` 寫的不一致卻毫無線索，正是這個專案已經踩過一次的無聲版本歪掉。
+
+#### 還原流程
+
+1. 列出備份（由舊到新編號），未給編號則互動詢問
+2. 確認（`-f` 略過）
+3. 停止容器
+4. **備份現況**——還原會覆蓋它，不先存一份的話 `downgrade` 自己就不可逆。這份同樣算進保留額度
+5. 清空並還原 `.openclaw-home`
+6. 寫入映像釘選
+7. 啟動容器
+
+第 5 步是「清空目錄內容」而非 `rm -rf` 目錄本身：`.openclaw-home` 是 named volume（`local` driver + `o=bind`）綁著的路徑，把目錄刪掉再重建會讓掛載守著已刪除的 inode——`cdb2e58` 在 `local-install.sh` 上踩過同一個坑。
+
+編號無效（超出範圍或非數字）一律報錯而不猜：還原是破壞性的，猜錯等於用錯的資料蓋掉現況。
+
+#### `.gitignore`
+
+備份包、釘選檔與容器 home 都以 `.openclaw` 開頭，由一條規則涵蓋：
+
+```gitignore
+/.openclaw*
+```
+
+**前導斜線是必要的。** gitignore 的 pattern 不帶斜線時會匹配任何層級，少了它會連 `environments/*/namespaces/*/<repo>/.openclaw*` 這種專案內的檔案一起忽略掉。實測對照：
+
+```
+/.openclaw*  →  k9s/.openclaw-note  未被忽略（正確）
+.openclaw*   →  k9s/.openclaw-note  被忽略（誤傷）
+```
+
+備份包本身刻意**不**以 `.` 開頭——外層目錄已被忽略，裡面再隱藏一次只會讓人用 `ls` 看不到數百 MB 的佔用。
 
 ### `tui` — 互動進入 OpenClaw TUI
 

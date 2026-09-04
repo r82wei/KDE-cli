@@ -144,6 +144,7 @@ kde openclaw dashboard     # 5. first browser visit to the dashboard (see below)
 kde openclaw stop          # 6. stop + remove the container (idempotent)
 kde openclaw restart       # 7. stop + run in one step, keeping the current port
 kde openclaw upgrade       # 8. pull a newer image; restarts only if it actually changed
+kde openclaw downgrade     # 9. restore data + image from a backup upgrade made
 ```
 
 **Gotchas Claude commonly hits**:
@@ -154,6 +155,14 @@ kde openclaw upgrade       # 8. pull a newer image; restarts only if it actually
   **exist**, so it still works after a crash (that is when you need it most).
 - `kde openclaw reset` (deletes `.openclaw-home`) refuses while the container is running — run
   `kde openclaw stop` first.
+- `upgrade` snapshots `.openclaw-home` before swapping versions (tarball in
+  `<workspace>/.openclaw-backups/`, newest 3 kept), taken **after** the container stops so the
+  SQLite files are quiescent. `kde openclaw downgrade` restores one — data *and* image version.
+  It records the image in `<workspace>/.openclaw-image` rather than editing `kde.env`, because
+  `kde.env` is versioned and a local rollback must not follow the repo to teammates. `run` and
+  `restart` honour that pin and say so in their output; `upgrade` clears it. Never commit
+  `.openclaw-image` or a `kde.env` edited to pin an image — a locally built tag will not exist
+  on anyone else's machine.
 - **A new release does NOT reach a workspace by itself.** `docker run`'s default pull policy
   is `missing`: if the tag already exists locally, Docker uses it and never asks the registry.
   So after `latest` is re-released, `run`/`restart` keep silently running the old image with

@@ -14,6 +14,10 @@ if [[ ${rc} -ne 0 ]]; then
     exit 1
 fi
 
+# 套用本機的映像釘選（downgrade 設下的）。放在 dispatch 之前只做一次，
+# 既有每一處 ${OPENCLAW_IMAGE} 就不必各自處理。upgrade 刻意不吃釘選。
+apply_openclaw_image_pin
+
 case "${OPENCLAW_ACTION}" in
     run)
         run_openclaw_gateway
@@ -29,6 +33,9 @@ case "${OPENCLAW_ACTION}" in
         ;;
     upgrade)
         upgrade_openclaw
+        ;;
+    downgrade)
+        downgrade_openclaw
         ;;
     tui)
         tui_openclaw

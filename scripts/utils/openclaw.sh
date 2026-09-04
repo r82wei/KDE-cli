@@ -19,6 +19,18 @@ OPENCLAW_TAIL_DEFAULT=100
 # 只有 uid/gid 會隨 PUID/PGID 變動，路徑本身固定。
 OPENCLAW_CONTAINER_HOME=/home/node
 
+# upgrade 換版本時自動保留的備份份數。每份是整個 .openclaw-home 的壓縮包
+# （實測 374MB 的 home 壓縮後 147MB、耗時約 9 秒），所以刻意有上限而不是無限累積。
+OPENCLAW_BACKUP_KEEP_DEFAULT=3
+
+# 備份包內描述檔的名稱。它記錄該備份對應的 image，是 downgrade 還原版本的依據
+# ——檔名裡的 tag 經過清洗（/ 與 : 都變 _），無法反推原始值。
+#
+# 備份檔與這個描述檔刻意「不」以 . 開頭：外層目錄 .openclaw-backups 已經落在
+# .gitignore 的 /.openclaw* 規則裡，裡面再隱藏一次只會讓使用者用 ls 看不到
+# 數百 MB 的佔用（ls 預設不列隱藏檔）。
+OPENCLAW_BACKUP_MANIFEST_NAME=openclaw-backup-manifest
+
 # 顯示 kde openclaw 的使用說明
 show_openclaw_help() {
     echo "usage: kde openclaw <action> [option]"
@@ -29,6 +41,7 @@ show_openclaw_help() {
     echo "  stop                            停止並移除 gateway 容器"
     echo "  restart [-p port]               先 stop 再 run (未指定 port 時沿用現有容器的 port)"
     echo "  upgrade [-p port]               拉取映像的最新版本，映像真的變了才重啟容器"
+    echo "  downgrade [<n>] [--list] [-f]   從備份還原資料與映像版本 (不改 kde.env)"
     echo "  tui                             互動進入 openclaw TUI"
     echo "  exec    [<cmd>]                 進入容器的 bash；帶指令則非互動執行 (指令含空白請用引號包起來)"
     echo "  log     [-f] [--tail <n>]       查看 gateway 容器日誌 (預設最後 ${OPENCLAW_TAIL_DEFAULT} 行，不跟隨)"
@@ -68,6 +81,8 @@ parse_openclaw_args() {
     OPENCLAW_FOLLOW=false
     OPENCLAW_TAIL="${OPENCLAW_TAIL_DEFAULT}"
     OPENCLAW_JSON=false
+    OPENCLAW_LIST=false
+    OPENCLAW_BACKUP_CHOICE=""
 
     if [[ $# -eq 0 ]]; then
         show_openclaw_help
@@ -79,7 +94,7 @@ parse_openclaw_args() {
             show_openclaw_help
             return 2
             ;;
-        run|onboard|stop|restart|upgrade|tui|exec|log|token|dashboard|reset)
+        run|onboard|stop|restart|upgrade|downgrade|tui|exec|log|token|dashboard|reset)
             OPENCLAW_ACTION="$1"
             shift
             ;;
@@ -133,6 +148,10 @@ parse_openclaw_args() {
                 OPENCLAW_JSON=true
                 shift
                 ;;
+            --list)
+                OPENCLAW_LIST=true
+                shift
+                ;;
             --command)
                 if [[ -z "$2" ]]; then
                     echo "錯誤：--command 需要一個指令參數" >&2
@@ -155,7 +174,16 @@ parse_openclaw_args() {
                 # 跑的一致，不必為了跑 openclaw 的子指令把 openclaw 這個字拿掉。
                 # 其他 action 一律報錯，錯字不會被靜默吃掉。
                 # 開頭是 - 的一律當未知旗標，否則 `exec -x` 會被誤收成指令。
-                if [[ "${OPENCLAW_ACTION}" == "exec" && "$1" != -* ]]; then
+                # downgrade 的位置參數是備份編號。給了就不互動詢問，
+                # 讓它能寫進腳本；沒給才進互動選單。
+                if [[ "${OPENCLAW_ACTION}" == "downgrade" && "$1" != -* ]]; then
+                    if [[ -n "${OPENCLAW_BACKUP_CHOICE}" ]]; then
+                        echo "❌ 錯誤：備份編號只能指定一次" >&2
+                        return 1
+                    fi
+                    OPENCLAW_BACKUP_CHOICE="$1"
+                    shift
+                elif [[ "${OPENCLAW_ACTION}" == "exec" && "$1" != -* ]]; then
                     if [[ -n "${OPENCLAW_COMMAND}" ]]; then
                         echo "❌ 錯誤：指令只能指定一次 (--command 與位置參數擇一)" >&2
                         echo "   含空白的指令請用引號包成一個參數，例如：kde openclaw exec \"ls -la\"" >&2
@@ -582,7 +610,7 @@ dashboard_openclaw() {
     # port 由 -p 決定。以 docker port 取容器實際發布的 port 來改寫，才不會讓
     # -p 19000 的人貼到一個連不上的網址。docker port 拿不到時退回 OPENCLAW_PORT。
     local host_port
-    host_port=$(docker port "${name}" 18789/tcp 2>/dev/null | head -1 | sed 's/.*://') || true
+    host_port=$(docker port "${name}" 18789/tcp 2>/dev/null | sed -n 1p | sed 's/.*://') || true
     host_port="${host_port:-${OPENCLAW_PORT}}"
     json="${json//127.0.0.1/localhost}"
     json="${json//:18789/:${host_port}}"
@@ -651,18 +679,286 @@ stop_openclaw() {
 # 硬跑下去只是把一個明確的錯誤變成兩個。容器本來就沒在跑時 stop 回傳 0
 # （冪等），因此 restart 對未啟動的 workspace 等同 run，這是刻意的。
 restart_openclaw() {
-    local name
-    name=$(get_openclaw_container_name)
+    resolve_openclaw_port_from_container
+    stop_openclaw || return 1
+    run_openclaw_gateway
+}
 
-    if [[ "${OPENCLAW_PORT_GIVEN}" != "true" && "$(is_openclaw_container_running)" == "true" ]]; then
-        local cur_port
-        cur_port=$(docker port "${name}" 18789/tcp 2>/dev/null | head -1 | sed 's/.*://') || true
-        if [[ -n "${cur_port}" ]]; then
-            OPENCLAW_PORT="${cur_port}"
+# 未表態 port 時改用現有容器目前發布的 port。restart 與 upgrade 共用：
+# 兩者都是「換掉容器但不該換掉對外位址」，理由與細節見 restart_openclaw 的註解。
+resolve_openclaw_port_from_container() {
+    if [[ "${OPENCLAW_PORT_GIVEN}" == "true" ]]; then
+        return 0
+    fi
+    if [[ "$(is_openclaw_container_running)" != "true" ]]; then
+        return 0
+    fi
+    local name cur_port
+    name=$(get_openclaw_container_name)
+    # 取第一行用 sed -n 1p 而不是 head -1：docker port 對有 IPv4/IPv6 的容器會印
+    # 兩行，head 拿到第一行就關閉管線、上游收到 SIGPIPE 回傳 141，在 pipefail 下
+    # 被放大成整行失敗。那樣就得靠 || true 同時吞掉「真的失敗」與 SIGPIPE 兩件事。
+    cur_port=$(docker port "${name}" 18789/tcp 2>/dev/null | sed -n 1p | sed 's/.*://') || true
+    if [[ -n "${cur_port}" ]]; then
+        OPENCLAW_PORT="${cur_port}"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# 映像釘選
+#
+# downgrade 要能把容器帶回舊映像，但不該去改 kde.env——那是版控檔案，會隨
+# workspace 同步到每個人的機器上，而「我這台暫時停在舊版」純粹是本機狀態。
+# 因此用 workspace 底下的 .openclaw-image 記錄，它以 .openclaw 開頭，
+# 正好落在 .gitignore 的 /.openclaw* 規則裡。
+# ---------------------------------------------------------------------------
+
+get_openclaw_image_pin_file() {
+    echo "${KDE_PATH}/.openclaw-image"
+}
+
+read_openclaw_image_pin() {
+    local f
+    f=$(get_openclaw_image_pin_file)
+    if [[ -f "${f}" ]]; then
+        head -1 "${f}" | tr -d '[:space:]'
+    fi
+}
+
+write_openclaw_image_pin() {
+    echo "$1" > "$(get_openclaw_image_pin_file)"
+}
+
+clear_openclaw_image_pin() {
+    rm -f "$(get_openclaw_image_pin_file)"
+}
+
+# 把釘選套用到 OPENCLAW_IMAGE 上。由 command.sh 在 dispatch 之前呼叫一次，
+# 這樣既有的每一處 ${OPENCLAW_IMAGE} 都不必改。
+apply_openclaw_image_pin() {
+    # upgrade 的語意是「回到 kde.env 指定的映像的最新版」，所以它刻意不吃釘選，
+    # 而且成功換版之後會把釘選清掉（見 upgrade_openclaw），讓兩個 action 對稱。
+    if [[ "${OPENCLAW_ACTION}" == "upgrade" ]]; then
+        return 0
+    fi
+
+    local pin
+    pin=$(read_openclaw_image_pin)
+    if [[ -z "${pin}" ]]; then
+        return 0
+    fi
+
+    OPENCLAW_IMAGE="${pin}"
+    # 一定要說出來。否則實際跑的版本與 kde.env 寫的不一致卻毫無線索，
+    # 那正是這個 workspace 已經踩過一次的無聲版本歪掉。
+    echo "ℹ️  使用釘選映像：${OPENCLAW_IMAGE}"
+    echo "   （由 kde openclaw downgrade 設定，kde openclaw upgrade 會解除）"
+}
+
+# ---------------------------------------------------------------------------
+# 備份與還原
+# ---------------------------------------------------------------------------
+
+get_openclaw_backup_dir() {
+    echo "${KDE_PATH}/.openclaw-backups"
+}
+
+# image reference 含 / 與 :，檔名放不了，一律換成 _。docker.io/ 前綴去掉，
+# 否則每個檔名都多一段沒有辨識價值的字。清洗後無法反推原值，精確值在 manifest。
+sanitize_openclaw_image_tag() {
+    echo "$1" | sed 's#^docker\.io/##; s#[^a-zA-Z0-9._-]#_#g'
+}
+
+# 打包 .openclaw-home。
+# 可帶入 image / image_id / version 覆寫記錄值：upgrade 必須這樣用，因為
+# docker pull 之後同一個 tag 查到的已經是新版，而備份對應的是被換掉的舊版。
+create_openclaw_backup() { # [$1=image $2=image_id $3=version]
+    local home dir ts tag file tmpdir manifest
+    home="${KDE_PATH}/.openclaw-home"
+
+    if [[ ! -d "${home}" ]]; then
+        echo "⚠️  ${home} 不存在，略過備份"
+        return 0
+    fi
+
+    local image image_id version
+    image="${1:-${OPENCLAW_IMAGE}}"
+    image_id="${2:-$(get_openclaw_image_id)}"
+    version="${3:-$(get_openclaw_image_version)}"
+
+    dir=$(get_openclaw_backup_dir)
+    mkdir -p "${dir}"
+    ts=$(date +%Y%m%d-%H%M%S)
+    tag=$(sanitize_openclaw_image_tag "${image}")
+    file="${dir}/openclaw-backup-${ts}-${tag}.tar.gz"
+    # 時間戳只到秒，同一秒內連續備份會撞到同一個檔名並靜默覆蓋前一份
+    # （downgrade 先備份現況、緊接著又有流程觸發備份就會這樣）。加序號避開。
+    local n=2
+    while [[ -e "${file}" ]]; do
+        file="${dir}/openclaw-backup-${ts}-${tag}-${n}.tar.gz"
+        n=$((n + 1))
+    done
+
+    tmpdir=$(mktemp -d)
+    manifest="${tmpdir}/${OPENCLAW_BACKUP_MANIFEST_NAME}"
+    {
+        echo "OPENCLAW_BACKUP_IMAGE=${image}"
+        echo "OPENCLAW_BACKUP_IMAGE_ID=${image_id}"
+        echo "OPENCLAW_BACKUP_VERSION=${version}"
+        echo "OPENCLAW_BACKUP_AT=$(date -Iseconds)"
+    } > "${manifest}"
+
+    echo "↓ 備份 .openclaw-home ..."
+    # manifest 刻意排在 tar 的最前面：列表時用 --occurrence=1 抽出它就能停，
+    # 不必解開整包。兩個 -C 讓一次 tar 同時收進不同來源目錄的東西。
+    if ! tar -czf "${file}" \
+        -C "${tmpdir}" "${OPENCLAW_BACKUP_MANIFEST_NAME}" \
+        -C "${KDE_PATH}" .openclaw-home; then
+        echo "❌ 備份失敗" >&2
+        rm -f "${file}"
+        rm -rf "${tmpdir}"
+        return 1
+    fi
+    rm -rf "${tmpdir}"
+
+    echo "✓ 已備份 $(basename "${file}") ($(du -h "${file}" | cut -f1))"
+    prune_openclaw_backups
+}
+
+# 依時間由舊到新列出備份檔。編號 1 是最舊的那份，順序與 downgrade 的列表一致。
+get_openclaw_backup_files() {
+    local dir
+    dir=$(get_openclaw_backup_dir)
+    if [[ ! -d "${dir}" ]]; then
+        return 0
+    fi
+    ls -1tr "${dir}"/openclaw-backup-*.tar.gz 2>/dev/null || true
+}
+
+# 只讀 manifest 裡的一個 key，讀不到回傳空字串
+read_openclaw_backup_manifest() { # $1=備份檔 $2=key
+    local line=""
+    line=$(tar -xzOf "$1" --occurrence=1 "${OPENCLAW_BACKUP_MANIFEST_NAME}" 2>/dev/null | grep -m1 "^$2=") || true
+    echo "${line#*=}"
+}
+
+# 保留最新 N 份，其餘由舊而新刪除
+prune_openclaw_backups() {
+    local keep
+    keep="${OPENCLAW_BACKUP_KEEP:-${OPENCLAW_BACKUP_KEEP_DEFAULT}}"
+
+    local -a files=()
+    mapfile -t files < <(get_openclaw_backup_files)
+    local total=${#files[@]}
+    if [[ ${total} -le ${keep} ]]; then
+        return 0
+    fi
+
+    local remove=$((total - keep))
+    local i
+    for ((i = 0; i < remove; i++)); do
+        rm -f "${files[i]}"
+        echo "  已刪除較舊的備份 $(basename "${files[i]}")"
+    done
+}
+
+# 以備份覆蓋現有的 .openclaw-home
+restore_openclaw_backup() { # $1=備份檔
+    local file="$1" home
+    home="${KDE_PATH}/.openclaw-home"
+
+    if [[ ! -f "${file}" ]]; then
+        echo "❌ 備份檔不存在：${file}" >&2
+        return 1
+    fi
+
+    mkdir -p "${home}"
+    # 清空「目錄內容」而不是刪掉目錄本身。.openclaw-home 是 named volume
+    # （local driver + o=bind）綁著的路徑，把目錄 rm -rf 再重建會讓掛載守著
+    # 已刪除的 inode——cdb2e58 在 local-install.sh 上踩過同一個坑。
+    find "${home}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+    # tar 內的路徑是 .openclaw-home/...，所以解到 KDE_PATH；
+    # 明確只取該目錄，manifest 就不會被解出來留在 workspace 裡。
+    if ! tar -xzf "${file}" -C "${KDE_PATH}" .openclaw-home; then
+        echo "❌ 還原失敗" >&2
+        return 1
+    fi
+    return 0
+}
+
+# 從備份還原資料與映像版本。
+#
+# 不改 kde.env（版控檔案），改為寫入本機的映像釘選，見 apply_openclaw_image_pin。
+downgrade_openclaw() {
+    local -a files=()
+    mapfile -t files < <(get_openclaw_backup_files)
+    local total=${#files[@]}
+
+    if [[ ${total} -eq 0 ]]; then
+        echo "❌ 沒有可用的備份（$(get_openclaw_backup_dir) 是空的）" >&2
+        echo "   備份會在 kde openclaw upgrade 換版本時自動建立" >&2
+        return 1
+    fi
+
+    echo "可用的備份（由舊到新）："
+    local i f v at
+    for ((i = 0; i < total; i++)); do
+        f="${files[i]}"
+        v=$(read_openclaw_backup_manifest "${f}" OPENCLAW_BACKUP_VERSION)
+        at=$(read_openclaw_backup_manifest "${f}" OPENCLAW_BACKUP_AT)
+        printf "  %d) OpenClaw %-10s %s  %s\n" "$((i + 1))" "${v}" "${at}" "$(du -h "${f}" | cut -f1)"
+        printf "     %s\n" "$(basename "${f}")"
+    done
+
+    if [[ "${OPENCLAW_LIST}" == "true" ]]; then
+        return 0
+    fi
+
+    local choice="${OPENCLAW_BACKUP_CHOICE}"
+    if [[ -z "${choice}" ]]; then
+        read -p "要還原哪一份？(1-${total}) " choice
+    fi
+
+    # 編號錯誤一律報錯而不是猜。還原是破壞性的，猜錯等於用錯的資料蓋掉現況。
+    if [[ ! "${choice}" =~ ^[0-9]+$ ]] || [[ "${choice}" -lt 1 || "${choice}" -gt ${total} ]]; then
+        echo "❌ 無效的編號：${choice}（可用 1-${total}）" >&2
+        return 1
+    fi
+
+    local file image
+    file="${files[$((choice - 1))]}"
+    image=$(read_openclaw_backup_manifest "${file}" OPENCLAW_BACKUP_IMAGE)
+    if [[ -z "${image}" ]]; then
+        echo "❌ 該備份的 manifest 沒有記錄 image，無法決定要還原到哪個版本" >&2
+        return 1
+    fi
+
+    if [[ "${OPENCLAW_FORCE}" != "true" ]]; then
+        echo ""
+        echo "⚠️  將以 $(basename "${file}") 覆蓋現有的 .openclaw-home"
+        echo "   並把映像釘選為 ${image}"
+        read -p "確定要繼續嗎？(y/n) " answer
+        if [[ "${answer}" != "y" ]]; then
+            echo "已取消"
+            return 0
         fi
     fi
 
-    stop_openclaw || return 1
+    # 先停容器再備份現況：停掉之後才沒有行程在寫 sqlite，備份才是一致的快照。
+    # 而現況一定要備份——還原會覆蓋它，否則 downgrade 自己就不可逆。
+    if [[ "$(is_openclaw_container_running)" == "true" ]]; then
+        stop_openclaw || return 1
+    fi
+    create_openclaw_backup || return 1
+
+    restore_openclaw_backup "${file}" || return 1
+    write_openclaw_image_pin "${image}"
+    OPENCLAW_IMAGE="${image}"
+
+    echo "✓ 已還原 $(basename "${file}")"
+    echo "  映像已釘選為 ${image}（kde openclaw upgrade 會解除釘選）"
+
     run_openclaw_gateway
 }
 
@@ -727,7 +1023,14 @@ upgrade_openclaw() {
     if [[ -z "${before}" ]]; then
         echo "映像已取得：${ver_after}"
     else
-        echo "映像已更新：${ver_before} → ${ver_after}"
+        echo "映像已變更：${ver_before} → ${ver_after}"
+    fi
+
+    # upgrade 的語意是「回到 kde.env 指定的映像的最新版」，所以放開 downgrade
+    # 設下的釘選，讓兩個 action 對稱。
+    if [[ -n "$(read_openclaw_image_pin)" ]]; then
+        clear_openclaw_image_pin
+        echo "已解除映像釘選"
     fi
 
     if [[ "$(is_openclaw_container_running)" != "true" ]]; then
@@ -735,7 +1038,16 @@ upgrade_openclaw() {
         return 0
     fi
 
-    restart_openclaw
+    # 這裡刻意展開 restart 的兩個步驟，而不是呼叫 restart_openclaw：備份必須落在
+    # stop 之後、新版啟動之前。那個瞬間「舊版已停、新版未起」，沒有行程在寫
+    # sqlite——容器還在跑時打包 sqlite 加 WAL 會拿到不一致的快照，而問題要到
+    # 還原那天才會浮現。順帶的好處是 pull 失敗或本來就最新時不會白備份。
+    resolve_openclaw_port_from_container
+    stop_openclaw || return 1
+    # 傳入舊版的 image 資訊：pull 之後同一個 tag 查到的已經是新版，
+    # 而這份備份對應的是被換掉的那一版。
+    create_openclaw_backup "${OPENCLAW_IMAGE}" "${before}" "${ver_before}" || return 1
+    run_openclaw_gateway
 }
 
 # 刪除 workspace 的 .openclaw（含 auth 密鑰）

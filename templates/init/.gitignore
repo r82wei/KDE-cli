@@ -46,5 +46,8 @@ k9s/clusters
 k9s/.config
 k9s/.data
 
-# openclaw
-.openclaw-home
+# openclaw（容器 home、備份包、映像釘選）
+# 前導斜線是必要的：gitignore 的 pattern 不帶斜線時會匹配任何層級，
+# 少了它會連 environments/*/namespaces/*/<repo>/.openclaw* 這種專案內的檔案
+# 一起忽略掉。加上之後只匹配 workspace 根目錄。
+/.openclaw*
