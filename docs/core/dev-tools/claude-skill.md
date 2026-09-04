@@ -12,6 +12,11 @@
 - 在 KDE workspace 環境下正確引導使用者操作
 - 區分不同情境的最佳做法（如 hot reload vs redeploy）
 
+> **這個指令是給「主機端的 Claude Code」用的。** `kde openclaw` 容器內的 agent 不需要它——
+> 那邊是把 CLI 自帶的同一份 skill 唯讀掛進容器（`~/.agents/skills/kde-usage`），
+> 一啟動就有、且不會隨 CLI 升級而過期。詳見
+> [OpenClaw 文件的「CLI 自帶 skill 的自動載入」](./openclaw.md#cli-自帶-skill-的自動載入)。
+
 **為什麼需要手動安裝？**
 
 KDE-CLI 是一個 CLI 工具，使用者會在 workspace 或專案子目錄中操作，無法預設將 skill 放置在 workspace 或專案目錄內（那樣每個 workspace 都要安裝一份）。因此 skill 需要安裝在個人全域目錄，只需安裝一次即可在所有 KDE workspace 中生效。

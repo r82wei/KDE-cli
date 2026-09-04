@@ -284,6 +284,69 @@ build_openclaw_docker_args() {
     if [[ -n "${sock_gid}" ]]; then
         OPENCLAW_DOCKER_ARGS+=(--group-add "${sock_gid}")
     fi
+
+    # CLI 自帶的 skill（目前是 kde-usage）以唯讀掛進 OpenClaw 會掃的 skill 根目錄，
+    # 讓 agent 一啟動就懂 kde 指令，不必事先手動安裝任何東西。
+    #
+    # 為什麼是掛載而不是複製進容器 home：skill 內容講的是 kde 的旗標與流程，
+    # 跟 CLI 版本強耦合。複製一份進去，CLI 一升級那份就過期，而且沒有任何機制
+    # 會告知 —— 後果是 agent 拿過期旗標去操作叢集。掛載讓它永遠等於主機端掛進來
+    # 的那份 CLI，與 /usr/local/lib/kde 只信掛載、刻意不內建副本的理由完全相同
+    # （見 dockerfiles/kde-openclaw/kde-wrapper.sh 的檔頭）。
+    #
+    # 為什麼是 ~/.agents/skills 而不是 ~/.openclaw/skills：兩者都是 OpenClaw 會掃的
+    # 全域 skill 根目錄（source 分別為 agents-skills-personal 與 openclaw-managed），
+    # 對所有 agent 一樣可見，差別在後者是 OpenClaw 自己管的目錄 ——
+    # openclaw skills install --global 的安裝目標、update/uninstall 的操作對象。
+    # 把唯讀掛載點放進那裡，那些指令碰到它就會失敗。~/.agents/skills 不被 OpenClaw
+    # 的 skill 管理指令碰，且該目錄本身仍可寫，使用者要放自己的 personal skill 不受影響。
+    #
+    # 但書：agents-skills-personal 這個 source 只在 OPENCLAW_STATE_DIR 未被覆寫
+    # （OpenClaw 的 isDefaultStateDir()）時才載入。kde openclaw 不設那個變數，
+    # 所以成立；哪天要設，這個掛載就會安靜失效。
+    #
+    # 唯讀：容器沒有任何理由改寫主機端的 CLI 安裝內容。
+    #
+    # 掛哪些目錄是「掃出來」的，不寫死 kde-usage：寫死的話，資料夾一改名、或日後
+    # 在 .claude/skills 下新增第二個 skill，都會變成 skill 靜默不見/靜默漏掉，而
+    # 唯一的線索是使用者自己發現 agent 不懂 kde 指令。掃 */SKILL.md 讓改名與新增
+    # 都自動生效，也自然排除 kde-usage-workspace 那種沒有頂層 SKILL.md 的
+    # skill 開發/eval 資料目錄（掛進去只是讓 OpenClaw 白掃一趟）。
+    #
+    # .openclaw-home 為空時整段不做：那代表 home volume 還沒被掛載過，Docker 會在
+    # 首次掛載時把映像的 /home/node 預先複製進來，而預先複製只在目錄為空時發生
+    # （見 ensure_openclaw_home_volume 的註解）—— 先在裡面建掛載點會讓它整個不發生。
+    # 錯過的只有「第一個一次性狀態檢查容器」：它跑完 home 就被填充，同一次
+    # run/onboard 接下來真正要用的容器（onboard 精靈、gateway）就都帶上掛載了。
+    # 這是正常的一次性狀態，故此處不警告。
+    local skills_root="${KDE_CLI_PATH}/.claude/skills"
+    local home_dir="${KDE_PATH}/.openclaw-home"
+    if [[ -n "$(ls -A "${home_dir}" 2>/dev/null)" ]]; then
+        local skill_md skill_dir skill_name
+        local mounted=false
+        # 無匹配時 glob 保持字面值，靠 -f 過濾，不需要 nullglob
+        for skill_md in "${skills_root}"/*/SKILL.md; do
+            [[ -f "${skill_md}" ]] || continue
+            skill_dir=$(dirname "${skill_md}")
+            skill_name=$(basename "${skill_dir}")
+            # 掛載點刻意由主機端先建好，不讓 Docker 代建：Docker 建的掛載點屬 root
+            # （發生在 entrypoint 降權之前），而它落在 .openclaw-home 裡面 ——
+            # kde openclaw reset 是以主機使用者 rm -rf 整個 .openclaw-home，遇到 root
+            # 所有的中間目錄會「拒絕不符權限的操作」而刪不掉（實測確認）。由主機端建立
+            # 則屬使用者本人，reset 刪得掉，使用者也仍能把自己的 personal skill
+            # 放進 ~/.agents/skills。
+            mkdir -p "${home_dir}/.agents/skills/${skill_name}"
+            OPENCLAW_DOCKER_ARGS+=(
+                -v "${skill_dir}:${OPENCLAW_CONTAINER_HOME}/.agents/skills/${skill_name}:ro"
+            )
+            mounted=true
+        done
+        # 一個都掃不到代表 CLI 安裝不完整（例如 local-install.sh 不再複製 .claude）。
+        # 刻意出聲：靜默失效的症狀是「agent 突然不懂 kde 指令」，從那裡回推到這裡太遠。
+        if [[ "${mounted}" != "true" ]]; then
+            echo "⚠️  ${skills_root} 底下找不到任何 SKILL.md，OpenClaw agent 不會有 kde skill" >&2
+        fi
+    fi
 }
 
 # 容器是否存在（含已停止者）

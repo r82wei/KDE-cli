@@ -384,6 +384,7 @@ kde openclaw reset -f
 > Dashboard 與 gateway 共用同一 port，開 `http://localhost:<port>` 即可存取。
 > `OPENCLAW_PORT` 刻意不寫入 `kde.env`（kde.env 隨 workspace 版控同步，port 是每台機器各自的環境條件，同步只會互相干擾）；`OPENCLAW_IMAGE` 則會寫入 `kde.env`。
 > `run` 偵測到尚未初始化會報錯並提示先執行 `onboard`，不會自動代跑。
+> 容器內的 agent 一啟動就有 `kde-usage` skill（CLI 自帶的那份以唯讀掛到 `~/.agents/skills`，不需要 `kde claude-skill install`，也不會隨 CLI 升級而過期）。以 `kde openclaw exec "openclaw skills list" | grep kde-usage` 確認。
 > 詳細說明見 [OpenClaw 文檔](../../../../docs/core/dev-tools/openclaw.md)。
 
 ### 容器環境操作

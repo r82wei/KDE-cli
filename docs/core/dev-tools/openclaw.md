@@ -470,7 +470,7 @@ kde openclaw exec "openclaw devices approve <requestId>"
 | hermes | `~/.hermes/` |
 | Claude CLI 整合 | `~/.claude/`、`~/.claude.json`、`~/.local/share/claude`、`~/.local/bin` |
 | legacy OAuth 憑證的加密金鑰 | `~/.config/openclaw/` |
-| 個人 skills | `~/.agents/skills` |
+| 個人 skills | `~/.agents/skills`（`kde-usage` 由唯讀掛載提供，見「CLI 自帶 skill 的自動載入」） |
 | 套件與快取 | `~/.npm`、`~/.cache` |
 
 因此 `kde openclaw` 讓**整個容器 home** 落在 workspace 裡。做法不是直接 bind mount
@@ -520,7 +520,7 @@ now」測試通過（憑證此刻就在該容器內），但精靈結束、`--rm
 
 ## 掛載說明
 
-`kde openclaw` 的三種容器（狀態檢查、onboard、gateway）共用同一組掛載參數，只有這三個掛載：
+`kde openclaw` 的三種容器（狀態檢查、onboard、gateway）共用同一組掛載參數：
 
 ```bash
 -v ${KDE_PATH}:${KDE_PATH}                          # workspace，容器內外絕對路徑一致
@@ -529,6 +529,9 @@ now」測試通過（憑證此刻就在該容器內），但精靈結束、`--rm
 -v /var/run/docker.sock:/var/run/docker.sock:ro      # DooD；`:ro` 只限制掛載點本身不能被改寫或卸載，
                                                       # 不限制透過 socket 可下達的 Docker API 呼叫，
                                                       # 見下方「風險說明」
+-v ${KDE_CLI_PATH}/.claude/skills/<skill>:/home/node/.agents/skills/<skill>:ro
+                                                      # CLI 自帶的每個 skill 各一個（掃 */SKILL.md 得出，
+                                                      # 目前只有 kde-usage），見下方「CLI 自帶 skill 的自動載入」
 ```
 
 容器 home 整個對應到 `${KDE_PATH}/.openclaw-home`，所以 agent 在 home 底下的任何狀態都隨 workspace 一起搬移 / 清除。
@@ -549,6 +552,72 @@ now」測試通過（憑證此刻就在該容器內），但精靈結束、`--rm
 
 wrapper 而不是裸 symlink，是為了讓掛載缺席時的錯誤訊息指向真正的原因；裸 symlink
 只會得到 `bash: /usr/local/bin/kde: No such file or directory`，指向 symlink 自己。
+
+### CLI 自帶 skill 的自動載入
+
+容器一啟動，OpenClaw 的 agent 就已經有 `kde-usage` skill，不需要手動安裝任何東西。
+它不是被複製進去的，而是把 CLI 自帶的那一份唯讀掛到 OpenClaw 會掃的 skill 根目錄：
+
+```bash
+${KDE_CLI_PATH}/.claude/skills/kde-usage → /home/node/.agents/skills/kde-usage (ro)
+```
+
+**掛哪些目錄是掃出來的，不寫死名稱**：`build_openclaw_docker_args` 掃
+`${KDE_CLI_PATH}/.claude/skills/*/SKILL.md`，對每個命中的目錄各加一個掛載。所以
+
+- 資料夾改名照樣有效
+- 日後在 `.claude/skills/` 新增第二個 skill，自動被帶進 OpenClaw，不必改程式碼
+- `kde-usage-workspace` 那種沒有頂層 `SKILL.md` 的 skill 開發／eval 資料目錄自動排除
+- 一個 `SKILL.md` 都掃不到時（例如 `local-install.sh` 哪天不再複製 `.claude`）會印警告，
+  而不是靜默少一個 skill
+
+確認方式：
+
+```bash
+kde openclaw exec "openclaw skills list" | grep kde-usage
+# │ ✓ ready │ kde-usage │ Guide for Claude on how to … │ agents-skills-personal │
+```
+
+**為什麼是掛載而不是複製**：skill 內容講的是 `kde` 的旗標與流程，跟 CLI 版本強耦合。
+複製一份進容器 home，CLI 一升級那份就過期，而且沒有任何機制會告知——後果是 agent 拿
+過期旗標去操作叢集。掛載讓它永遠等於主機端掛進來的那份 CLI，與 kde CLI 本身只信掛載、
+刻意不內建副本的理由完全相同。這也是它跟 `kde claude-skill install`（那是 `cp` 到
+`~/.claude/skills/`，供主機端的 Claude Code 使用）的差別。
+
+**為什麼是 `~/.agents/skills` 而不是 `~/.openclaw/skills`**：OpenClaw 有多個 skill 根目錄，
+其中兩個是全域的（對所有 agent 可見）：
+
+| 路徑 | source | 誰在管 |
+|---|---|---|
+| `~/.openclaw/skills` | `openclaw-managed` | OpenClaw 自己：`skills install --global` 的安裝目標、`update` / `uninstall` 的操作對象 |
+| `~/.agents/skills` | `agents-skills-personal` | 沒有人自動管，適合外部掛入 |
+
+把唯讀掛載點放進前者，那些 skill 管理指令碰到它就會失敗。放後者沒有衝突，而且該目錄
+本身仍可寫，要放自己的 personal skill 不受影響。
+
+實測確認過後者不會被 OpenClaw 的 skill 管理指令碰到：`openclaw skills update` 的說明是
+「in the active or shared managed directory」，`openclaw skills workshop propose-update`
+是「an existing **workspace** skill」——兩者的作用範圍都不含 `~/.agents/skills`。
+
+> **但書**：`agents-skills-personal` 這個 source 只在 `OPENCLAW_STATE_DIR` 未被覆寫時
+> 才載入（OpenClaw 內部的 `isDefaultStateDir()`）。`kde openclaw` 不設那個變數，所以成立；
+> 哪天要設，這個掛載就會安靜失效。
+
+**刻意的例外**——以下情況不加這個掛載：
+
+1. **掃不到任何 `SKILL.md` 時**（連帶印出警告）。掛一個不存在的來源沒有意義：bind mount
+   的來源缺席時 Docker 會自動建立它，於是主機端的 CLI 安裝目錄裡多出一個空目錄，而
+   skill 依然不存在——那是把「skill 沒裝到」變成「skill 沒裝到，還汙染了安裝目錄」。
+2. **`.openclaw-home` 還是空的時候**（此時不警告，這是正常的一次性狀態）。那代表
+   home volume 還沒被掛載過，Docker 會在首次
+   掛載時把映像的 `/home/node` 預先複製進來，而預先複製只在目錄為空時發生——先在裡面
+   建掛載點會讓它整個不發生。錯過的只有「第一個一次性狀態檢查容器」，它跑完 home 就
+   被填充，同一次 `run` / `onboard` 接下來真正要用的容器就都帶上掛載了。
+
+**掛載點為什麼由主機端 `mkdir` 先建好**，而不是讓 Docker 代建：Docker 建的掛載點屬
+**root**（發生在 entrypoint 降權之前），而它落在 `.openclaw-home` 裡面，而
+`kde openclaw reset` 是以主機使用者 `rm -rf` 整個 `.openclaw-home`——遇到 root 所有的
+中間目錄會「拒絕不符權限的操作」而刪不掉。由主機端建立則屬使用者本人，`reset` 刪得掉。
 
 ## 風險說明
 
