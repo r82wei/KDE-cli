@@ -13,15 +13,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       git gettext-base ca-certificates docker.io \
  && rm -rf /var/lib/apt/lists/*
 
-# 安裝 kde-cli:把 build context(repo 根目錄)整包複製進來,交給 local-install.sh 安裝。
-# 要裝哪些東西完全由 local-install.sh 決定(唯一真實來源),Dockerfile 不需跟著改。
-# 執行時 kde openclaw 會用 volume 把主機端的 kde-cli 蓋上來,確保版本一致。
-COPY . /tmp/kde-src/
-RUN cd /tmp/kde-src && bash local-install.sh && cd / && rm -rf /tmp/kde-src
-
+# 刻意不在映像內安裝 kde-cli。kde openclaw 啟動的每一種容器都會把主機端的
+# ${KDE_CLI_PATH} 以唯讀 bind mount 蓋在 /usr/local/lib/kde 上,所以烤進映像的
+# 副本必然被完全遮蔽、一次也用不到;留著的代價則是每個 CLI commit 都打掉映像的
+# build cache,還多出一個永遠觀察不到的「映像內建版本」概念。
+#
+# 映像對 kde 的唯一義務是 /usr/local/bin/kde 這支 wrapper:它不在掛載點內,
+# 是 kde 進得了 PATH 的唯一原因。完整理由見 kde-wrapper.sh 的檔頭註解。
+#
 # build context 是 repo 根目錄,故 COPY 來源要寫完整相對路徑
+COPY dockerfiles/kde-openclaw/kde-wrapper.sh /usr/local/bin/kde
 COPY dockerfiles/kde-openclaw/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/kde /usr/local/bin/entrypoint.sh
 
 # 保留官方的 tini 當 PID 1,entrypoint 接在它後面,docker stop 的 SIGTERM 才傳得到。
 # -s(subreaper)沿用官方映像自己的 ENTRYPOINT(["tini","-s","--"])選擇,不擅自拿掉。

@@ -376,6 +376,21 @@ now」測試通過（憑證此刻就在該容器內），但精靈結束、`--rm
 
 > 早期設計曾另外掛載 `~/.config/openclaw`，並在實作階段以假金鑰經 `openclaw config set` 與 `openclaw onboard --non-interactive` 實測後移除。事後查官方文件才發現那個路徑確實有用途（legacy OAuth 憑證的加密金鑰），只是那兩條測試路徑都走不到它——這正是改為整個 home 掛載的動機之一：不必逐個猜哪些路徑有用。
 
+### 為什麼 kde CLI 一定來自主機掛載
+
+映像**刻意不內建 kde-cli**，`/usr/local/bin/kde` 只是一支 wrapper
+（`dockerfiles/kde-openclaw/kde-wrapper.sh`），實際執行的是掛進來的
+`/usr/local/lib/kde/kde.sh`。
+
+這個掛載沒有開關，也不打算提供。理由不只是「版本一致比較好」：workspace 是**讀寫**
+掛進容器的，容器內外的 kde 會寫同一批 state（`current.env`、`k8s.env`、
+`.pipeline.env`、`kubeconfig/config`）。版本歪掉不是功能少一點，是兩邊互相寫壞對方
+認得的格式。要換版本，換的是主機端那一份（`KDE_CLI_PATH`，由 `kde` 指令自身的路徑
+推導），容器會跟著改變。
+
+wrapper 而不是裸 symlink，是為了讓掛載缺席時的錯誤訊息指向真正的原因；裸 symlink
+只會得到 `bash: /usr/local/bin/kde: No such file or directory`，指向 symlink 自己。
+
 ## 風險說明
 
 `kde openclaw` 把宿主的 Docker socket 掛進容器，容器內跑的是一個**自主運作的 AI agent**，不是人在鍵盤前操作。這代表：
@@ -507,6 +522,30 @@ openclaw models auth paste-token --provider <provider> when token auth is availa
 ### gateway 啟動後健康檢查失敗
 
 `run` 會在啟動後等待數秒並確認容器仍在 running；若容器已退出，會印出 `docker logs --tail 50 <name>` 的內容並回報失敗（不會謊報成功）。常見原因是設定不完整——回頭確認 `kde openclaw onboard` 是否真的成功完成。
+
+### 容器內 `kde` 說 command not found
+
+```
+bash: kde: command not found
+```
+
+代表 `/usr/local/lib/kde` 這個掛載點在容器內是空的。最常見的成因是**容器啟動之後，
+主機端把該目錄整個換掉了**：bind mount 綁的是 inode，目錄被 `rm -rf` 再重建之後，
+運行中的容器會繼續守著那個已刪除的 inode，看到的就是一個空目錄。舊版
+`local-install.sh` 重裝時正是這樣做的（現已改為只清內容、保留目錄）。
+
+確認方式：
+
+```bash
+kde openclaw exec "ls /usr/local/lib/kde"          # 空的
+kde openclaw exec "stat -c '%i %h' /usr/local/lib/kde"   # links 為 0 = 已刪除的 inode
+```
+
+**解決方法**：重建容器即可，狀態全在 `${KDE_PATH}/.openclaw-home`，不會掉設定。
+
+```bash
+kde openclaw stop && kde openclaw run
+```
 
 ### 除錯指令
 

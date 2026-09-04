@@ -12,6 +12,7 @@ dockerfiles
 !dockerfiles/code-server/entrypoint.d
 !dockerfiles/code-server/agents
 !dockerfiles/kde-openclaw/entrypoint.sh
+!dockerfiles/kde-openclaw/kde-wrapper.sh
 examples
 test
 test.sh
