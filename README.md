@@ -78,6 +78,7 @@ kde k9s                 # Launch K9s terminal management tool
 kde headlamp            # Launch Headlamp Web UI
 kde telepresence        # Launch Telepresence traffic interception
 kde code-server         # Launch VSCode Web IDE
+kde openclaw            # Launch OpenClaw AI agent (container-based, DooD)
 kde cloudflare-tunnel   # Launch Cloudflare Tunnel
 kde ngrok               # Launch Ngrok external connection
 kde expose              # Port Forward
@@ -242,6 +243,7 @@ Supports three environment types:
 | | Kind/K3D + PVC Mount | Real-time code sync via local-path-provisioner |
 | | Telepresence | Remote Pod traffic forwarding and environment simulation |
 | | code-server | VSCode development environment with Web UI |
+| | OpenClaw | Container-based OpenClaw AI agent with DooD access to the host |
 | | Port Forward | Forward Service/Pod ports to local |
 | **External Connectivity** | Cloudflare Tunnel | Secure external connection (custom domain) |
 | | Ngrok | Quick temporary external connection |
@@ -424,6 +426,7 @@ For complete documentation, refer to the `docs/` directory:
 - **[Headlamp](./docs/core/dev-tools/headlamp.md)** - Web UI Dashboard
 - **[Telepresence](./docs/core/dev-tools/telepresence.md)** - Remote traffic interception
 - **[code-server](./docs/core/dev-tools/code-server.md)** - Web VSCode
+- **[OpenClaw](./docs/core/dev-tools/openclaw.md)** - Container-based OpenClaw AI agent
 - **[Port Forward](./docs/core/dev-tools/port-forward.md)** - Port forwarding
 - **[Cloudflare Tunnel](./docs/core/dev-tools/cloudflare-tunnel.md)** - Secure external connection
 - **[Ngrok](./docs/core/dev-tools/ngrok.md)** - Quick external connection

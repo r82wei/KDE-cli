@@ -7,9 +7,11 @@
 # 若日後新增類似「要進 image 的 dockerfiles/ 子目錄」,同樣要在這裡加一行 !。
 .git
 .gitignore
+.superpowers
 dockerfiles
 !dockerfiles/code-server/entrypoint.d
 !dockerfiles/code-server/agents
+!dockerfiles/kde-openclaw/entrypoint.sh
 examples
 test
 test.sh

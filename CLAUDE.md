@@ -45,6 +45,7 @@ Current tests, grouped by what they cover:
 | Pipeline | `test-pipeline-args.sh`, `test-allow-failure.sh`, `test-only-manual.sh` |
 | Non-interactive execution | `test-exec-no-tty.sh`, `test-pod-exec-args.sh`, `test-proj-exec-volumes.sh`, `test-exec-integration.sh` |
 | code-server | `test-code-server-mounts.sh`, `test-code-server-agent-args.sh`, `test-agent-entrypoint.sh`, `test-install-scripts.sh` |
+| openclaw | `test-openclaw-args.sh`, `test-openclaw-container-args.sh`, `test-openclaw-lifecycle.sh`, `test-openclaw-entrypoint.sh` |
 | Environment | `test-kind-config-env.sh` |
 
 `test.sh` and `test/cloudflare.sh` are manual scratch harnesses, not test runners.
@@ -62,6 +63,7 @@ Current tests, grouped by what they cover:
 - `kde.sh` - Main entry point and command router
 - `scripts/<command>/command.sh` - Each CLI subcommand is a separate script
 - `scripts/utils/` - Shared utility functions (pipeline engine, project helpers, K8s operations)
+- `scripts/utils/openclaw.sh` - `kde openclaw` 的容器生命週期邏輯（三種容器共用一組掛載參數）
 - `scripts/utils/environment/` - Environment-type-specific logic (kind.sh, k3d.sh, k8s.sh)
 - `dockerfiles/` - Dockerfiles for all integrated tools
 - `templates/init/` - Project initialization templates

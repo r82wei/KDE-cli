@@ -45,3 +45,6 @@ environments/*/namespaces/*/.npmrc
 k9s/clusters
 k9s/.config
 k9s/.data
+
+# openclaw
+.openclaw-home

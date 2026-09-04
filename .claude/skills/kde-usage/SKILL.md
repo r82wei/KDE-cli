@@ -124,6 +124,53 @@ kde headlamp     # web UI at localhost:4466
 **Note:** `kde proj pod` only lists pod names. It does not show status or details.
 Use `kde k9s` or `kde headlamp` to see status, events, and resource details visually.
 
+### OpenClaw agent (containerized, DooD-enabled)
+
+`kde openclaw` runs an OpenClaw agent gateway in a container that has `kde` and `docker`
+available inside it (DooD), so the agent can operate the K8s environment from within its
+own container. The container's entire home is mounted at `${KDE_PATH}/.openclaw-home`, so all
+state — `~/.openclaw`, plus provider credential dirs like `~/.codex` and `~/.claude` — lives there.
+
+**Action order matters** — `onboard` must run before `run`, and `run` must succeed before
+`tui`/`exec`:
+
+```bash
+kde openclaw onboard     # 1. one-time interactive wizard (no gateway needed yet)
+kde openclaw run          # 2. background-start the gateway (fails if not onboarded)
+kde openclaw tui          # 3. interactive OpenClaw TUI (fails if not running)
+kde openclaw exec "<cmd>"  #    or run one command through bash, non-interactively
+kde openclaw log -f       # 4. tail the gateway logs
+kde openclaw token         # 5. print the dashboard auth token
+kde openclaw stop          # 6. stop + remove the container (idempotent)
+```
+
+**Gotchas Claude commonly hits**:
+- `kde openclaw run` on a never-initialized workspace fails with "尚未初始化" and tells you
+  to run `kde openclaw onboard` first — it will **not** auto-run onboarding for you.
+- `kde openclaw tui` and `kde openclaw exec` fail with "未在運行" if the gateway container
+  isn't up — run `kde openclaw run` first. `kde openclaw log` only needs the container to
+  **exist**, so it still works after a crash (that is when you need it most).
+- `kde openclaw reset` (deletes `.openclaw-home`) refuses while the container is running — run
+  `kde openclaw stop` first.
+- `exec` is plain bash and does NOT prepend `openclaw` — write the command exactly as it
+  runs in the container: `kde openclaw exec "openclaw doctor"` (positional, or `--command`;
+  only one of them, and quote the whole command). Without a command it drops you in an
+  interactive bash. The interactive OpenClaw TUI is `kde openclaw tui`.
+- `-f` is action-scoped: `--force` for `onboard`/`reset`, `--follow` for `log`.
+- Getting the dashboard token: `kde openclaw token` (stdout is only the token, so it pipes
+  cleanly; works even when the gateway is stopped). Do NOT use
+  `openclaw gateway auth-token` — on 2026.8.2 it refuses to print outside an interactive
+  terminal, and `openclaw config get gateway.auth.token` returns `__OPENCLAW_REDACTED__`.
+- `onboard` pins `--agent-name main` on purpose, so the wizard never asks for a first-agent
+  name. Do not remove it: naming the first agent anything else makes the wizard store the
+  provider OAuth credential under an agent it then drops from the config roster, and the
+  gateway (which runs `main`) answers every chat with
+  `401 Missing bearer or basic authentication in header`. If a workspace was onboarded that
+  way by an older `kde`, `openclaw doctor` reports "agent directory on disk without a
+  matching agents.list entry" — recovery is in `docs/core/dev-tools/openclaw.md`.
+
+Full flag reference: `docs/core/dev-tools/openclaw.md` (or `kde openclaw -h`).
+
 ### Port forwarding / external access
 
 ```bash

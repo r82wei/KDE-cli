@@ -319,6 +319,50 @@ kde code-server -d -v ./environments/dev/namespaces/api    # 明確指定
 > 註：`kde code-server` 會自動把主機當前的 kde-cli 掛載進容器，容器內 `kde` 版本與主機一致。
 > 若主機未安裝 kde-cli，也可直接 `docker run r82wei/kde-code-server:latest`（用 image 內建版本），詳見 README 的「免安裝」章節。
 
+### OpenClaw
+
+```bash
+# 一次性初始化精靈（必須先跑過才能 run，不需要 gateway 已啟動）
+# 精靈已釘住第一個 agent 的名稱為 main，不會再問；改成別的名字會讓 provider 憑證
+# 寫進 config roster 認不得的 agent，聊天時回 401 Missing bearer
+kde openclaw onboard
+kde openclaw onboard -f    # 已初始化時跳過覆寫確認
+
+# 背景常駐啟動 gateway（主機側預設端口 18789，容器內固定 18789）
+kde openclaw run
+kde openclaw run -p 19000
+OPENCLAW_PORT=19000 kde openclaw run    # 環境變數；-p 優先於此，兩者都優先於內建預設
+
+# 互動進入 OpenClaw TUI
+kde openclaw tui
+
+# 進入容器的 bash（exec 不代入 openclaw，指令原封不動交給 bash -c）
+kde openclaw exec                                # 互動進入 bash
+kde openclaw exec "openclaw doctor"              # 非互動執行指令
+kde openclaw exec --command "openclaw doctor"     # 等效寫法（指令只能給一次）
+
+# 查看 gateway 容器日誌（容器存在即可，已 crash 退出也看得到）
+kde openclaw log                # 最後 100 行，印完就結束
+kde openclaw log -f             # 跟隨（--follow 亦可）
+kde openclaw log --tail 500     # 改行數
+
+# 取得 dashboard 的 auth token（stdout 只有 token，gateway 沒在跑也能取）
+kde openclaw token
+kde openclaw token | xclip -sel clip
+
+# 停止並移除容器（冪等，容器不存在時不視為錯誤）
+kde openclaw stop
+
+# 刪除 workspace 的 .openclaw-home（容器運行中則拒絕，需先 stop）
+kde openclaw reset
+kde openclaw reset -f
+```
+
+> Dashboard 與 gateway 共用同一 port，開 `http://localhost:<port>` 即可存取。
+> `OPENCLAW_PORT` 刻意不寫入 `kde.env`（kde.env 隨 workspace 版控同步，port 是每台機器各自的環境條件，同步只會互相干擾）；`OPENCLAW_IMAGE` 則會寫入 `kde.env`。
+> `run` 偵測到尚未初始化會報錯並提示先執行 `onboard`，不會自動代跑。
+> 詳細說明見 [OpenClaw 文檔](../../../../docs/core/dev-tools/openclaw.md)。
+
 ### 容器環境操作
 
 ```bash

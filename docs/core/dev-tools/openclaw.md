@@ -1,0 +1,462 @@
+# OpenClaw
+
+**以容器承載 OpenClaw agent，容器內可直接使用 `kde` CLI 操作宿主的 Docker**
+
+## 核心概念
+
+### 什麼是 `kde openclaw`？
+
+`kde openclaw` 用一個容器承載 [OpenClaw](https://openclaw.ai) agent gateway。容器內已安裝與主機同版的 `kde` CLI（透過唯讀掛載），並掛入宿主的 `docker.sock`（DooD），因此 OpenClaw agent 可以在容器內直接執行 `kde` 指令來操作你的 K8s 開發環境。
+
+### 主要特點
+
+- **狀態全在 workspace 裡**：容器 home 整個掛在 `${KDE_PATH}/.openclaw-home`（涵蓋 `~/.openclaw`、`~/.codex`、`~/.claude` 等），可隨 workspace 搬移、可用 `kde openclaw reset` 一次清除。該目錄含 provider 的 OAuth 憑證與 gateway token，`kde init` 的 `.gitignore` 範本已將它排除，**不要**把它加進版控
+- **容器可拋棄**：容器本身不保存任何獨有狀態，`kde openclaw stop` 隨時可以安全執行
+- **DooD 整合**：容器內可直接下 `kde` / `docker` 指令操作宿主環境
+- **PUID/PGID 對齊**：預設沿用主機使用者的 uid/gid，避免掛載檔案的擁有權問題
+
+### 八個 action 總覽
+
+| action | 用途 |
+|---|---|
+| `run` | 背景常駐啟動 gateway |
+| `onboard` | 一次性互動容器，執行初始化精靈 |
+| `stop` | 停止並移除容器（冪等） |
+| `tui` | 互動進入 OpenClaw TUI |
+| `exec` | 進入容器的 bash（不帶指令）或非互動執行指令 |
+| `log` | 查看 gateway 容器日誌 |
+| `token` | 印出 gateway 的 auth token |
+| `reset` | 刪除 workspace 的 `.openclaw-home` |
+
+## 使用說明
+
+### 基本指令語法
+
+```bash
+kde openclaw <action> [option]
+```
+
+### 選項總表
+
+| 選項 | 簡寫 | 說明 | 哪些 action 吃 |
+|------|------|------|------|
+| `--port` | `-p` | gateway 對外發布的 port（預設 `18789`，亦可用環境變數 `OPENCLAW_PORT`） | `run` |
+| `--force` | `-f` | 略過確認提示 | `onboard`、`reset` |
+| `--follow` | `-f` | 跟隨日誌輸出 | `log` |
+| `--tail` | - | 日誌顯示的行數（預設 `100`） | `log` |
+| `--command` | - | `exec` 時執行指定指令（不配置 TTY），等同直接寫成位置參數 | `exec` |
+| `--help` | `-h` | 顯示說明 | 全部 |
+
+> **`-f` 依 action 分流**：對 `onboard`/`reset` 是「略過確認」，對 `log` 是「跟隨」。這兩件事不可能同時適用於同一個 action（`log` 沒有確認提示可略過，`onboard`/`reset` 也沒有日誌可跟隨），所以共用 `-f` 不會產生歧義；要明確表達時仍有 `--force` 與 `--follow` 兩個長旗標。
+
+> `exec` 的指令可以直接寫成位置參數（`kde openclaw exec "openclaw doctor"`），與 `--command` 等效，但只能給一次。**含空白的指令請用引號包成一個參數**——`kde openclaw exec ls -la` 會在 `-la` 上報錯，而不是靜默只跑 `ls`。
+
+## 各 Action 詳解
+
+### `run` — 背景常駐啟動 gateway
+
+```bash
+kde openclaw run
+kde openclaw run -p 19000
+```
+
+**前置條件**：
+- OpenClaw 必須已完成初始化（見下方「初始化狀態判斷」），否則報錯並提示先執行 `kde openclaw onboard`——**不會**自動代跑 onboarding
+- 同名容器不可已存在，否則報錯並提示先 `kde openclaw stop`
+
+**行為**：`docker run -d` 背景啟動 `openclaw gateway run --port 18789`（視 auth 設定可能再加上 `--bind auto`，見下方 Dashboard），套用 `--restart unless-stopped`，接著等待數秒做健康檢查（容器仍在 running 才算成功；失敗會印出 `docker logs --tail 50` 並 `exit 1`，不會回報假成功）。
+
+**成功輸出範例**：
+```
+✓ openclaw gateway 已在背景啟動 (openclaw-myworkspace)
+存取網址: http://localhost:18789
+查看日誌: kde openclaw log -f
+取得 token: kde openclaw token
+停止服務: kde openclaw stop
+```
+
+**失敗訊息範例**：
+```
+❌ OpenClaw 尚未初始化 (gateway.mode 不是 local)
+   請先執行：kde openclaw onboard
+```
+```
+❌ 容器 openclaw-myworkspace 已存在，請先停止：kde openclaw stop
+```
+
+### `onboard` — 執行初始化精靈
+
+```bash
+kde openclaw onboard
+kde openclaw onboard -f    # 已初始化時跳過覆寫確認
+```
+
+**前置條件**：不需要 gateway 已在運行——`onboard` 走的是獨立的一次性互動容器（`--rm`），這正是它必須是獨立 action 的理由：未初始化時 `run` 會拒絕啟動，若要求使用者先 `run` 再 `onboard` 會變成死結。
+
+**行為**：啟動一次性互動容器（`-it --rm`，容器名 `openclaw-<workspace>-onboard`）跑 `openclaw onboard --mode local --agent-name main`。若已偵測到初始化完成，會先詢問 `y/n` 是否覆寫（`-f` 跳過確認）。精靈結束後（含被 Ctrl-C 中斷的情況）都會重新檢查初始化狀態，仍未成功則報錯。
+
+**為什麼釘住 `--agent-name main`**：帶了這個旗標，精靈就不會問「What should we call your first agent?」——而那一題填非 `main` 的名字會壞掉。實測（OpenClaw 2026.8.2 互動精靈）填 `MaximeDev` 時，精靈確實建立了 agent `maximedev` 並把 provider 的 OAuth 憑證寫進該 agent 自己的 `agents/maximedev/agent/openclaw-agent.sqlite`，但**最後一次寫 config 時把 `agents.entries` 整段蓋掉了**；roster 於是退回隱含的預設 agent `main`，而 `main` 的 auth store 是空的，聊天就會拿到 `401 Missing bearer`（見下方故障排除）。名字保留 `main` 時即使 entries 同樣被蓋掉也無害：共用 auth store 的正規位置本來就是 `agents/main`，其他 agent 靠 `agents.defaults.authInheritance` 繼承它。代價是不能在精靈裡命名第一個 agent，事後仍可用 `openclaw agents set-identity` / `openclaw agents add` 處理。
+
+**前置條件失敗**：同名 onboard 容器已存在（例如上次異常中斷未清乾淨）→ 報錯並提示 `docker rm -f <name>-onboard`。
+
+**成功輸出**：`✓ OpenClaw 初始化完成，可執行：kde openclaw run`
+
+### `stop` — 停止並移除容器
+
+```bash
+kde openclaw stop
+```
+
+冪等：容器不存在時印出提示並 `exit 0`，不視為錯誤。存在時依序 `docker stop` + `docker rm`；任一步驟失敗會報錯並提示手動 `docker rm -f <name>`。
+
+### `tui` — 互動進入 OpenClaw TUI
+
+```bash
+kde openclaw tui
+```
+
+**前置條件**：容器必須正在運行，否則報錯並提示先 `kde openclaw run`：
+```
+❌ 容器 openclaw-myworkspace 未在運行，請先執行：kde openclaw run
+```
+
+**行為**：`docker exec -u node -it <container> openclaw`。
+
+### `exec` — 進入容器的 bash
+
+```bash
+kde openclaw exec                                   # 互動進入 bash
+kde openclaw exec "openclaw doctor"                 # 非互動執行指令
+kde openclaw exec --command "openclaw doctor"        # 等效寫法
+kde openclaw exec "kde proj tail api --no-tty"       # 容器內的其他指令一樣能跑
+```
+
+**前置條件**：同 `tui`，容器必須正在運行。
+
+**兩種行為**：
+- 不帶指令：`docker exec -u node -it <container> bash`
+- 帶指令：`docker exec -u node <container> bash -c "<cmd>"`（不配置 TTY，適合腳本 / AI agent）
+
+**`exec` 刻意不代入 `openclaw`**：指令原封不動交給 `bash -c`，所以你打的字跟容器裡實際跑的一致。若這裡自動補上 `openclaw`，就得反過來把 `openclaw` 這個字拿掉（`kde openclaw exec dashboard`）——既反直覺，也跑不了容器內的其他指令（`kde`、`git`…）。互動的 OpenClaw TUI 由 `tui` 提供。
+
+### `log` — 查看 gateway 容器日誌
+
+```bash
+kde openclaw log                # 最後 100 行，印完就結束
+kde openclaw log -f             # 跟隨（--follow 亦可），Ctrl-C 離開
+kde openclaw log --tail 500     # 改行數
+kde openclaw log -f --tail 20   # 兩者可併用
+```
+
+**前置條件**：容器必須**存在**——注意是存在，不是正在運行。容器因設定有誤而 crash 掉之後，正是最需要看日誌的時候，而 `docker logs` 對已退出的容器仍讀得到。容器不存在時：
+```
+❌ 容器 openclaw-myworkspace 不存在，請先執行：kde openclaw run
+```
+
+**行為**：`docker logs [-f] --tail <n> <container>`。跟隨模式下用 Ctrl-C 離開會讓 docker 回 130，那是正常結束而不是失敗，`log` 會回 0。
+
+### `token` — 印出 gateway 的 auth token
+
+```bash
+kde openclaw token
+kde openclaw token | xclip -sel clip    # stdout 只有 token，可被管線接走
+```
+
+**前置條件**：無。走一次性容器讀設定檔，**gateway 沒在運行也能取**。
+
+**行為**：以一次性容器（與初始化狀態檢查同一組掛載）讀 `~/.openclaw/openclaw.json` 的 `gateway.auth.token`，只把 token 本身印到 stdout；所有錯誤訊息走 stderr，因此管線接走的內容不會夾帶提示文字。
+
+**為什麼不用官方的 `openclaw gateway auth-token`**：實測（2026.8.2）該指令需要 `--show`，且會以「Refusing to print the Gateway token outside an interactive terminal」拒絕印到非互動終端機，腳本完全取不到；而 `openclaw config get gateway.auth.token` 回傳的是 `__OPENCLAW_REDACTED__`。
+
+**失敗訊息**：
+```
+❌ gateway.auth.mode 為 none，本來就沒有 token
+   要啟用 auth：kde openclaw exec 後執行 openclaw configure
+```
+```
+❌ 讀不到 gateway token (openclaw.json 的 gateway.auth.token 為空或檔案不存在)
+   若尚未初始化，請先執行：kde openclaw onboard
+```
+
+### `reset` — 刪除 workspace 的 `.openclaw-home`
+
+```bash
+kde openclaw reset
+kde openclaw reset -f
+```
+
+**前置條件**：容器不可在運行中，否則報錯並要求先 `kde openclaw stop`（避免在容器運行中抽掉設定，產生難以診斷的半死狀態）：
+```
+❌ 容器 openclaw-myworkspace 仍在運行，請先執行：kde openclaw stop
+```
+
+**行為**：`.openclaw-home` 不存在時視為無需重設（`exit 0`）。存在時預設 `read -p` 詢問 `y/n`（含 OpenClaw 設定與 auth 密鑰的警告文字），`-f` 跳過確認，直接 `rm -rf`。
+
+## Port 說明
+
+- 容器**內**恆為 `18789`（`openclaw gateway run --port 18789`，不受 `-p` 影響）
+- 主機側發布 port 的優先序：`-p`/`--port`（當次指定）> 環境變數 `OPENCLAW_PORT` > 內建預設 `18789`
+- **`OPENCLAW_PORT` 刻意不寫入 `kde.env`**：`kde.env` 是版控檔案，會隨 workspace git pull 到每個人的機器上；而 port 是每台開發機各自的環境條件（可能已被其他服務佔用），同步只會互相干擾。要固定使用非預設 port，請自行在 shell profile 或 `export OPENCLAW_PORT=...` 設定，不要寫進 `kde.env`
+- 相對地，`OPENCLAW_IMAGE`（映像版本）**會**寫入 `kde.env`——那是整個 workspace 該對齊的版本，理應同步
+
+```bash
+# 一次性指定
+kde openclaw run -p 19000
+
+# 或用環境變數（-p 優先於此）
+export OPENCLAW_PORT=19000
+kde openclaw run
+```
+
+## Dashboard
+
+Dashboard 與 gateway 共用同一個 port（單一多工 port：WebSocket RPC、HTTP API、plugin routes、Control UI 全部共用），開啟 `http://localhost:<port>` 即可看到（`run` 成功時會印出正確的網址）。
+
+### bind 位址：為什麼 `run` 會加 `--bind auto`
+
+OpenClaw 偵測到容器環境時，預設會把 gateway 綁在 `0.0.0.0` 以配合 port forwarding。但
+**onboarding 精靈常會把 `gateway.bind` 明確寫成 `loopback`**，而明確的 config 值會蓋過那個
+預設值。這時 gateway 只聽容器內的 `127.0.0.1`，`-p` 永遠轉不進去，dashboard 從主機完全連不到。
+
+因此 `kde openclaw run` 會主動帶 `--bind auto`（CLI 旗標優先於 config）把它覆蓋回來。
+在容器隔離的 network namespace 內綁 `0.0.0.0` 是標準做法——對外仍只有 `-p` 發布的那一個 port。
+
+**例外：`gateway.auth.mode` 為 `none` 時不加這個旗標。** OpenClaw 會以
+`Refusing to bind gateway to auto without auth` 拒絕啟動，硬加旗標等於把「能跑但連不到」
+變成「根本起不來」。這種情況 `run` 不會印存取網址，而是明說 dashboard 僅容器內可達，
+並提示先啟用 auth。
+
+存取需要 auth token：
+
+```bash
+kde openclaw token
+```
+
+## 狀態的持久化位置
+
+這個功能的核心保證是「容器可拋棄、狀態全在 workspace」。而 **OpenClaw 的狀態並不只在
+`~/.openclaw`**：
+
+| 狀態 | 位置 |
+|---|---|
+| 設定、gateway sqlite（含 device 身分與配對）、agent auth store | `~/.openclaw/` |
+| codex 側憑證（含 ChatGPT OAuth） | `~/.codex/` |
+| hermes | `~/.hermes/` |
+| Claude CLI 整合 | `~/.claude/`、`~/.claude.json`、`~/.local/share/claude`、`~/.local/bin` |
+| legacy OAuth 憑證的加密金鑰 | `~/.config/openclaw/` |
+| 個人 skills | `~/.agents/skills` |
+| 套件與快取 | `~/.npm`、`~/.cache` |
+
+因此 `kde openclaw` 讓**整個容器 home** 落在 workspace 裡。做法不是直接 bind mount
+該目錄，而是建一個指向它的 named volume：
+
+```bash
+docker volume create --driver local \
+    --opt type=none --opt device=${KDE_PATH}/.openclaw-home --opt o=bind \
+    openclaw-<workspace>-home
+docker run -v openclaw-<workspace>-home:/home/node ...
+```
+
+兩種寫法的內容都落在主機的 `${KDE_PATH}/.openclaw-home`，差別在**首次掛載時**：
+
+| | 直接 bind mount 空目錄 | named volume（採用） |
+|---|---|---|
+| 映像 `/home/node` 的既有內容 | 被整個遮蔽 | Docker 自動預先複製進來 |
+| `.bashrc` / `.profile` | 消失，要自己補 | 保留 |
+| 未來版本烤進 home 的東西 | 靜默失效 | 自動帶進來 |
+
+映像已經把 `PLAYWRIGHT_BROWSERS_PATH` 指向 `~/.cache/ms-playwright`（目前是 runtime
+下載，不在映像裡）。若上游哪天把 Chromium 烤進去，直接 bind mount 會讓它安靜消失，
+named volume 則不會——這是選後者的主要理由。
+
+`docker volume create` 本身冪等，所以每次都直接呼叫，不需要先檢查存在與否。
+
+> **但書**：預先複製只在目錄為空時發生**一次**。既有 workspace 升級 base image 時，
+> 新版映像新增在 home 的內容不會被補進來。這是 Docker named volume 的既定行為，官方
+> 的 `OPENCLAW_HOME_VOLUME` 做法亦同。因此 `build.sh` / `release.sh` 的
+> `OPENCLAW_VERSION` 刻意釘住版本而非用浮動的 `latest`，讓升級是一次有意識的動作。
+
+`kde openclaw reset` 除了刪除 `.openclaw-home`，也會 `docker volume rm` 該 volume ——
+否則會留下一個指向已不存在路徑的 volume 定義，下次 `run` 會沿用它、拿不到預先複製。
+
+### 為什麼不逐個設環境變數
+
+那些路徑多半都有覆寫用的環境變數（`CODEX_HOME`、`HERMES_HOME`、`CLAUDE_CONFIG_DIR`、
+`GEMINI_CLI_HOME`、`GH_CONFIG_DIR`、`XDG_*`…），但逐個覆寫是追不完的：每新增一個
+provider plugin 就要再補一行，而硬寫路徑、未提供覆寫的 plugin 根本救不了。
+
+### 不處理會出現的症狀
+
+如果只掛 `~/.openclaw`，會出現一個很難診斷的症狀：**onboarding 精靈的「Test AI access
+now」測試通過（憑證此刻就在該容器內），但精靈結束、`--rm` 容器銷毀後憑證一起消失，
+之後 gateway 一問就 `401 Missing bearer`**，而 `openclaw models status` 顯示
+`OAuth/token status: none`。
+
+## 掛載說明
+
+`kde openclaw` 的三種容器（狀態檢查、onboard、gateway）共用同一組掛載參數，只有這三個掛載：
+
+```bash
+-v ${KDE_PATH}:${KDE_PATH}                          # workspace，容器內外絕對路徑一致
+-v openclaw-<workspace>-home:/home/node              # 整個容器 home（named volume → ${KDE_PATH}/.openclaw-home）
+-v ${KDE_CLI_PATH}:/usr/local/lib/kde:ro             # kde CLI，與主機同版（唯讀）
+-v /var/run/docker.sock:/var/run/docker.sock:ro      # DooD；`:ro` 只限制掛載點本身不能被改寫或卸載，
+                                                      # 不限制透過 socket 可下達的 Docker API 呼叫，
+                                                      # 見下方「風險說明」
+```
+
+容器 home 整個對應到 `${KDE_PATH}/.openclaw-home`，所以 agent 在 home 底下的任何狀態都隨 workspace 一起搬移 / 清除。
+
+> 早期設計曾另外掛載 `~/.config/openclaw`，並在實作階段以假金鑰經 `openclaw config set` 與 `openclaw onboard --non-interactive` 實測後移除。事後查官方文件才發現那個路徑確實有用途（legacy OAuth 憑證的加密金鑰），只是那兩條測試路徑都走不到它——這正是改為整個 home 掛載的動機之一：不必逐個猜哪些路徑有用。
+
+## 風險說明
+
+`kde openclaw` 把宿主的 Docker socket 掛進容器，容器內跑的是一個**自主運作的 AI agent**，不是人在鍵盤前操作。這代表：
+
+- 這個 agent 對宿主的 Docker daemon 有完整控制權，等同對宿主機擁有 effective root——例如可以自行下 `docker run --privileged -v /:/host` 之類的指令直接操作宿主檔案系統，不受任何額外限制。
+- workspace（`${KDE_PATH}`）以**讀寫**、且容器內外路徑相同的方式掛入，agent 在 workspace 內的任何寫入都直接反映到宿主檔案系統。
+- socket 掛載上的 `:ro` 只限制容器內不能重新掛載或卸載該掛載點本身，不會限制透過這個 socket 能下達的 Docker API 呼叫；PUID/PGID 對齊解決的是掛載檔案的擁有權問題，與上述兩點風險無關，不構成防護。
+
+掛 socket（DooD）本身是這個工具刻意選擇的設計（`kde code-server` 也是同樣做法），這裡不重新討論那個取捨；差別在於這裡的操作者是自主 agent 而非人，上述風險必須被明確認知，而不是被 `:ro` 或 PUID/PGID 這些字眼帶過。
+
+## PUID / PGID
+
+容器內 OpenClaw 使用者固定為 `node`（home 固定 `/home/node`，官方映像既定），只有 uid/gid 會依 `PUID`/`PGID` 變動：
+
+- 預設取主機的 `id -u` / `id -g`
+- 可用環境變數覆寫：`PUID=1500 PGID=1500 kde openclaw run`
+
+## 初始化狀態判斷
+
+`kde openclaw` 不是用「`.openclaw` 目錄是否存在/是否為空」來判斷初始化狀態——bind mount 會讓 Docker 自動建立不存在的 host 目錄，只要跑過任何一次 action，目錄必然存在；目錄非空也不代表可用（onboarding 中途 Ctrl-C 可能留下半成品 config）。
+
+實際判斷方式：在一次性容器內執行 `openclaw config get gateway.mode`，值為 `local` 才算已初始化——這正是 `openclaw gateway run` 自己唯一在意的條件。
+
+## 典型流程
+
+```bash
+kde openclaw onboard    # 1. 一次性初始化精靈
+kde openclaw run        # 2. 背景啟動 gateway
+kde openclaw token      # 3. 取 dashboard 的 token
+kde openclaw tui        # 4. 互動操作 OpenClaw agent（或 exec 進 bash 跑 kde 指令）
+kde openclaw log -f     # 5. 有問題時看日誌
+kde openclaw stop        # 6. 用完停止並移除容器
+```
+
+## 故障排除
+
+### agent 回 `401 Missing bearer`，但 onboarding 的「Test AI access」明明通過
+
+```
+run error: unexpected status 401 Unauthorized: Missing bearer or basic
+authentication in header, url: https://api.openai.com/v1/responses
+```
+
+若這個 workspace 是用**舊版 `kde`（尚未釘住 `--agent-name main`）**做的 onboarding，
+且當時把第一個 agent 改了名字，憑證會落在一個 config roster 不認得的 agent 上。
+gateway 跑的是 `main`，讀不到憑證，於是發出不帶 `Authorization` header 的請求。
+
+確認方式（任一即可）：
+
+```bash
+kde openclaw exec "openclaw agents list"   # 只看得到 main (default)
+kde openclaw exec "openclaw doctor"        # 會有下面這段
+```
+
+```
+- Found 1 agent directory on disk without a matching agents.list entry.
+  Examples: <你當時取的名字>
+```
+
+**解決方法**（保留 Slack 等既有設定，只重做 model 登入；憑證這次會寫進 `main`）：
+
+```bash
+docker run -it --rm -e PUID=$(id -u) -e PGID=$(id -g) \
+  -v openclaw-<workspace>-home:/home/node \
+  ${OPENCLAW_IMAGE} openclaw configure --section model
+```
+
+完成後 `kde openclaw stop && kde openclaw run` 讓 gateway 重讀設定。確認能聊之後，
+再刪掉 `<workspace>/.openclaw-home/.openclaw/agents/<舊名字>`——在那之前那裡是 token
+的唯一副本。要從頭來的話 `kde openclaw reset -f && kde openclaw onboard` 也可以，
+新版精靈不會再問 agent 名字。
+
+### `models status` 顯示 `OAuth/token status: none`
+
+代表 provider 的憑證從未建立 —— onboarding 精靈可能只記下了 auth profile 的身分
+（provider / mode / email），但沒有完成登入。注意精靈裡的「Test AI access now」通過
+**不代表**憑證已落地。
+
+先確認狀態：
+
+```bash
+kde openclaw exec "openclaw models status"
+```
+
+若 `Providers w/ OAuth/tokens` 是 0，執行登入。**登入必須有 TTY**，所以要用 `exec`
+進 shell 再跑，不能把它塞進 `exec <cmd>`：
+
+```bash
+kde openclaw exec
+# 進到容器後：
+openclaw models auth login --provider openai --device-code
+```
+
+`--device-code` 會給一組代碼讓你在主機的瀏覽器完成授權，不需要把 OAuth callback
+導回容器。非互動執行（`exec <cmd>`）會直接被擋下：
+
+```
+models auth login requires an interactive TTY. In automation, use
+openclaw models auth paste-token --provider <provider> when token auth is available.
+```
+
+（若該 provider 支援 token 貼上，`openclaw models auth paste-token` 才是非互動的路徑。）
+
+### `run` 說尚未初始化
+
+```
+❌ OpenClaw 尚未初始化 (gateway.mode 不是 local)
+   請先執行：kde openclaw onboard
+```
+
+**解決方法**：先執行 `kde openclaw onboard` 完成初始化精靈，再重新 `kde openclaw run`。
+
+### `exec` 說容器未運行
+
+```
+❌ 容器 openclaw-<workspace> 未在運行，請先執行：kde openclaw run
+```
+
+**解決方法**：先 `kde openclaw run` 背景啟動 gateway，確認成功後再 `kde openclaw exec`。
+
+### `reset` 被拒絕
+
+```
+❌ 容器 openclaw-<workspace> 仍在運行，請先執行：kde openclaw stop
+```
+
+**解決方法**：先 `kde openclaw stop`，確認容器已移除後再 `kde openclaw reset`。
+
+### gateway 啟動後健康檢查失敗
+
+`run` 會在啟動後等待數秒並確認容器仍在 running；若容器已退出，會印出 `docker logs --tail 50 <name>` 的內容並回報失敗（不會謊報成功）。常見原因是設定不完整——回頭確認 `kde openclaw onboard` 是否真的成功完成。
+
+### 除錯指令
+
+```bash
+# 查看容器狀態
+docker ps -a | grep openclaw
+
+# 查看容器日誌
+kde openclaw log
+kde openclaw log -f                   # 持續查看
+
+# 檢查掛載的 Volume
+docker inspect openclaw-<workspace> | grep -A 20 Mounts
+```
+
+---
+
+**相關文檔**：
+- **[KDE-cli 概述](../overview.md)** - 完整的工具生態系統
+- **[Code Server 文檔](./code-server.md)** - 另一個以容器承載工具、內建 kde-cli 的整合範例

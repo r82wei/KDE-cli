@@ -61,6 +61,7 @@ show_help() {
     echo "  cloudflare-tunnel <target> [options]                透過 Cloudflare Tunnel 建立連線 (可以使用 kde cloudflare-tunnel -h 查看詳細說明)"
     echo "  telepresence <command> [namespace] [workload]       透過 Telepresence 連接 k8s 環境，透過本地容器環境取代目標 Pod 的流量 (可以使用 kde telepresence -h 查看詳細說明)"
     echo "  code-server [-d] [-p port] [-n name] [-v dir] [-w dir] [-a agent]   啟動 code-server，-d 背景執行，-p 指定 port，-n 指定容器名稱(可同時啟動多個)，-v 指定掛載目錄或檔案，格式 src[:dst[:ro|rw]](可重複指定多次，預設當前路徑)，-w 指定開啟的資料夾，-a 啟動時安裝 AI agent(可重複指定多次)"
+    echo "  openclaw <run|onboard|stop|tui|exec|log|token|reset> 以容器啟動 OpenClaw agent，可在容器內使用 kde CLI (可以使用 kde openclaw -h 查看詳細說明)"
     echo "  claude-skill <install|update|status>                安裝 KDE Claude Code 技能到 ~/.claude/skills/"
     echo "  alias <name> [path]                                 建立 alias 指令，透過 tmux 快速啟動 session 到指定路徑的目錄 (需要安裝 tmux)"
     echo "  version                                             顯示 KDE 版本"
@@ -166,6 +167,10 @@ if [[ -z ${CODE_SERVER_IMAGE} ]]; then
     export CODE_SERVER_IMAGE=docker.io/r82wei/kde-code-server:latest
     echo "CODE_SERVER_IMAGE=${CODE_SERVER_IMAGE}" >> ${KDE_ENV_FILE}
 fi
+if [[ -z ${OPENCLAW_IMAGE} ]]; then
+    export OPENCLAW_IMAGE=docker.io/r82wei/kde-openclaw:latest
+    echo "OPENCLAW_IMAGE=${OPENCLAW_IMAGE}" >> ${KDE_ENV_FILE}
+fi
 
 
 # 設定 ngrok 的環境變數
@@ -190,7 +195,9 @@ fi
 if [[ -z ${CUR_ENV} ]]; then
     if [[ -f ${KDE_PATH}/current.env ]]; then
         source ${KDE_PATH}/current.env
-        echo "從 current.env 檔案中讀取當前環境為 ${CUR_ENV}"
+        # 導到 stderr：這是資訊性提示，不是指令的輸出。留在 stdout 會汙染
+        # 以 stdout 當資料通道的子命令（例如 kde openclaw token | xclip）。
+        echo "從 current.env 檔案中讀取當前環境為 ${CUR_ENV}" >&2
     fi
 fi
 
@@ -304,6 +311,10 @@ case "$1" in
     code-server)
         shift  # 移除 "code-server" 指令
         source ${KDE_SCRIPTS_PATH}/code-server/command.sh
+        ;;
+    openclaw)
+        shift  # 移除 "openclaw" 指令
+        source ${KDE_SCRIPTS_PATH}/openclaw/command.sh
         ;;
     *)
         show_help
