@@ -40,6 +40,7 @@ STUB_IMAGE_VERSION="2026.8.2"     # 映像的 org.opencontainers.image.version l
 STUB_IMAGE_ID_AFTER=""
 STUB_IMAGE_VERSION_AFTER=""
 STUB_PULL_FAIL=""     # 當 "true" 時，docker pull 回傳 1
+STUB_IMAGE_MISSING="" # 當 "true" 時，docker image inspect 失敗（本機沒有該映像）
 STUB_STOP_FAIL=""     # 當 "true" 時，docker stop 回傳 1
 STUB_RM_FAIL=""       # 當 "true" 時，docker rm 回傳 1
 
@@ -61,6 +62,11 @@ docker() {
             return 0
             ;;
         run)
+            # 本機沒有映像且拉不到時，docker 連容器都建不起來：無輸出、回傳非零。
+            # 這正是踩到的情境——輸出是空的，於是「讀不到設定」被誤判成「未初始化」。
+            if [[ "${STUB_IMAGE_MISSING}" == "true" && "${STUB_PULL_FAIL}" == "true" ]]; then
+                return 125
+            fi
             # 狀態檢查容器：印出 gateway.mode
             if [[ "$*" == *"config get gateway.mode"* ]]; then
                 echo "${STUB_MODE}"
@@ -87,6 +93,8 @@ docker() {
             ;;
         port) echo "${STUB_PORT_MAP}"; return 0 ;;
         image)
+            # 本機沒有這個映像：docker image inspect 回傳非零且無輸出
+            if [[ "${STUB_IMAGE_MISSING}" == "true" ]]; then return 1; fi
             # docker image inspect -f '{{.Id}}' / '{{index .Config.Labels ...}}'
             if [[ "$*" == *"Config.Labels"* ]]; then
                 echo "${STUB_IMAGE_VERSION}"
@@ -97,6 +105,8 @@ docker() {
             ;;
         pull)
             if [[ "${STUB_PULL_FAIL}" == "true" ]]; then return 1; fi
+            # pull 成功代表本機從此有這個映像
+            STUB_IMAGE_MISSING=""
             # 模擬 registry 上有新版：pull 之後本地映像換掉。
             # 這個賦值必須在父 shell 生效才有意義——docker pull 是直接執行的
             # （不是命令替換），所以可行；get_openclaw_image_id 那種
@@ -157,6 +167,7 @@ reset_stub() {
     STUB_STOP_FAIL=""; STUB_RM_FAIL=""
     STUB_IMAGE_ID="sha256:old"; STUB_IMAGE_VERSION="2026.8.2"
     STUB_IMAGE_ID_AFTER=""; STUB_IMAGE_VERSION_AFTER=""; STUB_PULL_FAIL=""
+    STUB_IMAGE_MISSING=""
 }
 
 NAME="openclaw-kde-test-openclaw-lc"
@@ -173,6 +184,32 @@ assert_true "gateway.mode 為空時回傳 false" onboarded_is false
 
 reset_stub; STUB_MODE="  local  "
 assert_true "輸出含空白時仍能判斷" onboarded_is true
+
+echo ""
+echo "--- 映像取不到時的診斷 ---"
+# 讀 gateway.mode 的一次性容器把 docker 的 stderr 丟掉，映像不存在時它連容器都
+# 沒建起來、輸出是空的，於是「讀不到設定」會被誤判成「gateway.mode 不是 local」，
+# 畫面上變成「尚未初始化，請先 onboard」——照著做只會用同一個壞映像再失敗一次，
+# onboard -f 甚至會覆寫掉本來好好的設定。實際踩過（kde.env 的 tag 打錯）。
+reset_stub; STUB_MODE="local"; STUB_IMAGE_MISSING="true"; STUB_PULL_FAIL="true"
+OUT=$(run_openclaw_gateway 2>&1 || true)
+assert_true  "映像取不到時明講是映像問題" out_has "取得映像失敗"
+assert_true  "錯誤訊息含映像名稱" out_has "kde-openclaw:test"
+assert_true  "錯誤訊息指出設定來源" out_has "OPENCLAW_IMAGE"
+assert_false "不得誤報為尚未初始化" out_has "尚未初始化"
+assert_false "不得建議去跑 onboard" out_has "openclaw onboard"
+assert_false "映像取不到時不啟動 gateway" logged "run -d"
+
+reset_stub; STUB_MODE="local"; STUB_IMAGE_MISSING="true"
+OUT=$(run_openclaw_gateway 2>&1 || true)
+assert_true "本機沒有但 pull 得到就繼續" logged "pull ${OPENCLAW_IMAGE}"
+assert_true "pull 成功後照常啟動 gateway" logged "run -d"
+
+# 本機已有就不 pull：那是 upgrade 的職責，每個 action 都打 registry 會讓離線
+# 環境不能用，也讓每次操作多一次網路往返
+reset_stub; STUB_MODE="local"
+OUT=$(run_openclaw_gateway 2>&1 || true)
+assert_false "本機已有映像時不 pull" logged "pull"
 
 reset_stub; STUB_MODE="local"
 is_openclaw_onboarded >/dev/null

@@ -192,10 +192,21 @@ kde openclaw downgrade     # 10. restore data + image from a backup
   `<workspace>/.openclaw-backups/`, newest 3 kept), taken **after** the container stops so the
   SQLite files are quiescent. `kde openclaw downgrade` restores one — data *and* image version.
   It records the image in `<workspace>/.openclaw-image` rather than editing `kde.env`, because
-  `kde.env` is versioned and a local rollback must not follow the repo to teammates. `run` and
-  `restart` honour that pin and say so in their output; `upgrade` clears it. Never commit
-  `.openclaw-image` or a `kde.env` edited to pin an image — a locally built tag will not exist
-  on anyone else's machine.
+  `kde.env` is versioned and a local rollback must not follow the repo to teammates. Every
+  action except `upgrade` honours that pin and prints the image **and the pin file's path** on
+  stderr, plus a line saying editing `kde.env` will not take effect — without the path, users
+  keep editing `kde.env`, which is exactly the side being overridden. `upgrade` clears the pin.
+  So when an openclaw version looks wrong, check `<workspace>/.openclaw-image` before `kde.env`.
+  Never commit `.openclaw-image` or a `kde.env` edited to pin an image — a locally built tag
+  will not exist on anyone else's machine.
+- **"OpenClaw 尚未初始化 (gateway.mode 不是 local)" now means what it says.** Initialization
+  state is read by running the image (`openclaw config get gateway.mode`), so an unobtainable
+  image used to surface as this message and send people into `onboard` — which reruns on the
+  same broken image, and with `-f` overwrites a perfectly good config. Every action now checks
+  the image first: present locally → proceed without pulling (pulling is `upgrade`'s job);
+  absent → pull once; unobtainable → `❌ 取得映像失敗` naming the image **and the file that set
+  it** (`.openclaw-image` pin, else `kde.env`). If you see that error, fix the tag in the file
+  it names; do not run `onboard`.
 - **A new release does NOT reach a workspace by itself.** `docker run`'s default pull policy
   is `missing`: if the tag already exists locally, Docker uses it and never asks the registry.
   So after `latest` is re-released, `run`/`restart` keep silently running the old image with

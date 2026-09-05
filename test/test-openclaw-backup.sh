@@ -226,6 +226,16 @@ write_openclaw_image_pin "docker.io/r82wei/kde-openclaw:pinned-1"
 OPENCLAW_ACTION=run
 OUT=$(apply_openclaw_image_pin 2>&1 || true)
 assert_true "套用 pin 時明確告知（否則是無聲的版本歪掉）" out_has "pinned-1"
+# 只說「有釘選」不說路徑，使用者會一直去改 kde.env——而 kde.env 正是被蓋掉的那邊
+assert_true "提示含釘選檔路徑" out_has "${KDE_PATH}/.openclaw-image"
+assert_true "提示點名 kde.env 不生效" out_has "kde.env"
+
+# token action 的 stdout 要能被管線接走，提示不能混進去
+reset_all
+write_openclaw_image_pin "docker.io/r82wei/kde-openclaw:pinned-1"
+OPENCLAW_ACTION=token
+OUT=$(apply_openclaw_image_pin 2>/dev/null || true)
+assert_eq "提示走 stderr，stdout 保持乾淨" "" "${OUT}"
 
 # upgrade 的語意是「回到 kde.env 指定的映像的最新版」，所以它不吃 pin
 reset_all

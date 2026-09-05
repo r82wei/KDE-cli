@@ -371,7 +371,7 @@ kde openclaw backup
 kde openclaw upgrade
 
 # 從備份還原資料與映像版本（備份由 upgrade 自動建立，保留最新 3 份）
-# 不改 kde.env：映像釘選寫在本機的 .openclaw-image，upgrade 會解除
+# 不改 kde.env：映像釘選寫在本機的 .openclaw-image（釘選生效時會印出該路徑），upgrade 會解除
 kde openclaw downgrade            # 列出備份並互動選擇
 kde openclaw downgrade --list     # 只看有哪些備份
 kde openclaw downgrade 2 -f       # 直接還原第 2 份，略過確認

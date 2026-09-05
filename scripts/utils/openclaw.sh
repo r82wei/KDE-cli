@@ -241,12 +241,53 @@ ensure_openclaw_home_volume() {
         "$(get_openclaw_home_volume_name)" >/dev/null
 }
 
+# 確認 OPENCLAW_IMAGE 真的能用：本機有就直接過，沒有才嘗試 pull。
+#
+# 為什麼需要一道獨立的前置檢查：所有 action 的第一步都是在一次性容器裡讀
+# gateway.mode，而那個讀取把 docker 的 stderr 丟掉（見 get_openclaw_config）。
+# 映像不存在時 docker 連容器都建不起來、輸出是空的，於是「讀不到設定」被誤判成
+# 「gateway.mode 不是 local」，畫面上變成「OpenClaw 尚未初始化，請先 onboard」——
+# 一個完全指錯方向的診斷：照著跑 onboard 會用同一個壞映像再失敗一次，而
+# onboard -f 甚至會覆寫掉本來好好的設定。實際踩過（kde.env 的 OPENCLAW_IMAGE
+# 打成不存在的 tag，症狀就是這句「尚未初始化」）。
+#
+# 本機已有就不 pull：那是 upgrade 的職責。每個 action 都打 registry 會讓離線環境
+# 直接不能用，也讓每次操作多一次網路往返。
+ensure_openclaw_image_available() {
+    if docker image inspect "${OPENCLAW_IMAGE}" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    echo "↓ 本機沒有 ${OPENCLAW_IMAGE}，嘗試拉取 ..." >&2
+    if docker pull "${OPENCLAW_IMAGE}" >&2; then
+        return 0
+    fi
+
+    echo "❌ 取得映像失敗：${OPENCLAW_IMAGE}" >&2
+    echo "   本機沒有這個映像，registry 也拉不到" >&2
+    echo "   （tag 打錯，或那是只在別台機器上 build 過、從未推上 registry 的映像）" >&2
+    echo "   設定來源：$(describe_openclaw_image_source)" >&2
+    return 1
+}
+
+# 映像設定到底來自哪個檔案。釘選檔會蓋掉 kde.env，只講其中一個會讓人改錯地方。
+describe_openclaw_image_source() {
+    local pin_file
+    pin_file=$(get_openclaw_image_pin_file)
+    if [[ -f "${pin_file}" ]]; then
+        echo "${pin_file}（映像釘選，覆蓋 kde.env；kde openclaw upgrade 可解除）"
+    else
+        echo "${KDE_ENV_FILE:-${KDE_PATH}/kde.env} 的 OPENCLAW_IMAGE"
+    fi
+}
+
 # 組出三種容器（狀態檢查、onboard、gateway）共用的 docker run 參數。
 # bash 陣列無法用回傳值傳遞，結果放在全域陣列 OPENCLAW_DOCKER_ARGS。
 #
 # 只放三者都需要的東西：掛載、身分、工作目錄。
 # port、-d/-it、--name、--restart 由各 action 自行附加。
 build_openclaw_docker_args() {
+    ensure_openclaw_image_available || return 1
     ensure_openclaw_home_volume
 
     # docker.sock 的 gid，用來 --group-add 讓容器內能操作 Docker。
@@ -388,8 +429,16 @@ is_openclaw_container_running() {
 #   2. 目錄非空也不代表可用——onboarding 中途 Ctrl-C 會留下半成品 config，
 #      gateway run 依然會拒絕啟動。
 # gateway.mode=local 正是 openclaw gateway run 唯一在意的條件。
+# 回傳 true / false / unknown。unknown 代表「問不到」而非「沒初始化」——
+# 呼叫端要把它當成錯誤直接中止，不可退化成 false 去建議使用者跑 onboard。
 is_openclaw_onboarded() {
-    if [[ "$(get_openclaw_config gateway.mode)" == "local" ]]; then
+    local mode rc=0
+    mode=$(get_openclaw_config gateway.mode) || rc=$?
+    if [[ ${rc} -ne 0 ]]; then
+        echo "unknown"
+        return 0
+    fi
+    if [[ "${mode}" == "local" ]]; then
         echo "true"
     else
         echo "false"
@@ -398,8 +447,14 @@ is_openclaw_onboarded() {
 
 # 在一次性無 TTY 容器內讀取單一設定值，讀不到時回傳空字串。
 # 這是唯一一處直接問 OpenClaw 設定的地方，其他函式都經由它取值。
+#
+# 回傳值分兩種情形，呼叫端必須分得出來：
+#   0 + 空字串 = 容器跑起來了，但沒有這個設定值（真的沒初始化）
+#   非 0       = 連容器都跑不起來（映像取不到），原因已由
+#                ensure_openclaw_image_available 印在 stderr
+# 兩者混為一談正是「映像 tag 打錯卻被告知去跑 onboard」的成因。
 get_openclaw_config() {
-    build_openclaw_docker_args
+    build_openclaw_docker_args || return 1
     docker run --rm "${OPENCLAW_DOCKER_ARGS[@]}" "${OPENCLAW_IMAGE}" \
         openclaw config get "$1" 2>/dev/null | tr -d '[:space:]' || true
 }
@@ -425,7 +480,7 @@ onboard_openclaw() {
         fi
     fi
 
-    build_openclaw_docker_args
+    build_openclaw_docker_args || return 1
     # --agent-name main 是刻意釘住的，不是預設值的複述：帶了它，精靈就不會問
     # 「What should we call your first agent?」，而那一題填非 main 的名字會壞掉。
     #
@@ -468,7 +523,14 @@ run_openclaw_gateway() {
         return 1
     fi
 
-    if [[ "$(is_openclaw_onboarded)" != "true" ]]; then
+    local onboarded
+    onboarded=$(is_openclaw_onboarded)
+    # unknown = 設定根本讀不到（映像取不到），原因已印在上面。
+    # 這裡再說一次「尚未初始化」會把使用者推去 onboard，那是錯的方向。
+    if [[ "${onboarded}" == "unknown" ]]; then
+        return 1
+    fi
+    if [[ "${onboarded}" != "true" ]]; then
         echo "❌ OpenClaw 尚未初始化 (gateway.mode 不是 local)"
         echo "   請先執行：kde openclaw onboard"
         return 1
@@ -490,7 +552,7 @@ run_openclaw_gateway() {
         BIND_ARGS=(--bind auto)
     fi
 
-    build_openclaw_docker_args
+    build_openclaw_docker_args || return 1
     if ! docker run -d --name "${name}" \
         --restart unless-stopped \
         -p "${OPENCLAW_PORT}:18789" \
@@ -628,7 +690,7 @@ log_openclaw() {
 # 本函式是全檔唯一把錯誤訊息送到 stderr 的地方：stdout 是資料通道，
 # 混進提示文字會讓 `kde openclaw token | xclip` 夾帶垃圾。
 get_openclaw_token() {
-    build_openclaw_docker_args
+    build_openclaw_docker_args || return 1
 
     local token=""
     token=$(docker run --rm "${OPENCLAW_DOCKER_ARGS[@]}" "${OPENCLAW_IMAGE}" \
@@ -825,10 +887,17 @@ apply_openclaw_image_pin() {
     fi
 
     OPENCLAW_IMAGE="${pin}"
-    # 一定要說出來。否則實際跑的版本與 kde.env 寫的不一致卻毫無線索，
-    # 那正是這個 workspace 已經踩過一次的無聲版本歪掉。
-    echo "ℹ️  使用釘選映像：${OPENCLAW_IMAGE}"
-    echo "   （由 kde openclaw downgrade 設定，kde openclaw upgrade 會解除）"
+    # 一定要說出來，而且要說出釘選檔的路徑。否則實際跑的版本與 kde.env 寫的
+    # 不一致卻毫無線索，那正是這個 workspace 已經踩過一次的無聲版本歪掉；
+    # 而只說「有釘選」不說路徑，使用者會反覆去改 kde.env——kde.env 在這裡正是
+    # 被蓋掉的那一邊，怎麼改都不會生效。
+    #
+    # 印到 stderr 而非 stdout：token action 的 stdout 是設計成可被管線接走的，
+    # 這幾行提示混進去會讓 `kde openclaw token | ...` 拿到一坨垃圾。
+    echo "ℹ️  使用釘選映像：${OPENCLAW_IMAGE}" >&2
+    echo "   來源：$(get_openclaw_image_pin_file)" >&2
+    echo "   此檔覆蓋 kde.env 的 OPENCLAW_IMAGE，改 kde.env 不會生效" >&2
+    echo "   解除：kde openclaw upgrade（或刪除上述檔案）" >&2
 }
 
 # ---------------------------------------------------------------------------
@@ -1056,6 +1125,7 @@ downgrade_openclaw() {
         echo ""
         echo "⚠️  將以 $(basename "${file}") 覆蓋現有的 .openclaw-home"
         echo "   並把映像釘選為 ${image}"
+        echo "   （寫入 $(get_openclaw_image_pin_file)，不會動到 kde.env）"
         read -p "確定要繼續嗎？(y/n) " answer
         if [[ "${answer}" != "y" ]]; then
             echo "已取消"
@@ -1075,7 +1145,9 @@ downgrade_openclaw() {
     OPENCLAW_IMAGE="${image}"
 
     echo "✓ 已還原 $(basename "${file}")"
-    echo "  映像已釘選為 ${image}（kde openclaw upgrade 會解除釘選）"
+    echo "  映像已釘選為 ${image}"
+    echo "  釘選檔：$(get_openclaw_image_pin_file)"
+    echo "  此檔覆蓋 kde.env 的 OPENCLAW_IMAGE；kde openclaw upgrade 會解除釘選"
 
     run_openclaw_gateway
 }
@@ -1148,7 +1220,7 @@ upgrade_openclaw() {
     # 設下的釘選，讓兩個 action 對稱。
     if [[ -n "$(read_openclaw_image_pin)" ]]; then
         clear_openclaw_image_pin
-        echo "已解除映像釘選"
+        echo "已解除映像釘選，映像來源改回 kde.env 的 OPENCLAW_IMAGE"
     fi
 
     if [[ "$(is_openclaw_container_running)" != "true" ]]; then

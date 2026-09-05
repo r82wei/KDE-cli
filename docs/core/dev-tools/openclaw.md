@@ -231,13 +231,24 @@ OPENCLAW_BACKUP_AT=2026-09-04T16:15:00+08:00
 
 | action | 對釘選的行為 |
 |---|---|
-| `run`、`restart` | 遵守釘選，並在輸出中明確印出使用了哪個映像 |
+| `upgrade` 以外的所有 action | 遵守釘選（`run`、`restart`、`tui`、`exec`、`token`…），並明確印出使用了哪個映像與釘選檔路徑 |
 | `downgrade` | **寫入**釘選（值取自備份的 manifest） |
 | `upgrade` | **清除**釘選，回到 `kde.env` 指定的映像 |
 
 兩者對稱：`downgrade` 釘住、`upgrade` 放開。否則 `downgrade` 之後執行 `upgrade` 會變成「升級一個被釘住的舊 tag」，沒有意義。
 
-`run`/`restart` 一定會把釘選印出來，因為實際跑的版本與 `kde.env` 寫的不一致卻毫無線索，正是這個專案已經踩過一次的無聲版本歪掉。
+釘選生效時一定會印出來，而且**連釘選檔的路徑一起印**：
+
+```
+ℹ️  使用釘選映像：docker.io/r82wei/kde-openclaw:5e990b9-2026.8.2
+   來源：/path/to/workspace/.openclaw-image
+   此檔覆蓋 kde.env 的 OPENCLAW_IMAGE，改 kde.env 不會生效
+   解除：kde openclaw upgrade（或刪除上述檔案）
+```
+
+實際跑的版本與 `kde.env` 寫的不一致卻毫無線索，正是這個專案已經踩過一次的無聲版本歪掉；而只說「有釘選」不說路徑，使用者會反覆去改 `kde.env`——`kde.env` 在這裡正是被蓋掉的那一邊，怎麼改都不會生效。
+
+這幾行印在 **stderr**，因為 `token` 的 stdout 是設計成可被管線接走的（`kde openclaw token | pbcopy`），提示混進去會讓管線拿到垃圾。
 
 #### 還原流程
 
@@ -680,6 +691,16 @@ way."）、`SOUL.md`、`IDENTITY.md`、`USER.md`、`memory/YYYY-MM-DD.md`、`BOO
 
 實際判斷方式：在一次性容器內執行 `openclaw config get gateway.mode`，值為 `local` 才算已初始化——這正是 `openclaw gateway run` 自己唯一在意的條件。
 
+### 前置檢查：映像必須先能取得
+
+因為初始化狀態是「跑一個容器問出來的」，映像取不到時那次讀取會得到空字串，而空字串與「真的沒初始化」長得一模一樣。所以在組任何 docker 參數之前會先確認映像可用：
+
+- 本機已有該映像 → 直接通過，**不會** pull（那是 `upgrade` 的職責；每個 action 都打 registry 會讓離線環境不能用）
+- 本機沒有 → 拉一次；拉得到就繼續
+- 拉不到 → 明確報「取得映像失敗」，連同**設定來源的檔案路徑**（釘選檔或 `kde.env`），並中止
+
+沒有這道檢查時，`OPENCLAW_IMAGE` 指到不存在的 tag 會被誤報成「OpenClaw 尚未初始化，請先 onboard」——照著跑 `onboard` 只會用同一個壞映像再失敗一次，而 `onboard -f` 甚至會覆寫掉本來好好的設定。
+
 ## 典型流程
 
 ```bash
@@ -768,6 +789,20 @@ openclaw models auth paste-token --provider <provider> when token auth is availa
 ```
 
 **解決方法**：先執行 `kde openclaw onboard` 完成初始化精靈，再重新 `kde openclaw run`。
+
+這句話現在只會在**真的**讀到 `gateway.mode` 且值不是 `local` 時出現。映像取不到是另一則訊息（見下）。
+
+### 取得映像失敗
+
+```
+↓ 本機沒有 docker.io/r82wei/kde-openclaw:5e990b9-2026.8.2-browser，嘗試拉取 ...
+❌ 取得映像失敗：docker.io/r82wei/kde-openclaw:5e990b9-2026.8.2-browser
+   本機沒有這個映像，registry 也拉不到
+   （tag 打錯，或那是只在別台機器上 build 過、從未推上 registry 的映像）
+   設定來源：<workspace>/kde.env 的 OPENCLAW_IMAGE
+```
+
+**解決方法**：照最後一行指出的檔案去改。常見成因是 `kde.env` 的 tag 打錯，或填了本機 `build.sh` 產出、從未 push 的映像。若最後一行指的是 `.openclaw-image`，那是 `downgrade` 設下的釘選（它覆蓋 `kde.env`），用 `kde openclaw upgrade` 解除。
 
 ### `exec` 說容器未運行
 
