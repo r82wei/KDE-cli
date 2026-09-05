@@ -11,7 +11,7 @@ TARGET_ARCH=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
 # 刻意釘住版本而非用浮動的 latest：base image 一升級就可能動到我們寫死的假設
 # （tini 路徑、使用者名稱 node/uid 1000、apt 可用性、home 內容），升級應該是一次
 # 有意識的 commit，而不是任何一次 rebuild 的副作用。
-OPENCLAW_VERSION=${OPENCLAW_VERSION:-2026.9.1-browser}
+OPENCLAW_VERSION=${OPENCLAW_VERSION:-2026.8.2-browser}
 
 IMAGE="r82wei/kde-openclaw:${KDE_CLI_VERSION}-${OPENCLAW_VERSION}"
 
