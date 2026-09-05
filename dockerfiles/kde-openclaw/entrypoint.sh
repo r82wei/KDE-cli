@@ -25,16 +25,37 @@ fi
 
 mkdir -p "${OPENCLAW_HOME_DIR}/.openclaw"
 
+# .cache 也要一併確保存在且屬於目標使用者。
+#
+# 官方 -browser 變體的 playwright 安裝步驟是以 root 建出 /home/node/.cache 的
+# （只有裡面的 ms-playwright 被 chown 給 node），於是那層目錄在映像裡是
+# root:root 0755。OpenClaw 啟動時要在 ~/.cache 底下建 openclaw-<uid> 當
+# SQLite worker 的 temp dir，降權後寫不進去，容器就會 restart loop 並只留下
+#   SQLite read-only worker Unable to create fallback OpenClaw temp dir:
+#   /home/node/.cache/openclaw-<uid>
+# 這條訊息（實測踩過）。與 PUID 是多少無關，1000 也一樣失敗。
+#
+# 只有全新 workspace 會踩到：home 是 named volume，Docker 只在目錄為空的首次
+# 掛載把映像的 /home/node 預先複製進去，那次會把 root 所有的 .cache 一起帶進
+# volume。既有 workspace 沿用的是 OpenClaw 自己建的 .cache（屬 node），所以
+# 換基底映像後照樣能跑 —— 症狀只在 onboard 新 workspace 時出現。
+mkdir -p "${OPENCLAW_HOME_DIR}/.cache"
 
-# 只 chown home 與 OpenClaw 的狀態目錄。
+
+# 只 chown home 與 OpenClaw 實際要寫入的兩個目錄（.openclaw、.cache）。
 # 絕不遞迴 chown 掛進來的 workspace：那可能很大，而且會改動主機端檔案的擁有者。
 #
-# 只有 .openclaw 一個狀態目錄：實測（見 task-5-report.md Finding 1）確認 OpenClaw
+# 狀態目錄只有 .openclaw：實測（見 task-5-report.md Finding 1）確認 OpenClaw
 # 的設定與 auth 密鑰全部寫進 ~/.openclaw/openclaw.json，~/.config/openclaw 從未
-# 被寫入，故不再另建/另 chown 該目錄。
+# 被寫入，故不再另建/另 chown 該目錄。.cache 不是狀態目錄，純粹是啟動時要在裡面
+# 建 temp dir，理由見上面 mkdir 那段。
+# 刻意不遞迴 .cache：裡面的 ms-playwright 動輒數百 MB，每次啟動遞迴一次會明顯
+# 拖慢啟動，而瀏覽器只需要能讀能執行。要修的只是「在 .cache 底下建目錄」的權限，
+# 那取決於 .cache 自己這一層。
 chown "${PUID}:${PGID}" \
     "${OPENCLAW_HOME_DIR}" \
-    "${OPENCLAW_HOME_DIR}/.openclaw"
+    "${OPENCLAW_HOME_DIR}/.openclaw" \
+    "${OPENCLAW_HOME_DIR}/.cache"
 
 # setpriv 只切換 uid/gid，不會連帶更新 HOME：容器起始環境的 HOME 繼承自映像
 # 設定的 root（/root），降權後若不手動改寫，後續指令（含 openclaw 本身）會去

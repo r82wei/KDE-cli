@@ -90,13 +90,20 @@ grep -q "groupmod -g 5678 node" "${TMP_ROOT}/calls.log"
 check "以正確參數呼叫 groupmod" $?
 echo ""
 
-echo "測試 5：chown 只碰 home 與 .openclaw 狀態目錄，不遞迴 workspace"
+echo "測試 5：chown 只碰 home 與需要寫入的狀態目錄，不遞迴 workspace"
 setup
 PUID=1234 PGID=5678 run_entrypoint
-grep -q "chown 1234:5678 ${TMP_ROOT}/home ${TMP_ROOT}/home/.openclaw" "${TMP_ROOT}/calls.log"
-check "chown 目標為 home 與 .openclaw" $?
+grep -q "chown 1234:5678 ${TMP_ROOT}/home ${TMP_ROOT}/home/.openclaw ${TMP_ROOT}/home/.cache" "${TMP_ROOT}/calls.log"
+check "chown 目標為 home、.openclaw 與 .cache" $?
 grep -qE "chown.* -R" "${TMP_ROOT}/calls.log" && r=1 || r=0
 check "未使用遞迴 chown" $r
+echo ""
+
+echo "測試 5b：.cache 一併建立（browser 變體映像裡它屬 root，openclaw 要在裡面建 temp dir）"
+setup
+PUID=1234 PGID=5678 run_entrypoint
+[[ -d "${TMP_ROOT}/home/.cache" ]]
+check "已建立 .cache 目錄" $?
 echo ""
 
 echo "測試 6：以 setpriv 降權並把原指令接下去"
