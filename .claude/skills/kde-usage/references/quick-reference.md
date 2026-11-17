@@ -189,6 +189,10 @@ kde proj tail <project_name>
 kde project tail <project_name> <pod_name> [line_count]
 kde proj tail <project_name> <pod_name> 200
 
+# 非互動式模式（AI agent / 腳本，不需要 TTY）
+kde proj tail <project_name> <pod_name> --no-tty
+kde proj tail <project_name> <pod_name> 200 --no-tty
+
 # 列出專案的 Pods
 kde project pod <project_name>
 
@@ -511,6 +515,21 @@ kde telepresence clear
 - **Ingest**: 僅連線環境，不攔截流量
 
 ## 其他工具
+
+### Claude Code Skill
+
+```bash
+# 安裝 KDE Claude Code 技能（只需執行一次）
+kde claude-skill install
+
+# 更新到最新版本
+kde claude-skill update
+
+# 確認安裝狀態
+kde claude-skill status
+```
+
+安裝後 Claude Code 會自動在 KDE workspace 環境下載入 skill，了解 `kde` 指令的正確操作方式。詳細說明請參考 [Claude Code Skill 文件](../../../../docs/core/dev-tools/claude-skill.md)。
 
 ### Alias（Tmux 快捷方式）
 

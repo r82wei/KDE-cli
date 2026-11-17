@@ -15,7 +15,8 @@ description: >
 
 KDE-CLI (`kde`) is a Bash-based tool that wraps Kubernetes environment management,
 project lifecycle, and a container-based CI/CD pipeline into a single command.
-Only Docker is required on the host — everything runs inside containers.
+Every tool (kind, kubectl, helm, k9s, …) runs inside a container, so the host needs Docker
+plus a few standard programs the CLI calls directly: `envsubst`, `openssl` and `git`.
 
 ## Step 1: Orient Yourself
 
@@ -23,8 +24,18 @@ Before acting, understand the current state. Run in parallel:
 
 ```bash
 kde current        # what environment is active?
+kde status json    # which environments are RUNNING / UNREADY (machine-readable)
 kde proj ls        # what projects exist?
 ```
+
+The active environment normally comes from `current.env`. When your cwd is under
+`environments/<env>/`, that `<env>` is used for the command instead, without changing
+`current.env`. If you mean a different environment, run from the workspace root or
+`kde use <env>` first.
+
+Check `ENV_TYPE` in `environments/<env>/k8s.env`. If it is `k8s`, the environment is an
+existing external cluster and several commands behave differently — read
+`references/external-k8s.md` before deploying, undeploying or removing anything.
 
 If `kde.env` does not exist anywhere up the directory tree, the user needs to run
 `kde init` first. Ask before proceeding.
@@ -54,7 +65,27 @@ Never run `kde init` here to "fix" a missing `kde.env`: it writes a whole worksp
 (`kde.env`, templates, docs) into whatever `KDE_PATH` resolves to — in the container that
 would be your own home directory.
 
-## Step 2: Pick the Right Workflow
+## Step 2: Know What You Can Run Yourself
+
+`kde` was built around interactive menus. When you run it through a tool call there is no
+TTY and nobody to answer prompts, so some commands fail at once
+(`cannot attach stdin to a TTY-enabled container…`) and others hang on a question.
+
+- **Always pass the project name, and the pod name where one is accepted.** A missing name
+  opens a selection menu.
+- **Use the non-interactive form:** `--no-tty` for `proj pipeline` / `deploy` / `redeploy` /
+  `tail`, and `--command "<cmd>"` for `exec`, `proj exec` and `proj pod-exec`.
+- **These need a human at a terminal — give the user the exact command instead of running
+  it:** `kde start` / `create` / `restart` (kind and k3d; cluster creation needs a TTY, asks
+  for two ports on a new environment, and `start` ends by opening K9s), `kde load-image`,
+  `kde proj create`, `kde reset`, `kde code-server` (asks for a password), `kde k9s`,
+  `kde dashboard`, `kde telepresence`, `kde openclaw onboard`.
+
+The full lists, the flags for each command, and what to do when the command you need is
+interactive are in `references/non-interactive.md`. Read it before your first `kde` command
+in a session without a TTY.
+
+## Step 3: Pick the Right Workflow
 
 ### Typical end-to-end workflow (first time setup)
 
@@ -62,12 +93,19 @@ would be your own home directory.
 kde start <env_name> [kind|k3d|k8s]   # create + start K8s environment
                                         # (no need to check if it exists first —
                                         #  if it doesn't exist, start creates it)
+                                        # needs a TTY; asks for 2 ports on a new env,
+                                        # then opens K9s (`kde create` = same, no K9s)
 kde proj create <project_name>          # interactive: asks for git URL, images,
                                         # creates project.env + build.sh + deploy.sh
                                         # (includes git clone — no separate fetch needed)
 # → review/edit project.env, build.sh, deploy.sh
-kde proj deploy <project_name>          # run the pipeline
+kde proj deploy <project_name>          # run the pipeline (add --no-tty without a TTY)
 ```
+
+`kde proj create` only creates files. It does **not** create the K8s namespace — `deploy.sh`
+has to do that itself (`kubectl create namespace … --dry-run=client -o yaml | kubectl apply -f -`,
+or `helm … --create-namespace`). The project name is used as the namespace name, so it must
+be a valid one.
 
 ### Day-to-day: hot reload vs redeploy
 
@@ -84,6 +122,10 @@ restarts automatically. No redeploy needed.
 kde proj tail <project_name>                            # interactive (human)
 kde proj tail <project_name> <pod_name> --no-tty        # non-interactive (AI agent)
 ```
+
+`--no-tty` prints a snapshot of the last lines and exits; it does not follow. Run it again
+to see whether the watcher restarted. Hot reload exists only on kind / k3d — an external
+cluster cannot see host files.
 
 **Pipeline redeploy** — use when the image or deployment config changes:
 
@@ -259,20 +301,48 @@ Full flag reference: `docs/core/dev-tools/openclaw.md` (or `kde openclaw -h`).
 ### Port forwarding / external access
 
 ```bash
-kde expose <namespace> service <svc_name> <target_port> <local_port>
-kde ngrok service                                          # quick Ngrok tunnel
+kde expose <namespace> service <svc_name> <target_port> <local_port>      # foreground
+kde expose -d <namespace> service <svc_name> <target_port> <local_port>   # background (-d must come first)
+kde ngrok service                                          # quick Ngrok tunnel (interactive)
 kde cloudflare-tunnel service -d <domain>                  # Cloudflare Tunnel
 ```
+
+`kde expose` does not report bad arguments: if the namespace or resource does not exist, or
+a port is out of range, it silently switches to the interactive menu. Check the names with
+`kde proj pod <project>` or `kde exec --command "kubectl get svc -n <namespace>"` first.
+The forward binds `0.0.0.0`, so other machines on the LAN can reach it.
 
 ### Environment lifecycle
 
 ```bash
-kde stop [env_name]       # stop K8s cluster
-kde restart [env_name]    # restart K8s cluster
-kde status                # show all environment status
+kde stop [env_name]       # DELETES the cluster containers (not a pause) — see below
+kde restart [env_name]    # stop + start: rebuilds the cluster, then opens K9s
+kde status [json]         # show all environment status
 kde use <env_name>        # switch active environment
-kde rm <env_name>         # remove environment
+kde rm <env_name>         # delete the environment directory and all its projects
+kde reset [env_name]      # wipe an environment's cluster config (interactive, 2 prompts)
 ```
+
+**A stopped environment has no cluster.** `kde stop` removes the cluster containers, and
+everything that lived only inside the cluster goes with them. What survives is on disk:
+config, PKI, and `namespaces/` (project files and PVC data). `kde start` builds a fresh
+cluster and reruns the default-service install and `init.sh`, so every project has to be
+deployed again afterwards. `kde restart` fails if the environment is not running — use
+`kde start` then.
+
+### Destructive commands — confirm with the user first
+
+None of these ask for confirmation, so the check has to come from you:
+
+| Command | What is lost |
+|---------|--------------|
+| `kde rm <env>` | The whole environment directory: every project, its source checkout and uncommitted work. Does **not** stop the cluster — run `kde stop <env>` first, or its containers and Docker network stay behind on the host. |
+| `kde proj rm <project>` | Undeploys (when the environment is running), then deletes the project directory including the source checkout. |
+| `kde proj pull <project> -f` | Deletes the repo directory and clones again. Uncommitted and unpushed work is gone. Plain `pull` refuses when there are uncommitted changes — do not reach for `-f` to get past that. |
+| `kde stop [env]` | The cluster and everything deployed in it (see above). |
+| `kde proj undeploy` with no `undeploy.sh` (kind / k3d) | Deletes the whole namespace. |
+| `kde telepresence replace` | Stops the remote pod while the session is active. |
+| `kde cloudflare-tunnel … -d <domain>` | Deletes and recreates the tunnel of the same name and **overwrites the existing DNS record** for that domain. |
 
 ## Key Project Files
 
@@ -292,7 +362,7 @@ Variables load in this order (later overrides earlier):
 
 | Command | Use when |
 |---------|---------|
-| `kde proj create <name>` | Starting from scratch — interactive, asks for git URL + images, creates all scaffold files |
+| `kde proj create <name>` | Starting from scratch — interactive only (five questions, no flags), asks for git URL + images, creates all scaffold files |
 | `kde proj fetch <name> <url> <branch>` | Project directory already exists but needs a git repo cloned non-interactively |
 
 ## Pipeline Configuration Quick Reference
@@ -332,11 +402,20 @@ Stage-level options: `_IMAGE`, `_SCRIPT`, `_WORKDIR`, `_SKIP`, `_MANUAL_ONLY`,
 
 - **No `kde.env`**: Run `kde init` in the workspace root first.
 - **Wrong active environment**: Run `kde use <env_name>` to switch.
-- **Image not found in Kind/K3D**: Use `kde load-image <image>` to push local images into the cluster.
+- **Command fails with `cannot attach stdin to a TTY-enabled container`, or hangs**: it needs a TTY or is waiting on a prompt. Do not retry it; see Step 2 and `references/non-interactive.md`.
+- **Image not found in Kind/K3D**: Use `kde load-image <image>` to push local images into the cluster (needs a TTY; not available on external K8s — push to a registry instead).
+- **Namespace not found on deploy**: `kde proj create` does not create it; `deploy.sh` must.
+- **Everything is gone after `kde stop` / `kde restart`**: expected — the cluster is rebuilt. Redeploy the projects.
 - **Hyphen vs underscore**: Pipeline variable names always use underscores, even when stage names use hyphens.
 - **Pipeline stage fails**: Check the stage script with `bash -n <script>` for syntax errors; check `.pipeline.env` for missing variables from prior stages.
 - **CrashLoopBackOff / pod not starting**: Start with `kde proj tail` for logs, then `kde k9s` for full picture (Events section is especially useful).
 
-## Full Command Reference
+## References
 
-For complete syntax and options, read `references/quick-reference.md` in this skill directory.
+In this skill directory:
+
+| File | Read it when |
+|------|--------------|
+| `references/quick-reference.md` | You need the complete syntax and options of a command |
+| `references/non-interactive.md` | You are running `kde` without a TTY (tool calls, CI) and need to know which commands work, which flags to use, and what to hand to the user |
+| `references/external-k8s.md` | The environment's `ENV_TYPE` is `k8s` (an existing cluster, possibly shared) |

@@ -123,7 +123,9 @@ kde proj deploy [project_name]
 kde project pipeline <project_name> --from <step>    # 從特定步驟開始
 kde project pipeline <project_name> --to <step>      # 執行到特定步驟
 kde project pipeline <project_name> --only <step>    # 只執行特定步驟
-kde project pipeline <project_name> --manual         # 執行手動步驟
+kde project pipeline <project_name> --manual         # 觸發 MANUAL_ONLY 階段並自動執行 script
+kde project pipeline <project_name> --shell          # 進入互動式環境除錯（隱含 --manual）
+kde project pipeline <project_name> --no-tty         # 不使用 TTY 模式執行（AI agent / CI 適用）
 
 # 解除部署
 kde project undeploy <project_name>
@@ -317,6 +319,9 @@ kde code-server -d -p 8081 -n code-server-b
 cd environments/dev/namespaces/api && kde code-server -d   # 預設掛當前路徑
 kde code-server -d -v ./environments/dev/namespaces/api    # 明確指定
 ```
+
+> 註：`kde code-server` 會自動把主機當前的 kde-cli 掛載進容器，容器內 `kde` 版本與主機一致。
+> 若主機未安裝 kde-cli，也可直接 `docker run r82wei/kde-code-server:latest`（用 image 內建版本），詳見 README 的「免安裝」章節。
 
 ### OpenClaw
 
