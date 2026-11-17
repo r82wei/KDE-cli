@@ -7,14 +7,68 @@
 KDE-cli is a unified management tool for Kubernetes development environments that integrates a complete development toolchain, enabling full lifecycle management from environment creation to deployment. It consolidates scattered Kubernetes development tools into a unified command interface, allowing developers to complete the entire Kubernetes development workflow—from environment creation, development, testing, to deployment—using **one toolset and one command interface**.
 
 ## 💡 Unique Value
-- All-in-One Integration: Consolidates environment management + development tools + operations tools + external connectivity
-- Zero-Configuration Startup: `kde start dev kind` instantly creates a local K8s environment without complex configuration files
-- Environment Isolation: Easily manage multiple independent environments, avoiding conflicts
-- Real-time Development: Real-time synchronization between local files and files inside Pods
-- Team Sharing: Environment settings, project settings, and CICD delivery workflows can all be shared via Git
-- Gentle Learning Curve: Intuitive commands with comprehensive documentation
-- Complete Workflow: Covers the entire lifecycle from environment creation to deployment monitoring
-#### If you need an "out-of-the-box, feature-complete, easy-to-use" local K8s development environment, KDE-CLI is the best choice.
+KDE-CLI turns "getting our services running on a local K8s cluster" from something each person figures out alone into a workspace you can `git clone`. Every team member runs their own cluster on their own machine and brings up the same projects from the same configuration.
+
+### Value for a development team
+
+- **Fast onboarding**: after cloning the team workspace, `kde start` plus `kde proj deploy` gives a new member the same cluster, projects, and pipelines as everyone else. If a project's repo is not on the machine yet, it is cloned automatically from `project.env`.
+- **How to deploy is a shared, versioned asset**: `project.env` and the stage scripts live in Git, so when someone changes how a service is deployed, everyone else gets it with a pull.
+- **Consistent tool versions**: the versions of Kind, K9s, kubectl, Helm, and the other tools are recorded in `kde.env` and run inside containers.
+- **Machine differences stay local**: ports, paths, and secrets go in `.env` files that are not versioned, so each person can have their own settings.
+- **A fast loop while developing inside the cluster**: in Kind/K3D environments a PVC maps directly to the project folder on the host, so code changes do not need an image rebuild. Problems with Ingress, Services, and mounted configuration show up on your machine first.
+- **A fixed interface for AI agents**: the `--no-tty` commands and the skill installed by `kde claude-skill` let every member's agent deploy, read logs, and exec into pods with the same commands.
+
+### With AI agents: what asking an agent to deploy cannot replace
+
+An AI agent can write deployment scripts and can create a cluster. What it cannot provide is something that stays fixed: an agent regenerates its work each time, and a team needs things that do not change.
+
+- **Consistency across the team**: if everyone asks their own agent to deploy, everyone gets a different directory layout and a different style of script. The workspace structure and `project.env` are a convention that exists outside any agent.
+- **Daily operations that need no agent**: `kde proj redeploy` behaves the same every time, uses no tokens, and works offline.
+- **A development loop, not a single deployment**: Hot Reload depends on the PVC-to-host-folder mapping that is set up when the cluster is created. It is a property of the environment, not a deployment step.
+- **Guardrails for the agent itself**: every command mounts only that environment's own kubeconfig and never reads the host's `~/.kube/config`, so an agent cannot touch another cluster because the wrong context was active. Tools run in containers, so the agent installs nothing on the host. On an external cluster, undeploy refuses to delete the namespace unless an `undeploy.sh` exists.
+- **Details that are already handled**: containers run as the host UID, the kubeconfig is rewritten to an address other containers can reach, source code on the host is kept when a PVC is deleted, and so on. None of this has to be rediscovered by trial and error.
+
+The recommended split: the agent writes `build.sh` and `deploy.sh` and investigates problems; KDE makes those scripts run the same way on everyone's machine.
+
+### What the team still owns
+
+- **The deployment itself**: `kde proj create` generates empty `build.sh` and `deploy.sh` files. How closely the result matches production depends on what you put in them.
+- **Distributing secrets**: a project's `.env` is not versioned and has to be provided to each member separately.
+- **Start order across projects**: projects are deployed one at a time, and the team decides the order of dependent services.
+- **Isolation and permissions on a shared cluster**: KDE's model is one local cluster per person. When several people connect to the same external cluster, permissions and staying out of each other's way are up to the cluster and the team.
+
+### Another way to use it: a shared development environment
+
+Instead of one local cluster per person, you can put a single workspace on a shared host, start one Kind cluster, and open one code-server per project. Members reach the project they are responsible for from a browser, and people in any role can discuss a question with Claude inside that project's code-server.
+
+```bash
+# Run from the workspace root; one code-server per project, each with its own name and port
+kde code-server -d -n api -p 8081 -w environments/dev/namespaces/api -a claude
+kde code-server -d -n web -p 8082 -w environments/dev/namespaces/web -a claude
+```
+
+**What it gives you**
+
+- **Non-engineering roles can reach the running system**: PMs, QA, and designers install nothing and open the project in a browser. The Claude inside can read the code and use `kde` to read logs and exec into pods, so its answers are based on the services that are actually running.
+- **Project context accumulates**: each code-server keeps its own home in `.code-server/<name>`, so Claude's settings and conversation history stay with the project. Every role talks to the same Claude that already knows this project.
+- **An integration environment for free**: all projects run in the same cluster, so services can call each other directly and nobody has to run other people's services locally.
+- **One environment to maintain**: one machine and one cluster, with no drift between individual setups.
+
+**Limits to know before using it**
+
+- **No isolation between projects**: the commands above mount the whole workspace, and every code-server can use the host's Docker and runs as the same host user. Anyone (and any Claude) can operate the whole cluster and other people's code-servers. "Each person owns a different project" is a team agreement, not something the system enforces.
+- **No individual identity**: each code-server has only the one password set when it starts. There are no accounts, so you cannot tell who performed an action. It is served over HTTP by default, so add TLS and access control yourself before exposing it.
+- **Everyone affects everyone**: if one project uses up the resources, or someone runs `kde stop` or `kde reset`, everybody is interrupted.
+- **One project is not meant for several people editing at once**: each project has a single working directory and a single Git identity.
+
+**Claude seats**
+
+Claude's login is stored in each code-server's home, so it follows the project, not the person. Seats on a Team plan follow the person, so decide which of these you want first:
+
+- **One code-server per person, each signed in with their own seat**: usage and history map to people. Shared project context lives in the repo's `CLAUDE.md` and `.claude/`, so it is still shared across people.
+- **One code-server per project, with one seat assigned to it**: closest to "the project's shared Claude", but you cannot tell who asked, and everyone draws on the same usage limit. Check that this fits the rules of your plan before adopting it.
+
+This setup suits a small team whose members trust each other and that runs it on an internal network. If you need individual sign-in and access control, use the one-local-cluster-per-person model instead.
 
 
 ## ✨ Core Features
